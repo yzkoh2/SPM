@@ -10,6 +10,7 @@ def create_user(data):
     """Creates a new user."""
     new_user = User(
         username=data['username'],
+        password=data['password'],
         email=data['email'],
         role=data.get('role', 'staff')
     )
