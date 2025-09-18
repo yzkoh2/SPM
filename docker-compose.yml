@@ -3,11 +3,23 @@ networks:
     driver: bridge
     name: spm-net
 
-# volumes:
-#   rabbitmq_data:
-#     name: rabbitmq_data
+volumes:
+  user_db_data:
 
 services:
+# PGAdmin
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: my-pgadmin
+    restart: always
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@admin.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+    ports:
+      - "5434:80"
+    depends_on:
+      - user_db
+
   # Frontend
   frontend:
     build: ./frontend
@@ -35,3 +47,31 @@ services:
       - ./swagger:/usr/src/app/swagger
     networks:
       - spm-net
+
+  # Backend
+  user_service:
+    build: ./backend/user_service
+    image: spm/user_service:1.0
+    container_name: spm_user_service
+    restart: always
+    networks:
+      - spm-net
+    ports:
+      - "6000:6000"
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+    depends_on:
+      - user_db
+    
+  user_db:
+    image: postgres:15
+    container_name: my-postgres
+    restart: always
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: user
+      POSTGRES_DB: user_db
+    ports:
+      - "5433:5432"
+    volumes:
+      - ./backend/user_service/db:/docker-entrypoint-initdb.d
