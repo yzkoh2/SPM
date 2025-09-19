@@ -13,3 +13,7 @@ python-dotenv
 
 # Production-grade web server to run the Flask app
 gunicorn
+
+# Password encryption
+PyJWT
+cryptography

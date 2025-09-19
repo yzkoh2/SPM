@@ -11,7 +11,7 @@ class Config:
     """
     # A secret key is required by Flask for session management and security.
     # It should be a long, random string.
-    # SECRET_KEY = os.getenv('SECRET_KEY')
+    SECRET_KEY = os.getenv('SECRET_KEY')
 
     # The database connection string.
     # This is loaded from the DATABASE_URL environment variable.

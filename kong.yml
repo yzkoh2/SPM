@@ -1,6 +1,26 @@
 _format_version: "3.0"
 _transform: true
 
+plugins:
+  - name: cors
+    config:
+      # Allow requests from your frontend's origin
+      origins:
+        - http://localhost:5173
+      # Specify which methods are allowed
+      methods:
+        - GET
+        - POST
+        - PUT
+        - DELETE
+        - OPTIONS
+      # Specify which headers the frontend is allowed to send
+      headers:
+        - Content-Type
+        - Authorization
+      # Allows cookies and credentials to be sent
+      credentials: true
+
 services:
   - name: user-service
     url: http://spm_user_service:6000
@@ -15,3 +35,4 @@ services:
           - POST
           - PUT
           - DELETE
+          - OPTIONS
