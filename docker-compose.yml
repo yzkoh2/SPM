@@ -4,7 +4,8 @@ networks:
     name: spm-net
 
 volumes:
-  user_db_data:
+  pgadmin_data:
+  # user_db_data:
 
 services:
   # Kong
@@ -38,6 +39,9 @@ services:
     environment:
       PGADMIN_DEFAULT_EMAIL: admin@admin.com
       PGADMIN_DEFAULT_PASSWORD: admin
+    volumes:
+      - ./pgadmin/servers.json:/pgadmin4/servers.json
+      - pgadmin_data:/var/lib/pgadmin
     ports:
       - "5434:80"
     depends_on:
@@ -59,19 +63,19 @@ services:
       - spm-net
   
   # Documentation
-  # swagger:
-  #   build: 
-  #     context: ./documentation
-  #     dockerfile: Dockerfile
-  #   image: spm/swagger:1.0
-  #   container_name: spm-swagger
-  #   restart: always
-  #   ports:
-  #     - "6008:6008"
-  #   volumes:
-  #     - ./swagger:/usr/src/app/swagger
-  #   networks:
-  #     - spm-net
+  swagger:
+    build: 
+      context: ./documentation
+      dockerfile: Dockerfile
+    image: spm/swagger:1.0
+    container_name: spm-swagger
+    restart: always
+    ports:
+      - "6008:6008"
+    volumes:
+      - ./swagger:/usr/src/app/swagger
+    networks:
+      - spm-net
 
   # Backend
   user_service:
