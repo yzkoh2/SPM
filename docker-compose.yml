@@ -92,6 +92,19 @@ services:
       SECRET_KEY: ${SECRET_KEY}
     depends_on:
       - user_db
+
+  task_service:
+    build: ./backend/task_management_service
+    image: spm/task_service:1.0
+    container_name: spm_task_service
+    restart: always
+    networks:
+      - spm-net
+    environment:
+      DATABASE_URL: ${TASK_DATABASE_URL}
+      SECRET_KEY: ${SECRET_KEY}
+    depends_on:
+      - task_db
     
   user_db:
     image: postgres:15
@@ -107,3 +120,18 @@ services:
       - "5433:5432"
     volumes:
       - ./backend/user_service/db:/docker-entrypoint-initdb.d
+
+  task_db:
+    image: postgres:15
+    container_name: task_db
+    restart: always
+    networks:
+      - spm-net
+    environment:
+      POSTGRES_USER: task_user
+      POSTGRES_PASSWORD: task_pass
+      POSTGRES_DB: task_db
+    ports:
+      - "5435:5432"
+    volumes:
+      - ./backend/task_management_service/db:/docker-entrypoint-initdb.d

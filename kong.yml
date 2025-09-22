@@ -36,3 +36,17 @@ services:
           - PUT
           - DELETE
           - OPTIONS
+
+  - name: task-service
+    url: http://spm_task_service:6001
+    routes:
+      - name: task-service-route
+        paths:
+          - /tasks
+        strip_path: false
+        methods:
+          - GET
+          - POST
+          - PUT
+          - DELETE
+          - OPTIONS

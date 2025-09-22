@@ -8,6 +8,15 @@
             "MaintenanceDB": "user_db",
             "Username": "user",
             "SSLMode": "prefer"
+        },
+        "2": {
+            "Name": "Task DB",
+            "Group": "Servers", 
+            "Host": "task_db",
+            "Port": 5432,
+            "MaintenanceDB": "task_db",
+            "Username": "task_user",
+            "SSLMode": "prefer"
         }
     }
 }
