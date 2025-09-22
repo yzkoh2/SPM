@@ -57,16 +57,20 @@ def create_user():
 
 @user_bp.route('/user/login', methods=['POST'])
 def login():
-    data = request.get_json()
-    if not data or not data.get('email') or not data.get('password'):
-        return jsonify({'error': 'Missing email or password'}), 400
-    
-    token = service.login_user(data)
-    
-    if not token:
-        return jsonify({'error': 'Invalid credentials'}), 401
+    try:
+        data = request.get_json()
+        if not data or not data.get('email') or not data.get('password'):
+            return jsonify({'error': 'Missing email or password'}), 400
         
-    return jsonify({'token': token})
+        token = service.login_user(data)
+        
+        if not token:
+            return jsonify({'error': 'Invalid Login Credentials'}), 401
+            
+        return jsonify({'token': token})
+    except Exception as e:
+        return jsonify({'error': 'An unexpected error has occured. Please try again later.'}), 500
+
 
 # --- Protected Routes ---
 @user_bp.route('/user/verifyJWT', methods=['GET'])
