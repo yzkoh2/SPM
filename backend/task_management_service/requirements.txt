@@ -1,5 +1,3 @@
-# requirements.txt
-
 # Core Flask framework and database ORM
 Flask
 Flask-SQLAlchemy
@@ -18,3 +16,6 @@ gunicorn
 PyJWT
 cryptography
 bcrypt
+
+# HTTP requests for microservice communication
+requests
