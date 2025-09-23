@@ -1,4 +1,29 @@
-from .models import db, Task
+from .models import db, Task, Subtask, Comment, Attachment
+from datetime import datetime
+
+def get_all_tasks(owner_id=None, status=None):
+    """Fetch all tasks with optional filtering"""
+    query = Task.query
+    
+    if owner_id:
+        query = query.filter_by(owner_id=owner_id)
+    
+    if status:
+        query = query.filter_by(status=status)
+    
+    tasks = query.all()
+    
+    return [{
+        "id": task.id,
+        "title": task.title,
+        "description": task.description,
+        "deadline": str(task.deadline) if task.deadline else None,
+        "status": task.status,
+        "owner_id": task.owner_id,
+        "subtask_count": len(task.subtasks),
+        "comment_count": len(task.comments),
+        "attachment_count": len(task.attachments)
+    } for task in tasks]
 
 def get_task_details(task_id):
     """Fetch a task with its subtasks, comments, and attachments"""
