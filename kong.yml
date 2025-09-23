@@ -7,6 +7,7 @@ plugins:
       # Allow requests from your frontend's origin
       origins:
         - http://localhost:5173
+        - http://localhost:6008
       # Specify which methods are allowed
       methods:
         - GET
@@ -22,6 +23,7 @@ plugins:
       credentials: true
 
 services:
+  # SERVICES
   - name: user-service
     url: http://spm_user_service:6000
     routes:
@@ -36,3 +38,12 @@ services:
           - PUT
           - DELETE
           - OPTIONS
+
+  # DOCUMENTATION
+  - name: swagger
+    url: http://spm-swagger:6008
+    routes:
+      - name: swagger-route
+        paths:
+          - /api-docs
+        strip_path: false
