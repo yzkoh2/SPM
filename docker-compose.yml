@@ -92,7 +92,7 @@ services:
       SECRET_KEY: ${SECRET_KEY}
     depends_on:
       - user_db
-    
+
   task_service:
     build: ./backend/task_management_service
     image: spm/task_service:1.0

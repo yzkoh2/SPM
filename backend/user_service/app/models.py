@@ -16,8 +16,8 @@ class User(db.Model):
     # Methods
     def to_json(self):
         return {
-            'id': self.id,
-            'username': self.username, 
+            'id': self.id,  # Include user ID in response
+            'username': self.username,
             'email': self.email,
             'role': self.role
         }

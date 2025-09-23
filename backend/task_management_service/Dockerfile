@@ -12,4 +12,3 @@ COPY . .
 EXPOSE 6001
 
 CMD ["gunicorn", "--bind", "0.0.0.0:6001", "main:app"]
-

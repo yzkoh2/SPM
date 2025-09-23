@@ -12,4 +12,3 @@ COPY . .
 EXPOSE 6000
 
 CMD ["gunicorn", "--bind", "0.0.0.0:6000", "main:app"]
-

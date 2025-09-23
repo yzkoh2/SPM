@@ -8,8 +8,7 @@
             "MaintenanceDB": "user_db",
             "Username": "user",
             "SSLMode": "prefer"
-        }, 
-        
+        },
         "2": {
             "Name": "Task DB",
             "Group": "Servers", 

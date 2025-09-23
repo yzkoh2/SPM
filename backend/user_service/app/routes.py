@@ -74,5 +74,3 @@ def login():
 def verify_user(current_user):
     # The current_user is passed from the token_required decorator
     return jsonify(current_user.to_json())
-
-

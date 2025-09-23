@@ -1,141 +1,228 @@
 <template>
   <div class="min-h-screen bg-gray-50">
-    <!-- Header -->
-    <div class="bg-white shadow-sm border-b">
+    <!-- Header with Back Navigation -->
+    <header class="bg-white shadow-sm border-b border-gray-200">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div class="flex justify-between items-center h-16">
-          <div class="flex items-center">
-            <h1 class="text-2xl font-bold text-gray-900">SPM Project</h1>
-          </div>
-          <div class="flex items-center space-x-4">
-            <span class="text-sm text-gray-700">Welcome, {{ userEmail }}</span>
-            <button @click="logout" class="text-red-600 hover:text-red-900 text-sm font-medium">
-              Logout
-            </button>
+        <div class="flex items-center py-6">
+          <router-link 
+            to="/tasks" 
+            class="flex items-center text-indigo-600 hover:text-indigo-500 mr-6 text-sm font-medium">
+            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+            </svg>
+            Back to Tasks
+          </router-link>
+          <div class="flex-1">
+            <h1 class="text-2xl font-bold text-gray-900">Task Details</h1>
           </div>
         </div>
       </div>
-    </div>
+    </header>
 
     <!-- Main Content -->
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <!-- Projects Section (Placeholder) -->
-      <div class="mb-8">
-        <h2 class="text-xl font-semibold text-gray-900 mb-4">Projects</h2>
-        <div class="bg-white rounded-lg shadow-sm p-6">
-          <p class="text-gray-500">Project management section - handled by other team members</p>
+      <!-- Loading State -->
+      <div v-if="loading" class="flex justify-center items-center py-12">
+        <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+      </div>
+      
+      <!-- Error State -->
+      <div v-else-if="error" class="bg-red-50 border border-red-200 rounded-md p-6">
+        <div class="flex items-center">
+          <svg class="w-6 h-6 text-red-600 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+          </svg>
+          <div>
+            <h3 class="text-sm font-medium text-red-800">Error Loading Task</h3>
+            <p class="text-sm text-red-700 mt-1">{{ error }}</p>
+          </div>
+        </div>
+        <div class="mt-4">
+          <button @click="fetchTaskDetails" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md text-sm">
+            Try Again
+          </button>
         </div>
       </div>
-
-      <!-- Individual Tasks Section -->
-      <div>
-        <h2 class="text-xl font-semibold text-gray-900 mb-4">Individual Tasks</h2>
-        
-        <!-- Loading State -->
-        <div v-if="loading" class="text-center py-8">
-          <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
-          <p class="mt-2 text-gray-600">Loading your tasks...</p>
+      
+      <!-- Task Details -->
+      <div v-else-if="task" class="space-y-6">
+        <!-- Task Header Card -->
+        <div class="bg-white rounded-lg shadow-md p-6 border-l-4" :class="getStatusBorderColor(task.status)">
+          <div class="flex justify-between items-start mb-4">
+            <div class="flex-1">
+              <h2 class="text-3xl font-bold text-gray-900 mb-2">{{ task.title }}</h2>
+              <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium"
+                    :class="getStatusBadgeColor(task.status)">
+                {{ task.status }}
+              </span>
+            </div>
+            <div class="flex items-center space-x-2 ml-4">
+              <button @click="editTask" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-md text-sm font-medium">
+                Edit Task
+              </button>
+              <button @click="deleteTask" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md text-sm font-medium">
+                Delete Task
+              </button>
+            </div>
+          </div>
+          
+          <!-- Task Description -->
+          <div class="mt-4">
+            <h3 class="text-lg font-medium text-gray-900 mb-2">Description</h3>
+            <p class="text-gray-700 leading-relaxed">
+              {{ task.description || 'No description provided' }}
+            </p>
+          </div>
+          
+          <!-- Task Metadata -->
+          <div class="mt-6 grid grid-cols-1 md:grid-cols-3 gap-6 pt-6 border-t border-gray-200">
+            <div>
+              <h4 class="text-sm font-medium text-gray-500 uppercase tracking-wide">Deadline</h4>
+              <p class="mt-1 text-lg" :class="getDeadlineColor(task.deadline)">
+                {{ formatDeadline(task.deadline) }}
+              </p>
+            </div>
+            <div>
+              <h4 class="text-sm font-medium text-gray-500 uppercase tracking-wide">Owner</h4>
+              <p class="mt-1 text-lg text-gray-900">ID: {{ task.owner_id }}</p>
+            </div>
+            <div>
+              <h4 class="text-sm font-medium text-gray-500 uppercase tracking-wide">Created</h4>
+              <p class="mt-1 text-lg text-gray-900">{{ formatDate(task.deadline) }}</p>
+            </div>
+          </div>
         </div>
 
-        <!-- Error State -->
-        <div v-else-if="error" class="rounded-md bg-red-50 p-4">
-          <div class="flex">
-            <div class="ml-3">
-              <h3 class="text-sm font-medium text-red-800">Error loading tasks</h3>
-              <div class="mt-2 text-sm text-red-700">
-                <p>{{ error }}</p>
+        <!-- Quick Stats -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div class="bg-white rounded-lg shadow-md p-6">
+            <div class="flex items-center">
+              <div class="p-2 bg-blue-100 rounded-lg">
+                <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+                </svg>
               </div>
-              <div class="mt-4">
-                <button @click="loadUserTasks" class="bg-red-100 px-3 py-1 rounded text-red-800 text-sm hover:bg-red-200">
-                  Try Again
-                </button>
+              <div class="ml-4">
+                <p class="text-sm font-medium text-gray-600">Subtasks</p>
+                <p class="text-2xl font-semibold text-gray-900">{{ task.subtasks?.length || 0 }}</p>
+              </div>
+            </div>
+          </div>
+          
+          <div class="bg-white rounded-lg shadow-md p-6">
+            <div class="flex items-center">
+              <div class="p-2 bg-green-100 rounded-lg">
+                <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path>
+                </svg>
+              </div>
+              <div class="ml-4">
+                <p class="text-sm font-medium text-gray-600">Comments</p>
+                <p class="text-2xl font-semibold text-gray-900">{{ task.comments?.length || 0 }}</p>
+              </div>
+            </div>
+          </div>
+          
+          <div class="bg-white rounded-lg shadow-md p-6">
+            <div class="flex items-center">
+              <div class="p-2 bg-purple-100 rounded-lg">
+                <svg class="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"></path>
+                </svg>
+              </div>
+              <div class="ml-4">
+                <p class="text-sm font-medium text-gray-600">Attachments</p>
+                <p class="text-2xl font-semibold text-gray-900">{{ task.attachments?.length || 0 }}</p>
               </div>
             </div>
           </div>
         </div>
 
-        <!-- Tasks List -->
-        <div v-else class="space-y-4">
-          <!-- No Tasks State -->
-          <div v-if="tasks.length === 0" class="text-center py-12">
-            <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path>
+        <!-- Subtasks Section -->
+        <div class="bg-white rounded-lg shadow-md p-6">
+          <div class="flex justify-between items-center mb-6">
+            <h3 class="text-xl font-semibold text-gray-900">Subtasks ({{ task.subtasks?.length || 0 }})</h3>
+            <router-link 
+              :to="`/tasks/${task.id}/subtasks`"
+              class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-md text-sm font-medium">
+              View All Subtasks
+            </router-link>
+          </div>
+          
+          <div v-if="task.subtasks && task.subtasks.length > 0" class="space-y-3">
+            <div v-for="subtask in task.subtasks.slice(0, 5)" :key="subtask.id" 
+                 class="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50">
+              <div class="flex items-center space-x-3">
+                <div class="w-2 h-2 rounded-full" :class="getSubtaskStatusColor(subtask.status)"></div>
+                <span class="text-gray-900">{{ subtask.title }}</span>
+              </div>
+              <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium"
+                    :class="getStatusBadgeColor(subtask.status)">
+                {{ subtask.status }}
+              </span>
+            </div>
+            <div v-if="task.subtasks.length > 5" class="text-center pt-4">
+              <router-link 
+                :to="`/tasks/${task.id}/subtasks`"
+                class="text-indigo-600 hover:text-indigo-500 text-sm font-medium">
+                View {{ task.subtasks.length - 5 }} more subtasks →
+              </router-link>
+            </div>
+          </div>
+          
+          <div v-else class="text-center py-8 text-gray-500">
+            <svg class="mx-auto h-12 w-12 text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
             </svg>
-            <h3 class="mt-4 text-lg font-medium text-gray-900">No tasks assigned</h3>
-            <p class="mt-2 text-gray-500">You don't have any tasks assigned to you at the moment.</p>
+            <p>No subtasks yet</p>
           </div>
+        </div>
 
-          <!-- Task Cards -->
-          <div v-else class="grid grid-cols-1 gap-4">
-            <div
-              v-for="task in tasks"
-              :key="task.id"
-              class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow"
-            >
-              <div class="flex justify-between items-start mb-4">
-                <div class="flex-1 min-w-0">
-                  <h3 class="text-lg font-semibold text-gray-900 break-words">{{ task.title }}</h3>
-                  <p v-if="task.description" class="mt-1 text-gray-600 line-clamp-2">{{ task.description }}</p>
-                </div>
-                <span class="ml-4 inline-flex items-center px-2.5 py-0.5 rounded-full text-sm font-medium whitespace-nowrap"
-                      :class="getStatusColor(task.status)">
-                  {{ task.status }}
-                </span>
-              </div>
-
-              <!-- Task Metadata -->
-              <div class="flex flex-wrap items-center gap-4 text-sm text-gray-500 mb-4">
-                <div class="flex items-center">
-                  <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
-                  </svg>
-                  <span>{{ formatDeadline(task.deadline) }}</span>
-                </div>
-                
-                <div class="flex items-center">
-                  <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
-                  </svg>
-                  <span>{{ task.subtask_count }} subtasks</span>
-                </div>
-
-                <div class="flex items-center">
-                  <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.418 8-8 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.418-8 8-8s8 3.582 8 8z"></path>
-                  </svg>
-                  <span>{{ task.comment_count }} comments</span>
-                </div>
-
-                <div class="flex items-center">
-                  <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"></path>
-                  </svg>
-                  <span>{{ task.attachment_count }} files</span>
-                </div>
-              </div>
-
-              <!-- Action Buttons -->
-              <div class="flex justify-between items-center">
-                <div class="flex space-x-3">
-                  <router-link
-                    :to="`/tasks/${task.id}`"
-                    class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors"
-                  >
-                    View Details
-                  </router-link>
-                  
-                  <button
-                    @click="viewSubtasks(task.id)"
-                    class="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors"
-                  >
-                    View Subtasks ({{ task.subtask_count }})
-                  </button>
-                </div>
-
-                <!-- Task ID for reference -->
-                <span class="text-xs text-gray-400">Task #{{ task.id }}</span>
-              </div>
+        <!-- Comments Section -->
+        <div class="bg-white rounded-lg shadow-md p-6">
+          <h3 class="text-xl font-semibold text-gray-900 mb-6">Comments ({{ task.comments?.length || 0 }})</h3>
+          
+          <div v-if="task.comments && task.comments.length > 0" class="space-y-4">
+            <div v-for="comment in task.comments" :key="comment.id" 
+                 class="border-l-4 border-indigo-200 pl-4 py-2">
+              <p class="text-gray-700">{{ comment.body }}</p>
+              <p class="text-xs text-gray-500 mt-1">Author ID: {{ comment.author_id }}</p>
             </div>
+          </div>
+          
+          <div v-else class="text-center py-8 text-gray-500">
+            <svg class="mx-auto h-12 w-12 text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path>
+            </svg>
+            <p>No comments yet</p>
+          </div>
+        </div>
+
+        <!-- Attachments Section -->
+        <div class="bg-white rounded-lg shadow-md p-6">
+          <h3 class="text-xl font-semibold text-gray-900 mb-6">Attachments ({{ task.attachments?.length || 0 }})</h3>
+          
+          <div v-if="task.attachments && task.attachments.length > 0" class="space-y-3">
+            <div v-for="attachment in task.attachments" :key="attachment.id" 
+                 class="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50">
+              <div class="flex items-center space-x-3">
+                <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"></path>
+                </svg>
+                <span class="text-gray-900">{{ attachment.filename }}</span>
+              </div>
+              <a :href="attachment.url" target="_blank" 
+                 class="text-indigo-600 hover:text-indigo-500 text-sm font-medium">
+                Download
+              </a>
+            </div>
+          </div>
+          
+          <div v-else class="text-center py-8 text-gray-500">
+            <svg class="mx-auto h-12 w-12 text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"></path>
+            </svg>
+            <p>No attachments</p>
           </div>
         </div>
       </div>
@@ -144,139 +231,147 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
-import { useRouter } from 'vue-router';
+import { ref, onMounted } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 
-const router = useRouter();
-const tasks = ref([]);
-const loading = ref(true);
-const error = ref(null);
-const userEmail = ref('');
-const userId = ref(null);
+const route = useRoute()
+const router = useRouter()
 
-const KONG_API_URL = "http://localhost:8000";
+// Reactive data
+const task = ref(null)
+const loading = ref(true)
+const error = ref(null)
 
-onMounted(async () => {
-  await getCurrentUser();
-  if (userId.value) {
-    await loadUserTasks();
-  }
-});
+// API configuration
+const KONG_API_URL = "http://localhost:8000"
 
-const getCurrentUser = async () => {
+// Fetch task details from API
+const fetchTaskDetails = async () => {
   try {
-    const token = localStorage.getItem('authToken');
-    if (!token) {
-      router.push('/login');
-      return;
-    }
-
-    const response = await fetch(`${KONG_API_URL}/user/verifyJWT`, {
-      headers: { 'Authorization': `Bearer ${token}` }
-    });
-
-    if (!response.ok) {
-      throw new Error('Failed to verify user');
-    }
-
-    const userData = await response.json();
-    userEmail.value = userData.email;
+    loading.value = true
+    error.value = null
     
-    // Extract user ID from JWT payload
-    const payload = JSON.parse(atob(token.split('.')[1]));
-    userId.value = parseInt(payload.sub);
+    const taskId = route.params.id
+    console.log('Fetching task details for ID:', taskId)
     
-  } catch (err) {
-    console.error('Error getting current user:', err);
-    localStorage.removeItem('authToken');
-    router.push('/login');
-  }
-};
-
-const loadUserTasks = async () => {
-  try {
-    loading.value = true;
-    error.value = null;
-    
-    const token = localStorage.getItem('authToken');
-    if (!token) {
-      router.push('/login');
-      return;
-    }
-
-    console.log('Loading tasks for user:', userId.value);
-
-    const response = await fetch(`${KONG_API_URL}/tasks?owner_id=${userId.value}`, {
+    const response = await fetch(`${KONG_API_URL}/tasks/${taskId}`, {
       headers: {
-        'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json'
       }
-    });
-
-    if (!response.ok) {
-      if (response.status === 401) {
-        localStorage.removeItem('authToken');
-        router.push('/login');
-        return;
-      }
-      throw new Error(`Failed to fetch tasks: ${response.status}`);
-    }
-
-    tasks.value = await response.json();
-    console.log('Tasks loaded:', tasks.value);
+    })
     
+    if (response.ok) {
+      task.value = await response.json()
+      console.log('Task details loaded:', task.value)
+    } else if (response.status === 404) {
+      error.value = 'Task not found'
+    } else {
+      error.value = `Failed to load task: ${response.status}`
+    }
   } catch (err) {
-    console.error('Error loading tasks:', err);
-    error.value = err.message;
+    console.error('Error fetching task details:', err)
+    error.value = 'Failed to connect to server'
   } finally {
-    loading.value = false;
+    loading.value = false
   }
-};
+}
 
-const logout = () => {
-  localStorage.removeItem('authToken');
-  router.push('/login');
-};
+// Action methods
+const editTask = () => {
+  console.log('Edit task:', task.value)
+  // TODO: Implement edit functionality
+  alert('Edit functionality coming soon!')
+}
 
-const viewSubtasks = (taskId) => {
-  // This will be handled by your teammate's subtask component
-  // For now, we'll just navigate to a placeholder route
-  console.log('View subtasks for task:', taskId);
-  // router.push(`/tasks/${taskId}/subtasks`);
-  alert(`View subtasks for task ${taskId} - This will be implemented by your teammate`);
-};
+const deleteTask = async () => {
+  if (!confirm('Are you sure you want to delete this task? This action cannot be undone.')) {
+    return
+  }
+  
+  try {
+    const response = await fetch(`${KONG_API_URL}/tasks/${task.value.id}`, {
+      method: 'DELETE'
+    })
+    
+    if (response.ok || response.status === 404) {
+      alert('Task deleted successfully!')
+      router.push('/tasks')
+    } else {
+      throw new Error(`Failed to delete: ${response.status}`)
+    }
+  } catch (err) {
+    console.error('Error deleting task:', err)
+    alert('Failed to delete task: ' + err.message)
+  }
+}
 
-// Utility functions
-const getStatusColor = (status) => {
+// Utility methods
+const getStatusBorderColor = (status) => {
+  const colors = {
+    'Unassigned': 'border-gray-400',
+    'Ongoing': 'border-yellow-400',
+    'Under Review': 'border-orange-400',
+    'Completed': 'border-green-400'
+  }
+  return colors[status] || 'border-gray-400'
+}
+
+const getStatusBadgeColor = (status) => {
   const colors = {
     'Unassigned': 'bg-gray-100 text-gray-800',
-    'Ongoing': 'bg-blue-100 text-blue-800',
-    'In Progress': 'bg-blue-100 text-blue-800', 
-    'Completed': 'bg-green-100 text-green-800',
-    'Done': 'bg-green-100 text-green-800',
-    'On Hold': 'bg-yellow-100 text-yellow-800',
-    'Blocked': 'bg-red-100 text-red-800'
-  };
-  return colors[status] || 'bg-gray-100 text-gray-800';
-};
+    'Ongoing': 'bg-yellow-100 text-yellow-800',
+    'Under Review': 'bg-orange-100 text-orange-800',
+    'Completed': 'bg-green-100 text-green-800'
+  }
+  return colors[status] || 'bg-gray-100 text-gray-800'
+}
+
+const getSubtaskStatusColor = (status) => {
+  const colors = {
+    'Unassigned': 'bg-gray-400',
+    'Ongoing': 'bg-yellow-400',
+    'Under Review': 'bg-orange-400',
+    'Completed': 'bg-green-400'
+  }
+  return colors[status] || 'bg-gray-400'
+}
+
+const getDeadlineColor = (deadline) => {
+  if (!deadline) return 'text-gray-600'
+  
+  const now = new Date()
+  const deadlineDate = new Date(deadline)
+  
+  if (deadlineDate < now) return 'text-red-600 font-medium'
+  if (deadlineDate.toDateString() === now.toDateString()) return 'text-orange-600 font-medium'
+  return 'text-gray-900'
+}
 
 const formatDeadline = (deadline) => {
-  if (!deadline) return 'No deadline';
-  
-  const date = new Date(deadline);
-  const now = new Date();
-  const diffDays = Math.ceil((date - now) / (1000 * 60 * 60 * 24));
-  
-  const options = { month: 'short', day: 'numeric' };
-  const formatted = date.toLocaleDateString('en-US', options);
-  
-  if (diffDays < 0) return `${formatted} (Overdue)`;
-  if (diffDays === 0) return `${formatted} (Today)`;
-  if (diffDays === 1) return `${formatted} (Tomorrow)`;
-  if (diffDays <= 7) return `${formatted} (${diffDays} days)`;
-  
-  return formatted;
-};
+  if (!deadline) return 'No deadline set'
+  const date = new Date(deadline)
+  return date.toLocaleDateString('en-US', {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
+  })
+}
+
+const formatDate = (dateString) => {
+  if (!dateString) return 'Not specified'
+  const date = new Date(dateString)
+  return date.toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric'
+  })
+}
+
+// Load task details when component mounts
+onMounted(() => {
+  fetchTaskDetails()
+})
 </script>
 
 <style scoped>

@@ -1,117 +1,243 @@
 from .models import db, Task, Subtask, Comment, Attachment
 from datetime import datetime
-import requests
-import os
 
 def get_all_tasks(owner_id=None, status=None):
-    """Fetch all tasks with optional filtering - primarily for dashboard view"""
-    query = Task.query
-    
-    # If owner_id is provided, filter tasks for that specific user
-    if owner_id:
-        query = query.filter_by(owner_id=owner_id)
-    
-    if status:
-        query = query.filter_by(status=status)
-    
-    tasks = query.all()
-    
-    return [{
-        "id": task.id,
-        "title": task.title,
-        "description": task.description,
-        "deadline": task.deadline.isoformat() if task.deadline else None,
-        "status": task.status,
-        "owner_id": task.owner_id,
-        "subtask_count": len(task.subtasks),
-        "comment_count": len(task.comments),
-        "attachment_count": len(task.attachments)
-    } for task in tasks]
+    """Fetch all tasks with optional filtering"""
+    try:
+        query = Task.query
+        
+        if owner_id:
+            query = query.filter_by(owner_id=owner_id)
+        
+        if status:
+            query = query.filter_by(status=status)
+        
+        tasks = query.all()
+        print(f"Found {len(tasks)} tasks")
+        
+        return [{
+            "id": task.id,
+            "title": task.title,
+            "description": task.description,
+            "deadline": str(task.deadline) if task.deadline else None,
+            "status": task.status,
+            "owner_id": task.owner_id,
+            "subtask_count": len(task.subtasks),
+            "comment_count": len(task.comments),
+            "attachment_count": len(task.attachments)
+        } for task in tasks]
+        
+    except Exception as e:
+        print(f"Error in get_all_tasks: {e}")
+        raise e
+
+def create_task(task_data):
+    """Create a new task"""
+    try:
+        print(f"Creating task with data: {task_data}")
+        
+        # Parse deadline if provided
+        deadline = None
+        if task_data.get('deadline'):
+            try:
+                if isinstance(task_data['deadline'], str) and task_data['deadline'].strip():
+                    # Handle datetime-local format from HTML input
+                    deadline_str = task_data['deadline']
+                    if 'T' in deadline_str:
+                        deadline = datetime.fromisoformat(deadline_str)
+                    else:
+                        deadline = datetime.strptime(deadline_str, '%Y-%m-%d %H:%M:%S')
+                elif isinstance(task_data['deadline'], datetime):
+                    deadline = task_data['deadline']
+            except ValueError as e:
+                print(f"Error parsing deadline: {e}")
+                deadline = None
+        
+        # Create new task
+        new_task = Task(
+            title=task_data['title'],
+            description=task_data.get('description'),
+            deadline=deadline,
+            status=task_data.get('status', 'Unassigned'),
+            owner_id=task_data['owner_id']
+        )
+        
+        # Add to database
+        db.session.add(new_task)
+        db.session.commit()
+        
+        print(f"Task created with ID: {new_task.id}")
+        
+        # Return the created task
+        return {
+            "id": new_task.id,
+            "title": new_task.title,
+            "description": new_task.description,
+            "deadline": str(new_task.deadline) if new_task.deadline else None,
+            "status": new_task.status,
+            "owner_id": new_task.owner_id,
+            "subtask_count": 0,
+            "comment_count": 0,
+            "attachment_count": 0
+        }
+        
+    except Exception as e:
+        print(f"Error in create_task: {e}")
+        db.session.rollback()
+        raise e
+
+def update_task(task_id, task_data):
+    """Update an existing task"""
+    try:
+        task = Task.query.filter_by(id=task_id).first()
+        if not task:
+            return None
+        
+        # Update fields if provided
+        if 'title' in task_data:
+            task.title = task_data['title']
+        if 'description' in task_data:
+            task.description = task_data['description']
+        if 'status' in task_data:
+            task.status = task_data['status']
+        if 'deadline' in task_data:
+            if task_data['deadline']:
+                try:
+                    if isinstance(task_data['deadline'], str):
+                        task.deadline = datetime.fromisoformat(task_data['deadline'])
+                    else:
+                        task.deadline = task_data['deadline']
+                except ValueError:
+                    task.deadline = None
+            else:
+                task.deadline = None
+        
+        db.session.commit()
+        
+        return {
+            "id": task.id,
+            "title": task.title,
+            "description": task.description,
+            "deadline": str(task.deadline) if task.deadline else None,
+            "status": task.status,
+            "owner_id": task.owner_id,
+            "subtask_count": len(task.subtasks),
+            "comment_count": len(task.comments),
+            "attachment_count": len(task.attachments)
+        }
+        
+    except Exception as e:
+        print(f"Error in update_task: {e}")
+        db.session.rollback()
+        raise e
+
+def delete_task(task_id):
+    """Delete a task by ID"""
+    try:
+        task = Task.query.filter_by(id=task_id).first()
+        if not task:
+            return False
+            
+        print(f"Deleting task: {task.title}")
+        db.session.delete(task)
+        db.session.commit()
+        return True
+        
+    except Exception as e:
+        print(f"Error in delete_task: {e}")
+        db.session.rollback()
+        raise e
 
 def get_task_details(task_id):
-    """Fetch complete task details for individual task page"""
-    task = Task.query.filter_by(id=task_id).first()
-    if not task:
-        return None
-
-    # Get owner details from user service
-    owner_details = get_user_details(task.owner_id)
-    
-    # Get collaborator details for comments
-    comment_authors = set(comment.author_id for comment in task.comments)
-    collaborators = []
-    for author_id in comment_authors:
-        user_details = get_user_details(author_id)
-        if user_details and user_details not in collaborators:
-            collaborators.append(user_details)
-
-    # Always include the task owner in collaborators if not already there
-    if owner_details and owner_details not in collaborators:
-        collaborators.append(owner_details)
-
-    return {
-        "id": task.id,
-        "title": task.title,
-        "description": task.description,
-        "deadline": task.deadline.isoformat() if task.deadline else None,
-        "status": task.status,
-        "owner_id": task.owner_id,
-        "owner_details": owner_details,
-        "collaborators": collaborators,
-        "subtasks": [{
-            "id": s.id, 
-            "title": s.title, 
-            "status": s.status,
-            "created_at": s.created_at.isoformat() if hasattr(s, 'created_at') and s.created_at else None
-        } for s in task.subtasks],
-        "comments": [{
-            "id": c.id, 
-            "body": c.body, 
-            "author_id": c.author_id,
-            "author_details": get_user_details(c.author_id),
-            "created_at": c.created_at.isoformat() if hasattr(c, 'created_at') and c.created_at else None
-        } for c in task.comments],
-        "attachments": [{
-            "id": a.id, 
-            "filename": a.filename, 
-            "url": a.url,
-            "size": getattr(a, 'size', None),
-            "uploaded_at": a.uploaded_at.isoformat() if hasattr(a, 'uploaded_at') and a.uploaded_at else None
-        } for a in task.attachments]
-    }
-
-def get_user_details(user_id):
-    """Fetch user details from user service via Kong gateway"""
+    """Fetch a task with its subtasks, comments, and attachments"""
     try:
-        # Try to use Kong gateway first, fall back to direct service URL if needed
-        kong_url = os.getenv('KONG_URL', 'http://kong:8000')
+        task = Task.query.filter_by(id=task_id).first()
+        if not task:
+            return None
+
+        return {
+            "id": task.id,
+            "title": task.title,
+            "description": task.description,
+            "deadline": str(task.deadline) if task.deadline else None,
+            "status": task.status,
+            "owner_id": task.owner_id,
+            "subtasks": [{"id": s.id, "title": s.title, "status": s.status} for s in task.subtasks],
+            "comments": [{"id": c.id, "body": c.body, "author_id": c.author_id} for c in task.comments],
+            "attachments": [{"id": a.id, "filename": a.filename, "url": a.url} for a in task.attachments]
+        }
         
-        # For development, you might need to use localhost instead
-        if 'localhost' in kong_url or '127.0.0.1' in kong_url:
-            kong_url = 'http://localhost:8000'
-        
-        response = requests.get(f"{kong_url}/user/{user_id}", timeout=5)
-        
-        if response.status_code == 200:
-            user_data = response.json()
-            return {
-                "id": user_id,
-                "username": user_data.get("username", "Unknown"),
-                "email": user_data.get("email", "Unknown"),
-                "role": user_data.get("role", "Unknown")
-            }
-        else:
-            print(f"Failed to fetch user {user_id}: HTTP {response.status_code}")
-            
-    except requests.exceptions.RequestException as e:
-        print(f"Network error fetching user details for user {user_id}: {e}")
     except Exception as e:
-        print(f"Error fetching user details for user {user_id}: {e}")
-    
-    # Return default values if API call fails
-    return {
-        "id": user_id, 
-        "username": f"User_{user_id}",
-        "email": "Unknown", 
-        "role": "Unknown"
-    }
+        print(f"Error in get_task_details: {e}")
+        raise e
+
+def get_task_subtasks(task_id):
+    """Fetch all subtasks for a specific task"""
+    try:
+        task = Task.query.filter_by(id=task_id).first()
+        if not task:
+            return None
+        
+        return [{
+            "id": subtask.id,
+            "title": subtask.title,
+            "status": subtask.status,
+            "task_id": subtask.task_id
+        } for subtask in task.subtasks]
+        
+    except Exception as e:
+        print(f"Error in get_task_subtasks: {e}")
+        raise e
+
+def create_subtask(task_id, subtask_data):
+    """Create a new subtask for a task"""
+    try:
+        # Check if parent task exists
+        task = Task.query.filter_by(id=task_id).first()
+        if not task:
+            return None
+        
+        # Create new subtask
+        new_subtask = Subtask(
+            title=subtask_data['title'],
+            status=subtask_data.get('status', 'Unassigned'),
+            task_id=task_id
+        )
+        
+        db.session.add(new_subtask)
+        db.session.commit()
+        
+        return {
+            "id": new_subtask.id,
+            "title": new_subtask.title,
+            "status": new_subtask.status,
+            "task_id": new_subtask.task_id
+        }
+        
+    except Exception as e:
+        print(f"Error in create_subtask: {e}")
+        db.session.rollback()
+        raise e
+
+def get_subtask_details(task_id, subtask_id):
+    """Fetch a specific subtask"""
+    try:
+        subtask = Subtask.query.filter_by(id=subtask_id, task_id=task_id).first()
+        if not subtask:
+            return None
+        
+        return {
+            "id": subtask.id,
+            "title": subtask.title,
+            "status": subtask.status,
+            "task_id": subtask.task_id,
+            "parent_task": {
+                "id": subtask.parent_task.id,
+                "title": subtask.parent_task.title,
+                "status": subtask.parent_task.status
+            }
+        }
+        
+    except Exception as e:
+        print(f"Error in get_subtask_details: {e}")
+        raise e
