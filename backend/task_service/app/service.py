@@ -1,13 +1,15 @@
 from .models import db, Task, Subtask, Comment, Attachment
 from datetime import datetime
 
-def get_all_tasks(owner_id=None, status=None):
+def get_all_tasks(owner_id, status=None):
     """Fetch all tasks with optional filtering"""
     try:
         query = Task.query
         
-        if owner_id:
-            query = query.filter_by(owner_id=owner_id)
+        if not owner_id:
+            return None
+        
+        query = query.filter_by(owner_id=owner_id)
         
         if status:
             query = query.filter_by(status=status)

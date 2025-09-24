@@ -13,6 +13,10 @@ def get_all_tasks():
         print(f"Getting tasks with owner_id={owner_id}, status={status}")
         
         tasks = service.get_all_tasks(owner_id=owner_id, status=status)
+
+        if tasks is None:
+            return jsonify({"error": "Owner ID is required"}), 400
+
         return jsonify(tasks), 200
     except Exception as e:
         print(f"Error in get_all_tasks: {e}")

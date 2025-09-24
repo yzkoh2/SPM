@@ -10,7 +10,7 @@
             </div>
             <div class="flex items-center space-x-4">
               <span class="text-sm text-gray-500">Welcome back!</span>
-              <button @click="logout" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors">
+              <button @click="authStore.logout()" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors">
                 Logout
               </button>
             </div>
@@ -292,15 +292,18 @@
   <script setup>
   import { ref, computed, onMounted } from 'vue'
   import { useRouter } from 'vue-router'
+  import { useAuthStore } from '@/stores/auth'
   
   const router = useRouter()
-  
+  const authStore = useAuthStore()
+
   // Reactive data
   const tasks = ref([])
   const loading = ref(true)
   const showCreateForm = ref(false)
   const isCreating = ref(false)
   const error = ref(null)
+  const role = ref(null)
   
   // New task form data
   const newTask = ref({
@@ -318,7 +321,6 @@
   
   // API configuration
   const KONG_API_URL = "http://localhost:8000"
-  const currentUserId = 1
   
   // Computed properties
   const filteredTasks = computed(() => {
@@ -355,12 +357,17 @@
   })
   
   // Methods
-  const fetchTasks = async () => {
+  const fetchTasks = async (userID) => {
     try {
       loading.value = true
       error.value = null
+
+      const queryParam = new URLSearchParams()
+      if (userID) {
+        queryParam.append('owner_id', userID) 
+      }
       
-      const response = await fetch(`${KONG_API_URL}/tasks`, {
+      const response = await fetch(`${KONG_API_URL}/tasks${queryParam.toString() ? `?${queryParam.toString()}` : ''}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json'
@@ -507,13 +514,15 @@
     })
   }
   
-  const logout = () => {
-    localStorage.removeItem('authToken')
-    router.push('/login')
-  }
-  
   onMounted(() => {
-    fetchTasks()
+    if (authStore.isAuthenticated) {
+      fetchTasks(authStore.user.id);
+      role.value = authStore.user.role;
+      console.log("User role:", role.value);
+    } else {
+      authStore.logout();
+    }
+    
   })
   </script>
   

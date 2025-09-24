@@ -46,7 +46,9 @@
 <script setup>
 import { ref } from 'vue';
 import { useRouter } from 'vue-router';
+import { useAuthStore } from '@/stores/auth';
 
+const auth = useAuthStore();
 const router = useRouter();
 const email = ref('');
 const password = ref('');
@@ -82,9 +84,10 @@ const handleLogin = async () => {
     }
     
     // 4. On successful login, save the token and username to the browser's local storage
-    localStorage.setItem('authToken', data.token);
-    localStorage.setItem('userID', data.userID);
-    localStorage.setItem('user', data.name);
+    // localStorage.setItem('authToken', data.token);
+    // localStorage.setItem('userID', data.userID);
+    // localStorage.setItem('user', data.name);
+    auth.login({id: data.userID, name: data.name, role: data.role}, data.token);
     
     console.log('Login successful! Token has been saved.');
     
