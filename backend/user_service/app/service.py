@@ -26,7 +26,7 @@ def login_user(data):
     password = data.get('password')
     if user and check_password(password, user.password):
         return generate_token(user.id), user.id, user.name
-    return None
+    return None, None, None
 
 def generate_token(user_id):
     """Generates a JWT Token signed with the app's SECRET_KEY."""
