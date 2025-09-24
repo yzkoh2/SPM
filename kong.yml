@@ -4,30 +4,31 @@ _transform: true
 plugins:
   - name: cors
     config:
-      # Allow requests from your frontend's origin
       origins:
         - http://localhost:5173
         - http://localhost:6008
-      # Specify which methods are allowed
+        - http://localhost:8000
       methods:
         - GET
         - POST
         - PUT
         - DELETE
         - OPTIONS
-      # Specify which headers the frontend is allowed to send
+        - PATCH
       headers:
         - Content-Type
         - Authorization
-      # Allows cookies and credentials to be sent
+        - Accept
+        - Origin
+        - X-Requested-With
       credentials: true
+      max_age: 3600
 
 services:
-  # SERVICES
+  # USER SERVICE
   - name: user-service
     url: http://spm_user_service:6000
     routes:
-      # The name of the route.
       - name: user-service-route
         paths:
           - /user
@@ -38,6 +39,23 @@ services:
           - PUT
           - DELETE
           - OPTIONS
+          - PATCH
+
+  # TASK SERVICE  
+  - name: task-service
+    url: http://spm_task_service:6001
+    routes:
+      - name: task-service-route
+        paths:
+          - /tasks
+        strip_path: false
+        methods:
+          - GET
+          - POST
+          - PUT
+          - DELETE
+          - OPTIONS
+          - PATCH
 
   # DOCUMENTATION
   - name: swagger
@@ -47,3 +65,4 @@ services:
         paths:
           - /api-docs
         strip_path: false
+

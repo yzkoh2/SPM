@@ -16,6 +16,30 @@ const router = createRouter({
       path: '/login',
       name: 'login',
       component: Login
+    },
+    {
+      path: '/tasks',
+      name: 'tasks',
+      component: Dashboard,  // Same component as your dashboard
+      meta: { requiresAuth: true }
+    },
+    {
+      path: '/tasks/:id',
+      name: 'task-details',
+      component: () => import('@/views/View_Individual_Task.vue'),
+      meta: { requiresAuth: true }
+    },
+    {
+      path: '/tasks/:id/subtasks',
+      name: 'task-subtasks',
+      component: () => import('@/views/View_SubTasks.vue'),
+      meta: { requiresAuth: true }
+    },
+    {
+      path: '/tasks/:id/subtasks/:subtaskId',
+      name: 'task-subtasks-details',
+      component: () => import('@/views/View_Individual_SubTask.vue'),
+      meta: { requiresAuth: true }
     }
   ],
 })
