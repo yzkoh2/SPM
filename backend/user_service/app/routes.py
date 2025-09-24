@@ -62,12 +62,12 @@ def login():
         if not data or not data.get('email') or not data.get('password'):
             return jsonify({'error': 'Missing email or password'}), 400
         
-        token = service.login_user(data)
+        token, id, name = service.login_user(data)
         
         if not token:
             return jsonify({'error': 'Invalid Login Credentials'}), 401
             
-        return jsonify({'token': token})
+        return jsonify({'token': token, 'userID': id, 'name': name})
     except Exception as e:
         return jsonify({'error': 'An unexpected error has occured. Please try again later.'}), 500
 

@@ -81,8 +81,10 @@ const handleLogin = async () => {
       throw new Error(data.error || 'Login failed due to an unknown error.');
     }
     
-    // 4. On successful login, save the token to the browser's local storage
+    // 4. On successful login, save the token and username to the browser's local storage
     localStorage.setItem('authToken', data.token);
+    localStorage.setItem('userID', data.userID);
+    localStorage.setItem('user', data.name);
     
     console.log('Login successful! Token has been saved.');
     

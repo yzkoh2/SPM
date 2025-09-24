@@ -25,7 +25,7 @@ def login_user(data):
     user = get_user_by_email(data.get('email'))
     password = data.get('password')
     if user and check_password(password, user.password):
-        return generate_token(user.id)
+        return generate_token(user.id), user.id, user.name
     return None
 
 def generate_token(user_id):
