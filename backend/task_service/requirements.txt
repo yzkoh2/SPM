@@ -1,0 +1,20 @@
+# requirements.txt
+
+# Core Flask framework and database ORM
+Flask
+Flask-SQLAlchemy
+Flask-CORS
+
+# PostgreSQL database driver
+psycopg2-binary
+
+# For loading environment variables from .env file
+python-dotenv
+
+# Production-grade web server to run the Flask app
+gunicorn
+
+# Password encryption
+PyJWT
+cryptography
+bcrypt
