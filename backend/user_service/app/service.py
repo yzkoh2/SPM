@@ -71,6 +71,7 @@ def create_user(data):
 
     new_user = User(
         username=data['username'],
+        name=data['name'],
         password=hashed_pw.decode('utf-8'),
         email=data['email'],
         role=data.get('role', 'staff')

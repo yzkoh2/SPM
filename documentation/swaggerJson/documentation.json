@@ -29,11 +29,15 @@
             "application/json": {
               "schema": {
                 "type": "object",
-                "required": ["username", "email", "password"],
+                "required": ["username", "name", "email", "password"],
                 "properties": {
                   "username": {
                     "type": "string",
                     "example": "johndoe"
+                  },
+                  "name": {
+                    "type": "string",
+                    "example": "john"
                   },
                   "email": {
                     "type": "string",
@@ -119,6 +123,14 @@
                     "token": {
                       "type": "string",
                       "example": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                    },
+                    "userID": {
+                      "type": "integer",
+                      "example": 1
+                    },
+                    "name": {
+                      "type": "string",
+                      "example": "john"
                     }
                   }
                 }
@@ -244,10 +256,18 @@
             "type": "string",
             "example": "johndoe"
           },
+          "name": {
+            "type": "string",
+            "example": "john"
+          },
           "email": {
             "type": "string",
             "format": "email",
             "example": "john.doe@example.com"
+          },
+          "role": {
+            "type": "string",
+            "example": "staff"
           }
         }
       },

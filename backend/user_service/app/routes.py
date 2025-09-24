@@ -43,8 +43,8 @@ def get_user(user_id):
 @user_bp.route('/user/create', methods=['POST'])
 def create_user():
     data = request.get_json()
-    if not all(key in data for key in ['username', 'email', 'password']):
-        return jsonify({'error': 'Missing username, email, or password'}), 400
+    if not all(key in data for key in ['username', 'name', 'email', 'password']):
+        return jsonify({'error': 'Missing username, name, email, or password'}), 400
     
     # The service function now returns a user and an error message
     new_user, error_msg = service.create_user(data)
