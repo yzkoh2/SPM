@@ -241,6 +241,49 @@
           }
         }
       }
+    },
+    "/tasks": {
+      "get": {
+        "tags": ["Task"],
+        "summary": "Get all tasks",
+        "description": "Get all tasks, optionally filtered by owner_id",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "All tasks returned.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Task"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Task not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string",
+                      "example": "Task not found"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -269,6 +312,76 @@
             "type": "string",
             "example": "staff"
           }
+        }
+      },
+      "Task": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer", "example": 101 },
+          "title": { "type": "string", "example": "Finish project report" },
+          "description": {
+            "type": "string",
+            "example": "Complete and submit the project report by deadline"
+          },
+          "deadline": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2025-09-30T23:59:59Z"
+          },
+          "status": { "type": "string", "example": "Unassigned" },
+          "owner_id": { "type": "integer", "example": 1 },
+          "subtasks": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/Subtask" }
+          },
+          "comments": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/Comment" }
+          },
+          "attachments": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/Attachment" }
+          }
+        }
+      },
+
+      "Subtask": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer", "example": 201 },
+          "title": {
+            "type": "string",
+            "example": "Draft introduction section"
+          },
+          "status": { "type": "string", "example": "In Progress" },
+          "task_id": { "type": "integer", "example": 101 }
+        }
+      },
+
+      "Comment": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer", "example": 301 },
+          "body": {
+            "type": "string",
+            "example": "Please review the draft by tomorrow"
+          },
+          "author_id": { "type": "integer", "example": 1 },
+          "task_id": { "type": "integer", "example": 101 }
+        }
+      },
+
+      "Attachment": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer", "example": 401 },
+          "filename": { "type": "string", "example": "report_draft.pdf" },
+          "url": {
+            "type": "string",
+            "format": "uri",
+            "example": "https://example.com/files/report_draft.pdf"
+          },
+          "task_id": { "type": "integer", "example": 101 }
         }
       },
       "Error": {
