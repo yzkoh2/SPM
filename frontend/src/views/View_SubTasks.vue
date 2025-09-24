@@ -27,9 +27,68 @@
         </div>
       </div>
     </nav>
-
+    
     <!-- Main Content -->
     <main class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+        <!-- Create Task Button -->
+    <div class="mb-6">
+        <button @click="showCreateForm = !showCreateForm" 
+                class="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-lg font-medium transition-colors flex items-center">
+        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+        </svg>
+        {{ showCreateForm ? 'Cancel' : 'Create New Task' }}
+        </button>
+    </div>
+
+    <!-- Create Subtask Form -->
+    <div v-if="showCreateForm" class="bg-white rounded-lg shadow-md p-6 mb-8">
+        <h2 class="text-xl font-semibold text-gray-900 mb-4">Create New Subtask</h2>
+        <form @submit.prevent="createSubtask" class="space-y-4">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">Subtask Title</label>
+            <input v-model="newSubtask.title" type="text" required 
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+            </div>
+            <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">Deadline</label>
+            <input v-model="newSubtask.deadline" type="datetime-local"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+            </div>
+        </div>
+        
+        <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">Description</label>
+            <textarea v-model="newSubtask.description" rows="3"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                    placeholder="Describe the Subtask in detail..."></textarea>
+        </div>
+        
+        <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">Status</label>
+            <select v-model="newSubtask.status" 
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+            <option value="Unassigned">Unassigned</option>
+            <option value="Ongoing">Ongoing</option>
+            <option value="Under Review">Under Review</option>
+            <option value="Completed">Completed</option>
+            </select>
+        </div>
+        
+        <div class="flex justify-end space-x-3">
+            <button type="button" @click="showCreateForm = false" 
+                    class="px-4 py-2 text-gray-700 bg-gray-200 hover:bg-gray-300 rounded-md transition-colors">
+            Cancel
+            </button>
+            <button type="submit" :disabled="isCreating"
+                    class="px-6 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md transition-colors disabled:opacity-50">
+            {{ isCreating ? 'Creating...' : 'Create Subtask' }}
+            </button>
+        </div>
+        </form>
+    </div>
+    
       <div class="px-4 py-6 sm:px-0">
         <!-- Task Overview Card -->
         <div v-if="parentTask" class="bg-white overflow-hidden shadow rounded-lg mb-6">
@@ -160,6 +219,15 @@ const subtasks = ref([]);
 const parentTask = ref(null);
 const loading = ref(true);
 const error = ref(null);
+const showCreateForm = ref(false)
+const isCreating = ref(false)
+
+const newSubtask = ref({
+title: '',
+deadline: '',
+description: '',
+status: 'Unassigned'
+})
 
 const KONG_API_URL = "http://localhost:8000";
 
