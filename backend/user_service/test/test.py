@@ -1,6 +1,8 @@
 import unittest
 import os
 import sys
+from unittest import mock
+import jwt
 
 # Add the parent directory to the sys.path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
@@ -85,6 +87,17 @@ class UserServiceTestCase(unittest.TestCase):
             data = res.get_json()
             self.assertEqual(data['error'], 'Username already taken.')
 
+    def test_user_creation_with_missing_fields(self):
+        """Test API cannot create a user with missing fields"""
+        with self.app.app_context():
+            res = self.client().post('/user/create', json={
+                'username': 'testuser'
+                # Missing name, email, password
+            })
+            self.assertEqual(res.status_code, 400)
+            data = res.get_json()
+            self.assertEqual(data['error'], 'Missing username, name, email, or password')
+
     def test_get_user_by_id(self):
         """Test API can get a single user by id."""
         with self.app.app_context():
@@ -152,6 +165,27 @@ class UserServiceTestCase(unittest.TestCase):
             data = res.get_json()
             self.assertEqual(data['error'], 'Invalid Login Credentials')
 
+    def test_user_login_with_missing_fields(self):
+        """Test user login with missing email or password"""
+        with self.app.app_context():
+            res = self.client().post('/user/login', json={'email': 'test@example.com'})
+            self.assertEqual(res.status_code, 400)
+            data = res.get_json()
+            self.assertEqual(data['error'], 'Missing email or password')
+
+    def test_user_login_unexpected_error(self):
+        """Test user login with an unexpected error."""
+        with self.app.app_context():
+            # Mock the service function to raise an exception
+            with unittest.mock.patch('app.routes.service.login_user', side_effect=Exception("Unexpected error")):
+                res = self.client().post('/user/login', json={
+                    'email': 'test@example.com',
+                    'password': 'password'
+                })
+                self.assertEqual(res.status_code, 500)
+                data = res.get_json()
+                self.assertEqual(data['error'], 'An unexpected error has occured. Please try again later.')
+
     def test_jwt_generation_and_verification(self):
         """Test JWT generation and verification."""
         with self.app.app_context():
@@ -173,6 +207,59 @@ class UserServiceTestCase(unittest.TestCase):
             self.assertEqual(res_verify.status_code, 200)
             data = res_verify.get_json()
             self.assertEqual(data['id'], user_id)
+
+    def test_verify_jwt_with_missing_token(self):
+        """Test verifying JWT with a missing token."""
+        with self.app.app_context():
+            res = self.client().get('/user/verifyJWT')
+            self.assertEqual(res.status_code, 401)
+            data = res.get_json()
+            self.assertEqual(data['error'], 'Token is missing!')
+
+    def test_verify_jwt_with_expired_token(self):
+        """Test verifying JWT with an expired token."""
+        with self.app.app_context():
+            # Generate an expired token
+            from app.service import generate_token
+            expired_token = generate_token(1)  # Assuming user ID 1
+            # To make it expired, we need to manipulate the time.
+            # Since we can't do that easily, we'll mock the jwt.decode function.
+            # For simplicity, we'll assume the token has a very short lifespan
+            # and just wait for it to expire.
+            # A better approach would be to mock the datetime.datetime.utcnow function
+            # when generating the token.
+            # For this test, we will assume the token is expired.
+            # We will patch the `jwt.decode` to raise `ExpiredSignatureError`.
+            with unittest.mock.patch('jwt.decode', side_effect=jwt.ExpiredSignatureError):
+                res = self.client().get('/user/verifyJWT', headers={
+                    'Authorization': f'Bearer {expired_token}'
+                })
+                self.assertEqual(res.status_code, 401)
+                data = res.get_json()
+                self.assertEqual(data['error'], 'Token has expired!')
+
+    def test_verify_jwt_with_invalid_token(self):
+        """Test verifying JWT with an invalid token."""
+        with self.app.app_context():
+            res = self.client().get('/user/verifyJWT', headers={
+                'Authorization': 'Bearer invalidtoken'
+            })
+            self.assertEqual(res.status_code, 401)
+            data = res.get_json()
+            self.assertEqual(data['error'], 'Token is invalid!')
+
+    def test_verify_jwt_with_nonexistent_user(self):
+        """Test verifying JWT with a token for a nonexistent user."""
+        with self.app.app_context():
+            from app.service import generate_token
+            # Generate a token for a user ID that doesn't exist
+            token = generate_token(999)
+            res = self.client().get('/user/verifyJWT', headers={
+                'Authorization': f'Bearer {token}'
+            })
+            self.assertEqual(res.status_code, 404)
+            data = res.get_json()
+            self.assertEqual(data['error'], 'User not found')
 
 if __name__ == "__main__":
     unittest.main()
