@@ -41,13 +41,38 @@ services:
           - OPTIONS
           - PATCH
 
-  # TASK SERVICE  
+  # TASK SERVICE - Multiple routes for different endpoint groups
   - name: task-service
     url: http://spm_task_service:6001
     routes:
-      - name: task-service-route
+      - name: task-service-tasks
         paths:
           - /tasks
+        strip_path: false
+        methods:
+          - GET
+          - POST
+          - PUT
+          - DELETE
+          - OPTIONS
+          - PATCH
+      - name: task-service-users
+        paths:
+          - /users
+        strip_path: false
+        methods:
+          - GET
+          - POST
+          - PUT
+          - DELETE
+          - OPTIONS
+          - PATCH
+      - name: task-service-others
+        paths:
+          - /subtasks
+          - /comments
+          - /attachments
+          - /health
         strip_path: false
         methods:
           - GET
@@ -65,4 +90,3 @@ services:
         paths:
           - /api-docs
         strip_path: false
-

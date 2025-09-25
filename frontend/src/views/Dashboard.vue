@@ -54,15 +54,23 @@
                         placeholder="Describe the task in detail..."></textarea>
             </div>
             
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-2">Status</label>
-              <select v-model="newTask.status" 
-                      class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
-                <option value="Unassigned">Unassigned</option>
-                <option value="Ongoing">Ongoing</option>
-                <option value="Under Review">Under Review</option>
-                <option value="Completed">Completed</option>
-              </select>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Status</label>
+                <select v-model="newTask.status" 
+                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+                  <option value="unassigned">Unassigned</option>
+                  <option value="ongoing">Ongoing</option>
+                  <option value="under_review">Under Review</option>
+                  <option value="completed">Completed</option>
+                </select>
+              </div>
+              
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Assign To (Optional)</label>
+                <input v-model="newTask.assigned_to" type="number" placeholder="User ID"
+                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+              </div>
             </div>
             
             <div class="flex justify-end space-x-3">
@@ -77,45 +85,70 @@
             </div>
           </form>
         </div>
-  
-        <!-- Filters and Sorting -->
-        <div class="bg-white rounded-lg shadow-md p-6 mb-6">
-          <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0">
-            <div class="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-4">
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Filter by Status</label>
-                <select v-model="filters.status" @change="applyFilters"
-                        class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                  <option value="">All Statuses</option>
-                  <option value="Unassigned">Unassigned</option>
-                  <option value="Ongoing">Ongoing</option>
-                  <option value="Under Review">Under Review</option>
-                  <option value="Completed">Completed</option>
-                </select>
+
+        <!-- Dashboard Tabs -->
+        <div class="bg-white rounded-lg shadow-md mb-6">
+          <div class="border-b border-gray-200">
+            <nav class="-mb-px flex space-x-8 px-6 py-3" aria-label="Tabs">
+              <button
+                v-for="tab in tabs"
+                :key="tab.key"
+                @click="activeTab = tab.key"
+                :class="[
+                  activeTab === tab.key
+                    ? 'border-indigo-500 text-indigo-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300',
+                  'whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm'
+                ]"
+              >
+                {{ tab.label }}
+                <span v-if="taskCounts[tab.key] !== undefined" 
+                      class="ml-2 bg-gray-100 text-gray-900 py-0.5 px-2.5 rounded-full text-xs font-medium">
+                  {{ taskCounts[tab.key] }}
+                </span>
+              </button>
+            </nav>
+          </div>
+          
+          <!-- Filters -->
+          <div class="p-6 border-b border-gray-100">
+            <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0">
+              <div class="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-4">
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-1">Filter by Status</label>
+                  <select v-model="filters.status" @change="applyFilters"
+                          class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    <option value="">All Statuses</option>
+                    <option value="unassigned">Unassigned</option>
+                    <option value="ongoing">Ongoing</option>
+                    <option value="under_review">Under Review</option>
+                    <option value="completed">Completed</option>
+                  </select>
+                </div>
+                
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-1">Filter by Deadline</label>
+                  <select v-model="filters.deadline" @change="applyFilters"
+                          class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    <option value="">All Deadlines</option>
+                    <option value="overdue">Overdue</option>
+                    <option value="today">Due Today</option>
+                    <option value="week">Due This Week</option>
+                    <option value="month">Due This Month</option>
+                  </select>
+                </div>
               </div>
               
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Filter by Deadline</label>
-                <select v-model="filters.deadline" @change="applyFilters"
-                        class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                  <option value="">All Deadlines</option>
-                  <option value="overdue">Overdue</option>
-                  <option value="today">Due Today</option>
-                  <option value="week">Due This Week</option>
-                  <option value="month">Due This Month</option>
-                </select>
+              <div class="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-4">
+                <button @click="clearFilters" 
+                        class="px-4 py-2 text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors">
+                  Clear Filters
+                </button>
+                <button @click="fetchUserTasks" 
+                        class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors">
+                  Refresh
+                </button>
               </div>
-            </div>
-            
-            <div class="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-4">
-              <button @click="clearFilters" 
-                      class="px-4 py-2 text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors">
-                Clear Filters
-              </button>
-              <button @click="fetchTasks" 
-                      class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors">
-                Refresh
-              </button>
             </div>
           </div>
         </div>
@@ -126,12 +159,12 @@
             <div class="flex items-center">
               <div class="p-2 bg-blue-100 rounded-lg">
                 <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 0 012 2"></path>
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
                 </svg>
               </div>
               <div class="ml-4">
                 <p class="text-sm font-medium text-gray-600">Total Tasks</p>
-                <p class="text-2xl font-semibold text-gray-900">{{ tasks.length }}</p>
+                <p class="text-2xl font-semibold text-gray-900">{{ currentTasks.length }}</p>
               </div>
             </div>
           </div>
@@ -145,7 +178,7 @@
               </div>
               <div class="ml-4">
                 <p class="text-sm font-medium text-gray-600">Unassigned</p>
-                <p class="text-2xl font-semibold text-gray-900">{{ getTaskCountByStatus('Unassigned') }}</p>
+                <p class="text-2xl font-semibold text-gray-900">{{ getTaskCountByStatus('unassigned') }}</p>
               </div>
             </div>
           </div>
@@ -159,7 +192,7 @@
               </div>
               <div class="ml-4">
                 <p class="text-sm font-medium text-gray-600">Ongoing</p>
-                <p class="text-2xl font-semibold text-gray-900">{{ getTaskCountByStatus('Ongoing') }}</p>
+                <p class="text-2xl font-semibold text-gray-900">{{ getTaskCountByStatus('ongoing') }}</p>
               </div>
             </div>
           </div>
@@ -173,7 +206,7 @@
               </div>
               <div class="ml-4">
                 <p class="text-sm font-medium text-gray-600">Completed</p>
-                <p class="text-2xl font-semibold text-gray-900">{{ getTaskCountByStatus('Completed') }}</p>
+                <p class="text-2xl font-semibold text-gray-900">{{ getTaskCountByStatus('completed') }}</p>
               </div>
             </div>
           </div>
@@ -189,7 +222,7 @@
           </div>
           <pre class="text-red-700 text-sm whitespace-pre-wrap">{{ error }}</pre>
           <div class="mt-4 space-x-2">
-            <button @click="fetchTasks" class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-md">
+            <button @click="fetchUserTasks" class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-md">
               Try Again
             </button>
           </div>
@@ -200,12 +233,12 @@
           <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
         </div>
         
-        <div v-else-if="tasks.length === 0 && !error" class="text-center py-12">
+        <div v-else-if="currentTasks.length === 0 && !error" class="text-center py-12">
           <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
           </svg>
           <h3 class="mt-2 text-sm font-medium text-gray-900">No tasks found</h3>
-          <p class="mt-1 text-sm text-gray-500">Get started by creating your first task.</p>
+          <p class="mt-1 text-sm text-gray-500">{{ getEmptyStateMessage() }}</p>
         </div>
         
         <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -222,16 +255,16 @@
                   </h3>
                   <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
                         :class="getStatusBadgeColor(task.status)">
-                    {{ task.status }}
+                    {{ formatStatus(task.status) }}
                   </span>
                 </div>
                 
                 <div class="flex items-center space-x-2 ml-4">
-                  <button @click.stop="editTask(task)" 
+                  <button @click.stop="showAssignmentDialog(task)" 
                           class="text-gray-400 hover:text-indigo-600 transition-colors p-1 rounded hover:bg-gray-100"
-                          title="Edit Task">
+                          title="Assign Task">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
                     </svg>
                   </button>
                   <button @click.stop="deleteTask(task.id)" 
@@ -248,16 +281,46 @@
                 {{ task.description || 'No description available' }}
               </p>
               
+              <!-- NEW: Progress bar for subtasks -->
+              <div v-if="task.subtask_count > 0" class="mt-4">
+                <div class="flex items-center justify-between text-sm text-gray-600 mb-1">
+                  <span>Progress: {{ task.completion_percentage || 0 }}%</span>
+                  <span>{{ task.subtask_count }} subtasks</span>
+                </div>
+                <div class="w-full bg-gray-200 rounded-full h-2">
+                  <div 
+                    class="bg-green-600 h-2 rounded-full transition-all duration-300" 
+                    :style="{ width: (task.completion_percentage || 0) + '%' }"
+                  ></div>
+                </div>
+              </div>
+              
               <div v-if="task.deadline" class="flex items-center mt-4 text-sm">
                 <svg class="w-4 h-4 text-gray-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2-2z"></path>
                 </svg>
                 <span :class="getDeadlineColor(task.deadline)">
                   Due: {{ formatDeadline(task.deadline) }}
                 </span>
               </div>
               
-              <div class="mt-4 grid grid-cols-3 gap-2 text-xs text-gray-600">
+              <!-- NEW: Ownership and assignment info -->
+              <div class="mt-4 pt-4 border-t border-gray-100">
+                <div class="flex items-center justify-between text-xs text-gray-600">
+                  <div class="flex items-center space-x-4">
+                    <span>Owner: {{ task.owner_id }}</span>
+                    <span v-if="task.assigned_to">
+                      Assigned: {{ task.assigned_to }}
+                    </span>
+                    <span v-else class="text-orange-600">
+                      Unassigned
+                    </span>
+                  </div>
+                  <span class="text-indigo-500">Click to view →</span>
+                </div>
+              </div>
+              
+              <div class="mt-2 grid grid-cols-3 gap-2 text-xs text-gray-600">
                 <div class="flex items-center">
                   <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
@@ -277,11 +340,51 @@
                   {{ task.attachment_count || 0 }} files
                 </div>
               </div>
-              
-              <div class="mt-4 pt-4 border-t border-gray-100 flex justify-between items-center">
-                <span class="text-xs text-gray-500">Owner ID: {{ task.owner_id }}</span>
-                <span class="text-xs text-indigo-500">Click to view details →</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Assignment Dialog -->
+        <div v-if="showAssignDialog" class="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
+          <div class="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <h3 class="text-lg font-medium text-gray-900 mb-4">
+              {{ selectedTask?.assigned_to ? 'Reassign Task' : 'Assign Task' }}
+            </h3>
+            <p class="text-sm text-gray-600 mb-4">Task: "{{ selectedTask?.title }}"</p>
+            
+            <div class="space-y-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">
+                  {{ selectedTask?.assigned_to ? 'Reassign to User ID:' : 'Assign to User ID:' }}
+                </label>
+                <input 
+                  v-model="assignmentUserId" 
+                  type="number" 
+                  placeholder="Enter user ID"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
               </div>
+              
+              <div class="flex items-center space-x-2">
+                <input 
+                  v-model="transferOwnership" 
+                  type="checkbox" 
+                  id="transferOwnership"
+                  class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded">
+                <label for="transferOwnership" class="text-sm text-gray-700">
+                  Transfer ownership (assignment automatically transfers ownership)
+                </label>
+              </div>
+            </div>
+            
+            <div class="flex justify-end space-x-3 mt-6">
+              <button @click="cancelAssignment" 
+                      class="px-4 py-2 text-gray-700 bg-gray-200 hover:bg-gray-300 rounded-md transition-colors">
+                Cancel
+              </button>
+              <button @click="confirmAssignment" :disabled="!assignmentUserId"
+                      class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md transition-colors disabled:opacity-50">
+                {{ selectedTask?.assigned_to ? 'Reassign' : 'Assign' }}
+              </button>
             </div>
           </div>
         </div>
@@ -296,18 +399,31 @@
   const router = useRouter()
   
   // Reactive data
-  const tasks = ref([])
+  const userTasks = ref({
+    owned: [],
+    assigned: [],
+    created: [],
+    unassigned_owned: []
+  })
   const loading = ref(true)
   const showCreateForm = ref(false)
   const isCreating = ref(false)
   const error = ref(null)
+  const activeTab = ref('assigned')
   
-  // New task form data
+  // Assignment dialog
+  const showAssignDialog = ref(false)
+  const selectedTask = ref(null)
+  const assignmentUserId = ref('')
+  const transferOwnership = ref(true)
+  
+  // New task form data  
   const newTask = ref({
     title: '',
     deadline: '',
     description: '',
-    status: 'Unassigned'
+    status: 'unassigned',
+    assigned_to: null
   })
   
   // Filters
@@ -316,13 +432,34 @@
     deadline: ''
   })
   
+  // Tab configuration
+  const tabs = ref([
+    { key: 'assigned', label: 'Assigned to Me' },
+    { key: 'owned', label: 'I Own' },
+    { key: 'unassigned_owned', label: 'Unassigned (Mine)' },
+    { key: 'created', label: 'I Created' }
+  ])
+  
   // API configuration
   const KONG_API_URL = "http://localhost:8000"
   const currentUserId = 1
   
   // Computed properties
+  const taskCounts = computed(() => {
+    return {
+      assigned: userTasks.value.assigned?.length || 0,
+      owned: userTasks.value.owned?.length || 0,
+      unassigned_owned: userTasks.value.unassigned_owned?.length || 0,
+      created: userTasks.value.created?.length || 0
+    }
+  })
+  
+  const currentTasks = computed(() => {
+    return userTasks.value[activeTab.value] || []
+  })
+  
   const filteredTasks = computed(() => {
-    let filtered = [...tasks.value]
+    let filtered = [...currentTasks.value]
     
     if (filters.value.status) {
       filtered = filtered.filter(task => task.status === filters.value.status)
@@ -355,12 +492,12 @@
   })
   
   // Methods
-  const fetchTasks = async () => {
+  const fetchUserTasks = async () => {
     try {
       loading.value = true
       error.value = null
       
-      const response = await fetch(`${KONG_API_URL}/tasks`, {
+      const response = await fetch(`${KONG_API_URL}/users/${currentUserId}/tasks?include_owned=true&include_assigned=true&include_created=true&include_unassigned=true`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json'
@@ -368,16 +505,15 @@
       })
       
       if (response.ok) {
-        const data = await response.json()
-        tasks.value = data
+        userTasks.value = await response.json()
       } else {
         const errorText = await response.text()
         throw new Error(`API Error: ${response.status} - ${errorText}`)
       }
     } catch (err) {
-      console.error('Error fetching tasks:', err)
+      console.error('Error fetching user tasks:', err)
       error.value = `Failed to fetch tasks: ${err.message}`
-      tasks.value = []
+      userTasks.value = { owned: [], assigned: [], created: [], unassigned_owned: [] }
     } finally {
       loading.value = false
     }
@@ -393,7 +529,8 @@
         description: newTask.value.description || null,
         deadline: newTask.value.deadline || null,
         status: newTask.value.status,
-        owner_id: currentUserId
+        created_by: currentUserId,
+        assigned_to: newTask.value.assigned_to || null
       }
       
       const response = await fetch(`${KONG_API_URL}/tasks`, {
@@ -405,13 +542,14 @@
       })
       
       if (response.ok) {
-        await fetchTasks()
+        await fetchUserTasks()
         
         newTask.value = {
           title: '',
           deadline: '',
           description: '',
-          status: 'Unassigned'
+          status: 'unassigned',
+          assigned_to: null
         }
         showCreateForm.value = false
       } else {
@@ -424,6 +562,46 @@
     } finally {
       isCreating.value = false
     }
+  }
+  
+  const showAssignmentDialog = (task) => {
+    selectedTask.value = task
+    assignmentUserId.value = task.assigned_to || ''
+    showAssignDialog.value = true
+  }
+  
+  const confirmAssignment = async () => {
+    if (!assignmentUserId.value || !selectedTask.value) return
+    
+    try {
+      const response = await fetch(`${KONG_API_URL}/tasks/${selectedTask.value.id}/assign`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          assigned_to: parseInt(assignmentUserId.value),
+          updated_by: currentUserId
+        })
+      })
+      
+      if (response.ok) {
+        await fetchUserTasks()
+        cancelAssignment()
+        alert('Task assigned successfully!')
+      } else {
+        throw new Error(`Failed to assign task: ${response.status}`)
+      }
+    } catch (err) {
+      console.error('Error assigning task:', err)
+      alert('Failed to assign task: ' + err.message)
+    }
+  }
+  
+  const cancelAssignment = () => {
+    showAssignDialog.value = false
+    selectedTask.value = null
+    assignmentUserId.value = ''
   }
   
   const viewTaskDetails = (taskId) => {
@@ -439,7 +617,7 @@
       })
       
       if (response.ok || response.status === 404) {
-        await fetchTasks()
+        await fetchUserTasks()
       } else {
         throw new Error(`Failed to delete task: ${response.status}`)
       }
@@ -447,10 +625,6 @@
       console.error('Error deleting task:', err)
       alert('Failed to delete task: ' + err.message)
     }
-  }
-  
-  const editTask = (task) => {
-    console.log('Edit task:', task)
   }
   
   const applyFilters = () => {
@@ -463,25 +637,25 @@
   }
   
   const getTaskCountByStatus = (status) => {
-    return tasks.value.filter(task => task.status === status).length
+    return currentTasks.value.filter(task => task.status === status).length
   }
   
   const getStatusBorderColor = (status) => {
     const colors = {
-      'Unassigned': 'border-gray-400',
-      'Ongoing': 'border-yellow-400',
-      'Under Review': 'border-orange-400',
-      'Completed': 'border-green-400'
+      'unassigned': 'border-gray-400',
+      'ongoing': 'border-yellow-400',
+      'under_review': 'border-orange-400',
+      'completed': 'border-green-400'
     }
     return colors[status] || 'border-gray-400'
   }
   
   const getStatusBadgeColor = (status) => {
     const colors = {
-      'Unassigned': 'bg-gray-100 text-gray-800',
-      'Ongoing': 'bg-yellow-100 text-yellow-800',
-      'Under Review': 'bg-orange-100 text-orange-800',
-      'Completed': 'bg-green-100 text-green-800'
+      'unassigned': 'bg-gray-100 text-gray-800',
+      'ongoing': 'bg-yellow-100 text-yellow-800',
+      'under_review': 'bg-orange-100 text-orange-800',
+      'completed': 'bg-green-100 text-green-800'
     }
     return colors[status] || 'bg-gray-100 text-gray-800'
   }
@@ -507,13 +681,27 @@
     })
   }
   
+  const formatStatus = (status) => {
+    return status.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())
+  }
+  
+  const getEmptyStateMessage = () => {
+    const messages = {
+      assigned: 'No tasks assigned to you yet.',
+      owned: 'You don\'t own any tasks yet.',
+      unassigned_owned: 'All your tasks are assigned.',
+      created: 'You haven\'t created any tasks yet.'
+    }
+    return messages[activeTab.value] || 'No tasks found.'
+  }
+  
   const logout = () => {
     localStorage.removeItem('authToken')
     router.push('/login')
   }
   
   onMounted(() => {
-    fetchTasks()
+    fetchUserTasks()
   })
   </script>
   

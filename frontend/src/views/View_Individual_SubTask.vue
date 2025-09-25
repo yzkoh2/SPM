@@ -61,6 +61,11 @@
             <div>
               <p class="text-sm font-medium text-blue-900">Part of:</p>
               <h3 class="text-lg font-semibold text-blue-800">{{ parentTask.title }}</h3>
+              <div class="mt-1 text-sm text-blue-700 flex items-center space-x-4">
+                <span>Owner: User {{ parentTask.owner_id }}</span>
+                <span v-if="parentTask.assigned_to">Assigned: User {{ parentTask.assigned_to }}</span>
+                <span v-else class="text-orange-700">Unassigned</span>
+              </div>
             </div>
             <router-link 
               :to="`/tasks/${route.params.id}`"
@@ -77,15 +82,24 @@
               <h2 class="text-3xl font-bold text-gray-900 mb-2">{{ subtask.title }}</h2>
               <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium"
                     :class="getStatusBadgeColor(subtask.status)">
-                {{ subtask.status }}
+                {{ formatStatus(subtask.status) }}
               </span>
             </div>
             <div class="flex items-center space-x-2 ml-4">
+              <button @click="showAssignmentDialog" 
+                      class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium">
+                {{ subtask.assigned_to ? 'Reassign' : 'Assign' }}
+              </button>
+              <button @click="toggleComplete" 
+                      :class="subtask.status === 'completed' ? 'bg-orange-600 hover:bg-orange-700' : 'bg-green-600 hover:bg-green-700'"
+                      class="text-white px-4 py-2 rounded-md text-sm font-medium">
+                {{ subtask.status === 'completed' ? 'Mark Incomplete' : 'Mark Complete' }}
+              </button>
               <button @click="editSubtask" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-md text-sm font-medium">
-                Edit Subtask
+                Edit
               </button>
               <button @click="deleteSubtask" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md text-sm font-medium">
-                Delete Subtask
+                Delete
               </button>
             </div>
           </div>
@@ -99,20 +113,28 @@
           </div>
           
           <!-- Subtask Metadata -->
-          <div class="mt-6 grid grid-cols-1 md:grid-cols-3 gap-6 pt-6 border-t border-gray-200">
+          <div class="mt-6 grid grid-cols-1 md:grid-cols-4 gap-6 pt-6 border-t border-gray-200">
             <div>
-              <h4 class="text-sm font-medium text-gray-500 uppercase tracking-wide">Deadline</h4>
-              <p class="mt-1 text-lg" :class="getDeadlineColor(subtask.deadline)">
-                {{ formatDeadline(subtask.deadline) }}
-              </p>
+              <h4 class="text-sm font-medium text-gray-500 uppercase tracking-wide">Status</h4>
+              <p class="mt-1 text-lg text-gray-900">{{ formatStatus(subtask.status) }}</p>
+              <p class="text-xs text-gray-500">{{ subtask.is_completed ? 'Completed' : 'In Progress' }}</p>
             </div>
             <div>
-              <h4 class="text-sm font-medium text-gray-500 uppercase tracking-wide">Assignee</h4>
-              <p class="mt-1 text-lg text-gray-900">{{ subtask.assignee_id || 'Unassigned' }}</p>
+              <h4 class="text-sm font-medium text-gray-500 uppercase tracking-wide">Assigned To</h4>
+              <p class="mt-1 text-lg text-gray-900">
+                {{ subtask.assigned_to ? `User ${subtask.assigned_to}` : 'Unassigned' }}
+              </p>
+              <p v-if="!subtask.assigned_to" class="text-xs text-orange-600">Available for assignment</p>
             </div>
             <div>
               <h4 class="text-sm font-medium text-gray-500 uppercase tracking-wide">Created</h4>
               <p class="mt-1 text-lg text-gray-900">{{ formatDate(subtask.created_at) }}</p>
+              <p class="text-xs text-gray-500">by User {{ subtask.created_by }}</p>
+            </div>
+            <div>
+              <h4 class="text-sm font-medium text-gray-500 uppercase tracking-wide">Order</h4>
+              <p class="mt-1 text-lg text-gray-900">#{{ subtask.order_index }}</p>
+              <p class="text-xs text-gray-500">in sequence</p>
             </div>
           </div>
         </div>
@@ -127,29 +149,85 @@
               @change="updateSubtaskStatus($event.target.value)"
               class="border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
             >
-              <option value="Unassigned">Unassigned</option>
-              <option value="Ongoing">Ongoing</option>
-              <option value="Under Review">Under Review</option>
-              <option value="Completed">Completed</option>
-              <option value="On Hold">On Hold</option>
+              <option value="unassigned">Unassigned</option>
+              <option value="ongoing">Ongoing</option>
+              <option value="under_review">Under Review</option>
+              <option value="completed">Completed</option>
             </select>
             <div v-if="statusUpdateLoading" class="flex items-center text-sm text-gray-500">
               <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-indigo-600 mr-2"></div>
               Updating...
             </div>
           </div>
+          
+          <!-- Assignment Status -->
+          <div class="mt-4 p-4 bg-gray-50 rounded-md">
+            <div class="flex items-center justify-between">
+              <div>
+                <h4 class="text-sm font-medium text-gray-700">Assignment Status</h4>
+                <p class="text-sm text-gray-600">
+                  {{ subtask.assigned_to ? `Currently assigned to User ${subtask.assigned_to}` : 'Not assigned to anyone' }}
+                </p>
+              </div>
+              <button @click="showAssignmentDialog"
+                      class="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1 rounded-md text-sm">
+                {{ subtask.assigned_to ? 'Reassign' : 'Assign' }}
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Activity Stats -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div class="bg-white rounded-lg shadow-md p-6">
+            <div class="flex items-center">
+              <div class="p-2 bg-green-100 rounded-lg">
+                <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path>
+                </svg>
+              </div>
+              <div class="ml-4">
+                <p class="text-sm font-medium text-gray-600">Comments</p>
+                <p class="text-2xl font-semibold text-gray-900">{{ subtask.comments?.length || 0 }}</p>
+              </div>
+            </div>
+          </div>
+          
+          <div class="bg-white rounded-lg shadow-md p-6">
+            <div class="flex items-center">
+              <div class="p-2 bg-purple-100 rounded-lg">
+                <svg class="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"></path>
+                </svg>
+              </div>
+              <div class="ml-4">
+                <p class="text-sm font-medium text-gray-600">Attachments</p>
+                <p class="text-2xl font-semibold text-gray-900">{{ subtask.attachments?.length || 0 }}</p>
+              </div>
+            </div>
+          </div>
         </div>
 
         <!-- Comments Section -->
         <div class="bg-white rounded-lg shadow-md p-6">
-          <h3 class="text-xl font-semibold text-gray-900 mb-6">Comments ({{ subtask.comments?.length || 0 }})</h3>
+          <div class="flex justify-between items-center mb-6">
+            <h3 class="text-xl font-semibold text-gray-900">Comments ({{ subtask.comments?.length || 0 }})</h3>
+            <button @click="showAddCommentDialog = true"
+                    class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-md text-sm font-medium">
+              Add Comment
+            </button>
+          </div>
           
           <div v-if="subtask.comments && subtask.comments.length > 0" class="space-y-4">
             <div v-for="comment in subtask.comments" :key="comment.id" 
                  class="border-l-4 border-indigo-200 pl-4 py-2">
-              <p class="text-gray-700">{{ comment.body }}</p>
-              <p class="text-xs text-gray-500 mt-1">Author ID: {{ comment.author_id }}</p>
-              <p class="text-xs text-gray-500">{{ formatDate(comment.created_at) }}</p>
+              <p class="text-gray-700">{{ comment.content }}</p>
+              <p class="text-xs text-gray-500 mt-1">
+                User {{ comment.created_by }} • {{ formatDate(comment.created_at) }}
+                <span v-if="comment.updated_at && comment.updated_at !== comment.created_at">
+                  • Edited {{ formatDate(comment.updated_at) }}
+                </span>
+              </p>
             </div>
           </div>
           
@@ -157,13 +235,23 @@
             <svg class="mx-auto h-12 w-12 text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path>
             </svg>
-            <p>No comments yet</p>
+            <p class="mb-4">No comments yet</p>
+            <button @click="showAddCommentDialog = true"
+                    class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-md text-sm font-medium">
+              Add First Comment
+            </button>
           </div>
         </div>
 
         <!-- Attachments Section -->
         <div class="bg-white rounded-lg shadow-md p-6">
-          <h3 class="text-xl font-semibold text-gray-900 mb-6">Attachments ({{ subtask.attachments?.length || 0 }})</h3>
+          <div class="flex justify-between items-center mb-6">
+            <h3 class="text-xl font-semibold text-gray-900">Attachments ({{ subtask.attachments?.length || 0 }})</h3>
+            <button @click="showAddAttachmentDialog = true"
+                    class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md text-sm font-medium">
+              Add Attachment
+            </button>
+          </div>
           
           <div v-if="subtask.attachments && subtask.attachments.length > 0" class="space-y-3">
             <div v-for="attachment in subtask.attachments" :key="attachment.id" 
@@ -172,12 +260,24 @@
                 <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"></path>
                 </svg>
-                <span class="text-gray-900">{{ attachment.filename }}</span>
+                <div>
+                  <span class="text-gray-900">{{ attachment.file_name }}</span>
+                  <p class="text-xs text-gray-500">
+                    {{ formatFileSize(attachment.file_size) }} • {{ attachment.mime_type }} 
+                    • Uploaded {{ formatDate(attachment.uploaded_at) }}
+                  </p>
+                </div>
               </div>
-              <a :href="attachment.url" target="_blank" 
-                 class="text-indigo-600 hover:text-indigo-500 text-sm font-medium">
-                Download
-              </a>
+              <div class="flex items-center space-x-2">
+                <a :href="attachment.file_path" target="_blank" 
+                   class="text-indigo-600 hover:text-indigo-500 text-sm font-medium">
+                  Download
+                </a>
+                <button @click="deleteAttachment(attachment.id)"
+                        class="text-red-600 hover:text-red-500 text-sm font-medium">
+                  Delete
+                </button>
+              </div>
             </div>
           </div>
           
@@ -185,8 +285,141 @@
             <svg class="mx-auto h-12 w-12 text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"></path>
             </svg>
-            <p>No attachments</p>
+            <p class="mb-4">No attachments</p>
+            <button @click="showAddAttachmentDialog = true"
+                    class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md text-sm font-medium">
+              Add First Attachment
+            </button>
           </div>
+        </div>
+      </div>
+
+      <!-- Assignment Dialog -->
+      <div v-if="showAssignDialog" class="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+          <h3 class="text-lg font-medium text-gray-900 mb-4">
+            {{ subtask?.assigned_to ? 'Reassign Subtask' : 'Assign Subtask' }}
+          </h3>
+          <p class="text-sm text-gray-600 mb-4">
+            Subtask: "{{ subtask?.title }}"
+          </p>
+          
+          <div class="space-y-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">
+                Assign to User ID:
+              </label>
+              <input 
+                v-model="assignmentUserId" 
+                type="number" 
+                placeholder="Enter user ID"
+                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            </div>
+          </div>
+          
+          <div class="flex justify-end space-x-3 mt-6">
+            <button @click="showAssignDialog = false" 
+                    class="px-4 py-2 text-gray-700 bg-gray-200 hover:bg-gray-300 rounded-md">
+              Cancel
+            </button>
+            <button @click="assignSubtask" :disabled="!assignmentUserId"
+                    class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md disabled:opacity-50">
+              Assign
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Add Comment Dialog -->
+      <div v-if="showAddCommentDialog" class="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white rounded-lg p-6 max-w-lg w-full mx-4">
+          <h3 class="text-lg font-medium text-gray-900 mb-4">Add Comment</h3>
+          
+          <form @submit.prevent="addComment">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">Comment</label>
+              <textarea 
+                v-model="newComment" 
+                rows="4" 
+                required
+                placeholder="Enter your comment..."
+                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
+              </textarea>
+            </div>
+            
+            <div class="flex justify-end space-x-3 mt-4">
+              <button type="button" @click="cancelAddComment" 
+                      class="px-4 py-2 text-gray-700 bg-gray-200 hover:bg-gray-300 rounded-md">
+                Cancel
+              </button>
+              <button type="submit" :disabled="!newComment.trim()"
+                      class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md disabled:opacity-50">
+                Add Comment
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- Add Attachment Dialog -->
+      <div v-if="showAddAttachmentDialog" class="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white rounded-lg p-6 max-w-lg w-full mx-4">
+          <h3 class="text-lg font-medium text-gray-900 mb-4">Add Attachment</h3>
+          
+          <form @submit.prevent="addAttachment">
+            <div class="space-y-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">File Name</label>
+                <input 
+                  v-model="newAttachment.file_name" 
+                  type="text" 
+                  required
+                  placeholder="Enter file name"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
+              </div>
+              
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">File Path/URL</label>
+                <input 
+                  v-model="newAttachment.file_path" 
+                  type="text" 
+                  required
+                  placeholder="Enter file path or URL"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
+              </div>
+              
+              <div class="grid grid-cols-2 gap-4">
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-2">File Size (bytes)</label>
+                  <input 
+                    v-model="newAttachment.file_size" 
+                    type="number"
+                    placeholder="File size in bytes"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                </div>
+                
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-2">MIME Type</label>
+                  <input 
+                    v-model="newAttachment.mime_type" 
+                    type="text"
+                    placeholder="e.g., application/pdf"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                </div>
+              </div>
+            </div>
+            
+            <div class="flex justify-end space-x-3 mt-6">
+              <button type="button" @click="cancelAddAttachment" 
+                      class="px-4 py-2 text-gray-700 bg-gray-200 hover:bg-gray-300 rounded-md">
+                Cancel
+              </button>
+              <button type="submit" :disabled="!newAttachment.file_name || !newAttachment.file_path"
+                      class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-md disabled:opacity-50">
+                Add Attachment
+              </button>
+            </div>
+          </form>
         </div>
       </div>
     </div>
@@ -207,8 +440,24 @@ const loading = ref(true)
 const error = ref(null)
 const statusUpdateLoading = ref(false)
 
+// Dialogs
+const showAssignDialog = ref(false)
+const showAddCommentDialog = ref(false)
+const showAddAttachmentDialog = ref(false)
+
+// Form data
+const assignmentUserId = ref('')
+const newComment = ref('')
+const newAttachment = ref({
+  file_name: '',
+  file_path: '',
+  file_size: null,
+  mime_type: ''
+})
+
 // API configuration
 const KONG_API_URL = "http://localhost:8000"
+const currentUserId = 1
 
 // Fetch subtask details from API
 const fetchSubtaskDetails = async () => {
@@ -218,10 +467,9 @@ const fetchSubtaskDetails = async () => {
     
     const taskId = route.params.id
     const subtaskId = route.params.subtaskId
-    console.log('Fetching subtask details for Task ID:', taskId, 'Subtask ID:', subtaskId)
     
     // Fetch subtask details
-    const subtaskResponse = await fetch(`${KONG_API_URL}/tasks/${taskId}/subtasks/${subtaskId}`, {
+    const subtaskResponse = await fetch(`${KONG_API_URL}/subtasks/${subtaskId}`, {
       headers: {
         'Content-Type': 'application/json'
       }
@@ -247,7 +495,6 @@ const fetchSubtaskDetails = async () => {
     
     if (parentResponse.ok) {
       parentTask.value = await parentResponse.json()
-      console.log('Parent task details loaded:', parentTask.value)
     } else {
       console.warn('Failed to load parent task details')
     }
@@ -265,13 +512,14 @@ const updateSubtaskStatus = async (newStatus) => {
   try {
     statusUpdateLoading.value = true
     
-    const response = await fetch(`${KONG_API_URL}/tasks/${route.params.id}/subtasks/${route.params.subtaskId}`, {
-      method: 'PATCH',
+    const response = await fetch(`${KONG_API_URL}/subtasks/${route.params.subtaskId}`, {
+      method: 'PUT',
       headers: {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        status: newStatus
+        status: newStatus,
+        updated_by: currentUserId
       })
     })
     
@@ -289,10 +537,154 @@ const updateSubtaskStatus = async (newStatus) => {
   }
 }
 
+// Toggle completion
+const toggleComplete = async () => {
+  const newStatus = subtask.value.status === 'completed' ? 'ongoing' : 'completed'
+  await updateSubtaskStatus(newStatus)
+}
+
+// Assignment methods
+const showAssignmentDialog = () => {
+  assignmentUserId.value = subtask.value.assigned_to || ''
+  showAssignDialog.value = true
+}
+
+const assignSubtask = async () => {
+  if (!assignmentUserId.value) return
+  
+  try {
+    const response = await fetch(`${KONG_API_URL}/subtasks/${subtask.value.id}/assign`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        assigned_to: parseInt(assignmentUserId.value),
+        updated_by: currentUserId
+      })
+    })
+    
+    if (response.ok) {
+      await fetchSubtaskDetails()
+      showAssignDialog.value = false
+      assignmentUserId.value = ''
+      alert('Subtask assigned successfully!')
+    } else {
+      throw new Error(`Failed to assign subtask: ${response.status}`)
+    }
+  } catch (err) {
+    console.error('Error assigning subtask:', err)
+    alert('Failed to assign subtask: ' + err.message)
+  }
+}
+
+// Comment methods
+const addComment = async () => {
+  if (!newComment.value.trim()) return
+  
+  try {
+    const response = await fetch(`${KONG_API_URL}/subtasks/${subtask.value.id}/comments`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        content: newComment.value.trim(),
+        created_by: currentUserId
+      })
+    })
+    
+    if (response.ok) {
+      await fetchSubtaskDetails()
+      cancelAddComment()
+      alert('Comment added successfully!')
+    } else {
+      throw new Error(`Failed to add comment: ${response.status}`)
+    }
+  } catch (err) {
+    console.error('Error adding comment:', err)
+    alert('Failed to add comment: ' + err.message)
+  }
+}
+
+const cancelAddComment = () => {
+  showAddCommentDialog.value = false
+  newComment.value = ''
+}
+
+// Attachment methods
+const addAttachment = async () => {
+  if (!newAttachment.value.file_name || !newAttachment.value.file_path) return
+  
+  try {
+    const attachmentData = {
+      file_name: newAttachment.value.file_name,
+      file_path: newAttachment.value.file_path,
+      uploaded_by: currentUserId
+    }
+    
+    if (newAttachment.value.file_size) {
+      attachmentData.file_size = parseInt(newAttachment.value.file_size)
+    }
+    
+    if (newAttachment.value.mime_type) {
+      attachmentData.mime_type = newAttachment.value.mime_type
+    }
+    
+    const response = await fetch(`${KONG_API_URL}/subtasks/${subtask.value.id}/attachments`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(attachmentData)
+    })
+    
+    if (response.ok) {
+      await fetchSubtaskDetails()
+      cancelAddAttachment()
+      alert('Attachment added successfully!')
+    } else {
+      throw new Error(`Failed to add attachment: ${response.status}`)
+    }
+  } catch (err) {
+    console.error('Error adding attachment:', err)
+    alert('Failed to add attachment: ' + err.message)
+  }
+}
+
+const cancelAddAttachment = () => {
+  showAddAttachmentDialog.value = false
+  newAttachment.value = {
+    file_name: '',
+    file_path: '',
+    file_size: null,
+    mime_type: ''
+  }
+}
+
+const deleteAttachment = async (attachmentId) => {
+  if (!confirm('Are you sure you want to delete this attachment?')) return
+  
+  try {
+    const response = await fetch(`${KONG_API_URL}/attachments/${attachmentId}`, {
+      method: 'DELETE'
+    })
+    
+    if (response.ok || response.status === 404) {
+      await fetchSubtaskDetails()
+      alert('Attachment deleted successfully!')
+    } else {
+      throw new Error(`Failed to delete attachment: ${response.status}`)
+    }
+  } catch (err) {
+    console.error('Error deleting attachment:', err)
+    alert('Failed to delete attachment: ' + err.message)
+  }
+}
+
 // Action methods
 const editSubtask = () => {
   console.log('Edit subtask:', subtask.value)
-  // TODO: Implement edit functionality
   alert('Edit functionality coming soon!')
 }
 
@@ -302,7 +694,7 @@ const deleteSubtask = async () => {
   }
   
   try {
-    const response = await fetch(`${KONG_API_URL}/tasks/${route.params.id}/subtasks/${route.params.subtaskId}`, {
+    const response = await fetch(`${KONG_API_URL}/subtasks/${route.params.subtaskId}`, {
       method: 'DELETE'
     })
     
@@ -321,46 +713,22 @@ const deleteSubtask = async () => {
 // Utility methods
 const getStatusBorderColor = (status) => {
   const colors = {
-    'Unassigned': 'border-gray-400',
-    'Ongoing': 'border-yellow-400',
-    'Under Review': 'border-orange-400',
-    'Completed': 'border-green-400',
-    'On Hold': 'border-red-400'
+    'unassigned': 'border-gray-400',
+    'ongoing': 'border-yellow-400',
+    'under_review': 'border-orange-400',
+    'completed': 'border-green-400'
   }
   return colors[status] || 'border-gray-400'
 }
 
 const getStatusBadgeColor = (status) => {
   const colors = {
-    'Unassigned': 'bg-gray-100 text-gray-800',
-    'Ongoing': 'bg-yellow-100 text-yellow-800',
-    'Under Review': 'bg-orange-100 text-orange-800',
-    'Completed': 'bg-green-100 text-green-800',
-    'On Hold': 'bg-red-100 text-red-800'
+    'unassigned': 'bg-gray-100 text-gray-800',
+    'ongoing': 'bg-yellow-100 text-yellow-800',
+    'under_review': 'bg-orange-100 text-orange-800',
+    'completed': 'bg-green-100 text-green-800'
   }
   return colors[status] || 'bg-gray-100 text-gray-800'
-}
-
-const getDeadlineColor = (deadline) => {
-  if (!deadline) return 'text-gray-600'
-  
-  const now = new Date()
-  const deadlineDate = new Date(deadline)
-  
-  if (deadlineDate < now) return 'text-red-600 font-medium'
-  if (deadlineDate.toDateString() === now.toDateString()) return 'text-orange-600 font-medium'
-  return 'text-gray-900'
-}
-
-const formatDeadline = (deadline) => {
-  if (!deadline) return 'No deadline set'
-  const date = new Date(deadline)
-  return date.toLocaleDateString('en-US', {
-    weekday: 'long',
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric'
-  })
 }
 
 const formatDate = (dateString) => {
@@ -373,6 +741,24 @@ const formatDate = (dateString) => {
     hour: '2-digit',
     minute: '2-digit'
   })
+}
+
+const formatStatus = (status) => {
+  return status.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())
+}
+
+const formatFileSize = (bytes) => {
+  if (!bytes) return 'Unknown size'
+  const units = ['B', 'KB', 'MB', 'GB']
+  let size = bytes
+  let unitIndex = 0
+  
+  while (size >= 1024 && unitIndex < units.length - 1) {
+    size /= 1024
+    unitIndex++
+  }
+  
+  return `${size.toFixed(1)} ${units[unitIndex]}`
 }
 
 // Load subtask details when component mounts
