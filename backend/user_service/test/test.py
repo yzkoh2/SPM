@@ -261,5 +261,13 @@ class UserServiceTestCase(unittest.TestCase):
             data = res.get_json()
             self.assertEqual(data['error'], 'User not found')
 
+    def test_generate_token_exception(self):
+        """Test exception handling in generate_token function."""
+        with self.app.app_context():
+            from app.service import generate_token
+            with mock.patch('jwt.encode', side_effect=Exception("JWT Encode Error")):
+                token = generate_token(1)
+                self.assertEqual(token, "JWT Encode Error")
+
 if __name__ == "__main__":
     unittest.main()
