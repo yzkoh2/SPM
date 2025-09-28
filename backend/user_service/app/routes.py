@@ -43,8 +43,8 @@ def get_user(user_id):
 @user_bp.route('/user/create', methods=['POST'])
 def create_user():
     data = request.get_json()
-    if not all(key in data for key in ['username', 'email', 'password']):
-        return jsonify({'error': 'Missing username, email, or password'}), 400
+    if not all(key in data for key in ['username', 'name', 'email', 'password']):
+        return jsonify({'error': 'Missing username, name, email, or password'}), 400
     
     # The service function now returns a user and an error message
     new_user, error_msg = service.create_user(data)
@@ -57,16 +57,20 @@ def create_user():
 
 @user_bp.route('/user/login', methods=['POST'])
 def login():
-    data = request.get_json()
-    if not data or not data.get('email') or not data.get('password'):
-        return jsonify({'error': 'Missing email or password'}), 400
-    
-    token = service.login_user(data)
-    
-    if not token:
-        return jsonify({'error': 'Invalid credentials'}), 401
+    try:
+        data = request.get_json()
+        if not data or not data.get('email') or not data.get('password'):
+            return jsonify({'error': 'Missing email or password'}), 400
         
-    return jsonify({'token': token})
+        token, id, name, role = service.login_user(data)
+        
+        if not token:
+            return jsonify({'error': 'Invalid Login Credentials'}), 401
+            
+        return jsonify({'token': token, 'userID': id, 'name': name, 'role': role}), 200
+    except Exception as e:
+        return jsonify({'error': 'An unexpected error has occured. Please try again later.'}), 500
+
 
 # --- Protected Routes ---
 @user_bp.route('/user/verifyJWT', methods=['GET'])

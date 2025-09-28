@@ -6,6 +6,7 @@ plugins:
     config:
       origins:
         - http://localhost:5173
+        - http://localhost:6008
         - http://localhost:8000
       methods:
         - GET
@@ -24,6 +25,7 @@ plugins:
       max_age: 3600
 
 services:
+  # USER SERVICE
   - name: user-service
     url: http://spm_user_service:6000
     routes:
@@ -39,6 +41,7 @@ services:
           - OPTIONS
           - PATCH
 
+  # TASK SERVICE  
   - name: task-service
     url: http://spm_task_service:6001
     routes:
@@ -53,3 +56,13 @@ services:
           - DELETE
           - OPTIONS
           - PATCH
+
+  # DOCUMENTATION
+  - name: swagger
+    url: http://spm-swagger:6008
+    routes:
+      - name: swagger-route
+        paths:
+          - /api-docs
+        strip_path: false
+

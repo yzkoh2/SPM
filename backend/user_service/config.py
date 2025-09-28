@@ -18,3 +18,15 @@ class Config:
     SQLALCHEMY_DATABASE_URI = os.getenv('DATABASE_URL')
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     SQLALCHEMY_ENGINE_OPTIONS = {'pool_recycle': 299}
+
+class TestingConfig(Config):
+    """Configurations for Testing."""
+    TESTING = True
+    SQLALCHEMY_DATABASE_URI = 'sqlite:///:memory:'
+    SECRET_KEY = 'test-secret-key'
+
+# A dictionary to access the different configuration classes.
+app_config = {
+    'development': Config,
+    'testing': TestingConfig,
+}

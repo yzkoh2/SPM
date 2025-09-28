@@ -16,12 +16,12 @@
         <div>
           <div class="flex items-center justify-between">
             <label for="password" class="block text-sm font-medium leading-6 text-gray-900">Password</label>
-            <div class="text-sm">
-              <a href="#" class="font-semibold text-indigo-600 hover:text-indigo-500">Forgot password?</a>
-            </div>
           </div>
           <div class="mt-2">
             <input v-model="password" id="password" name="password" type="password" autocomplete="current-password" required class="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6 p-2">
+            <div class="text-sm">
+              <a href="#" class="font-semibold text-indigo-600 hover:text-indigo-500">Forgot password?</a>
+            </div>
           </div>
         </div>
 
@@ -46,7 +46,9 @@
 <script setup>
 import { ref } from 'vue';
 import { useRouter } from 'vue-router';
+import { useAuthStore } from '@/stores/auth';
 
+const auth = useAuthStore();
 const router = useRouter();
 const email = ref('');
 const password = ref('');
@@ -81,8 +83,11 @@ const handleLogin = async () => {
       throw new Error(data.error || 'Login failed due to an unknown error.');
     }
     
-    // 4. On successful login, save the token to the browser's local storage
-    localStorage.setItem('authToken', data.token);
+    // 4. On successful login, save the token and username to the browser's local storage
+    // localStorage.setItem('authToken', data.token);
+    // localStorage.setItem('userID', data.userID);
+    // localStorage.setItem('user', data.name);
+    auth.login({id: data.userID, name: data.name, role: data.role}, data.token);
     
     console.log('Login successful! Token has been saved.');
     
@@ -91,7 +96,7 @@ const handleLogin = async () => {
 
   } catch (error) {
     // 6. If any error occurs, display it to the user
-    console.error('An error occurred during login:', error);
+    // console.error('An error occurred during login:', error);
     errorMessage.value = error.message;
   }
 };

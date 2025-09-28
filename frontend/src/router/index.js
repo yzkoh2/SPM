@@ -32,6 +32,12 @@ const router = createRouter({
     {
       path: '/tasks/:id/subtasks',
       name: 'task-subtasks',
+      component: () => import('@/views/View_SubTasks.vue'),
+      meta: { requiresAuth: true }
+    },
+    {
+      path: '/tasks/:id/subtasks/:subtaskId',
+      name: 'task-subtasks-details',
       component: () => import('@/views/View_Individual_SubTask.vue'),
       meta: { requiresAuth: true }
     }

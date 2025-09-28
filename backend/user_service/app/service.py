@@ -25,8 +25,8 @@ def login_user(data):
     user = get_user_by_email(data.get('email'))
     password = data.get('password')
     if user and check_password(password, user.password):
-        return generate_token(user.id)
-    return None
+        return generate_token(user.id), user.id, user.name, user.role
+    return None, None, None, None
 
 def generate_token(user_id):
     """Generates a JWT Token signed with the app's SECRET_KEY."""
@@ -71,6 +71,7 @@ def create_user(data):
 
     new_user = User(
         username=data['username'],
+        name=data['name'],
         password=hashed_pw.decode('utf-8'),
         email=data['email'],
         role=data.get('role', 'staff')
