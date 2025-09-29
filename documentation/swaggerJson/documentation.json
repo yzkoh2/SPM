@@ -1,30 +1,54 @@
 {
   "openapi": "3.0.0",
   "info": {
-    "title": "User Service API",
-    "description": "API for managing users, including authentication and user data retrieval.",
-    "version": "1.0.0"
+    "title": "SPM (Staff Project Management) API",
+    "description": "Complete API documentation for the Staff Project Management system, including user management and task management services.",
+    "version": "1.0.0",
+    "contact": {
+      "name": "SPM Development Team",
+      "email": "dev@spm.com"
+    }
   },
   "servers": [
     {
       "url": "http://localhost:8000",
-      "description": "Local Development Server"
+      "description": "Local Development Server (via Kong Gateway)"
+    },
+    {
+      "url": "http://localhost:6000",
+      "description": "Direct User Service (Development)"
+    },
+    {
+      "url": "http://localhost:6001",
+      "description": "Direct Task Service (Development)"
     }
   ],
   "tags": [
     {
-      "name": "User",
-      "description": "Endpoints for user management and authentication."
+      "name": "Authentication",
+      "description": "User authentication and authorization endpoints"
     },
     {
-      "name": "Task",
-      "description": "Endpoints for tasks management"
+      "name": "User Management",
+      "description": "User data management endpoints"
+    },
+    {
+      "name": "Tasks",
+      "description": "Main task management operations"
+    },
+    {
+      "name": "Subtasks",
+      "description": "Subtask management operations"
+    },
+    {
+      "name": "Health",
+      "description": "Service health check endpoints"
     }
   ],
   "paths": {
     "/user/create": {
       "post": {
-        "tags": ["User"],
+        "tags": ["Authentication"],
         "summary": "Create a new user",
         "description": "Registers a new user in the system with a username, email, and password.",
         "requestBody": {
@@ -37,21 +61,32 @@
                 "properties": {
                   "username": {
                     "type": "string",
-                    "example": "johndoe"
+                    "example": "johndoe",
+                    "description": "Unique username for the user"
                   },
                   "name": {
                     "type": "string",
-                    "example": "john"
+                    "example": "John Doe",
+                    "description": "Full name of the user"
                   },
                   "email": {
                     "type": "string",
                     "format": "email",
-                    "example": "john.doe@example.com"
+                    "example": "john.doe@example.com",
+                    "description": "Email address of the user"
                   },
                   "password": {
                     "type": "string",
                     "format": "password",
-                    "example": "strongpassword123"
+                    "example": "strongpassword123",
+                    "description": "Password for the user account"
+                  },
+                  "role": {
+                    "type": "string",
+                    "enum": ["staff", "manager", "director"],
+                    "default": "staff",
+                    "example": "staff",
+                    "description": "Role of the user in the system"
                   }
                 }
               }
@@ -90,7 +125,7 @@
     },
     "/user/login": {
       "post": {
-        "tags": ["User"],
+        "tags": ["Authentication"],
         "summary": "User Login",
         "description": "Authenticates a user and returns a JWT token upon successful login.",
         "requestBody": {
@@ -126,15 +161,23 @@
                   "properties": {
                     "token": {
                       "type": "string",
-                      "example": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                      "example": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+                      "description": "JWT authentication token"
                     },
                     "userID": {
                       "type": "integer",
-                      "example": 1
+                      "example": 1,
+                      "description": "Unique identifier of the authenticated user"
                     },
                     "name": {
                       "type": "string",
-                      "example": "john"
+                      "example": "John Doe",
+                      "description": "Full name of the authenticated user"
+                    },
+                    "role": {
+                      "type": "string",
+                      "example": "staff",
+                      "description": "Role of the authenticated user"
                     }
                   }
                 }
@@ -170,7 +213,7 @@
     },
     "/user/{user_id}": {
       "get": {
-        "tags": ["User"],
+        "tags": ["User Management"],
         "summary": "Get a user by ID",
         "description": "Retrieves public information for a single user by their unique ID.",
         "parameters": [
@@ -180,7 +223,8 @@
             "required": true,
             "description": "The unique identifier of the user.",
             "schema": {
-              "type": "integer"
+              "type": "integer",
+              "minimum": 1
             }
           }
         ],
@@ -208,7 +252,7 @@
     },
     "/user/verifyJWT": {
       "get": {
-        "tags": ["User"],
+        "tags": ["Authentication"],
         "summary": "Verify JWT and get current user data",
         "description": "Protected endpoint that requires a valid JWT. Decodes the token and returns the authenticated user's data.",
         "security": [
@@ -248,35 +292,49 @@
     },
     "/tasks": {
       "get": {
-        "tags": ["Task"],
+        "tags": ["Tasks"],
         "summary": "Get all tasks",
-        "description": "Get all tasks, optionally filtered by owner_id",
+        "description": "Retrieve all tasks with optional filtering by owner_id and status",
+        "parameters": [
+          {
+            "name": "owner_id",
+            "in": "query",
+            "description": "Filter tasks by owner ID",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "description": "Filter tasks by status",
+            "schema": {
+              "type": "string",
+              "enum": ["Unassigned", "In Progress", "Completed", "On Hold"]
+            }
+          }
+        ],
         "responses": {
           "200": {
-            "description": "All tasks returned.",
+            "description": "Tasks retrieved successfully",
             "content": {
               "application/json": {
                 "schema": {
                   "type": "array",
                   "items": {
-                    "$ref": "#/components/schemas/Task"
+                    "$ref": "#/components/schemas/TaskSummary"
                   }
                 }
               }
             }
           },
-          "404": {
-            "description": "Task not found.",
+          "500": {
+            "description": "Internal server error",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "error": {
-                      "type": "string",
-                      "example": "Task not found"
-                    }
-                  }
+                  "$ref": "#/components/schemas/Error"
                 }
               }
             }
@@ -284,39 +342,48 @@
         }
       },
       "post": {
-        "tags": ["Task"],
+        "tags": ["Tasks"],
         "summary": "Create a new task",
-        "description": "Create a new task by providing title and owner_id",
+        "description": "Create a new task with title, description, deadline, and owner",
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
               "schema": {
                 "type": "object",
+                "required": ["title", "owner_id"],
                 "properties": {
                   "title": {
                     "type": "string",
-                    "example": "Finish project report"
+                    "maxLength": 255,
+                    "example": "Finish project report",
+                    "description": "Title of the task"
                   },
                   "description": {
                     "type": "string",
-                    "example": "Prepare the final report for submission"
+                    "example": "Prepare the final report for submission",
+                    "description": "Detailed description of the task"
                   },
                   "deadline": {
                     "type": "string",
                     "format": "date-time",
-                    "example": "2025-10-01T23:59:59Z"
+                    "example": "2025-10-01T23:59:59",
+                    "description": "Deadline for task completion"
                   },
                   "status": {
                     "type": "string",
-                    "example": "Unassigned"
+                    "enum": ["Unassigned", "In Progress", "Completed", "On Hold"],
+                    "default": "Unassigned",
+                    "example": "Unassigned",
+                    "description": "Current status of the task"
                   },
                   "owner_id": {
                     "type": "integer",
-                    "example": 1
+                    "minimum": 1,
+                    "example": 1,
+                    "description": "ID of the user who owns this task"
                   }
-                },
-                "required": ["title", "owner_id"]
+                }
               }
             }
           }
@@ -327,7 +394,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Task"
+                  "$ref": "#/components/schemas/TaskSummary"
                 }
               }
             }
@@ -337,29 +404,17 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "error": {
-                      "type": "string",
-                      "example": "Title is required"
-                    }
-                  }
+                  "$ref": "#/components/schemas/Error"
                 }
               }
             }
           },
           "500": {
-            "description": "Server error",
+            "description": "Internal server error",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "error": {
-                      "type": "string",
-                      "example": "Internal server error"
-                    }
-                  }
+                  "$ref": "#/components/schemas/Error"
                 }
               }
             }
@@ -367,20 +422,70 @@
         }
       }
     },
-    "/tasks/{task_id}/subtasks": {
-      "post": {
-        "tags": ["Task"],
-        "summary": "Create a new subtask for a task",
-        "description": "Create a new subtask under the specified task",
+    "/tasks/{task_id}": {
+      "get": {
+        "tags": ["Tasks"],
+        "summary": "Get a specific task",
+        "description": "Get detailed information about a specific task including subtasks, comments, and attachments",
         "parameters": [
           {
             "name": "task_id",
             "in": "path",
             "required": true,
+            "description": "The ID of the task to retrieve",
             "schema": {
-              "type": "integer"
-            },
-            "description": "The ID of the parent task"
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Task retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaskDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Task not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": ["Tasks"],
+        "summary": "Update a task",
+        "description": "Update an existing task's details",
+        "parameters": [
+          {
+            "name": "task_id",
+            "in": "path",
+            "required": true,
+            "description": "The ID of the task to update",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
           }
         ],
         "requestBody": {
@@ -392,14 +497,208 @@
                 "properties": {
                   "title": {
                     "type": "string",
-                    "example": "Write introduction section"
+                    "maxLength": 255,
+                    "example": "Updated task title"
+                  },
+                  "description": {
+                    "type": "string",
+                    "example": "Updated task description"
+                  },
+                  "deadline": {
+                    "type": "string",
+                    "format": "date-time",
+                    "example": "2025-10-15T23:59:59"
                   },
                   "status": {
                     "type": "string",
-                    "example": "Unassigned"
+                    "enum": ["Unassigned", "In Progress", "Completed", "On Hold"],
+                    "example": "In Progress"
                   }
-                },
-                "required": ["title"]
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Task updated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaskSummary"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Task not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": ["Tasks"],
+        "summary": "Delete a task",
+        "description": "Delete a task and all associated subtasks, comments, and attachments",
+        "parameters": [
+          {
+            "name": "task_id",
+            "in": "path",
+            "required": true,
+            "description": "The ID of the task to delete",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Task deleted successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "example": "Task deleted successfully"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Task not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/tasks/{task_id}/subtasks": {
+      "get": {
+        "tags": ["Subtasks"],
+        "summary": "Get all subtasks for a task",
+        "description": "Retrieve all subtasks belonging to a specific task",
+        "parameters": [
+          {
+            "name": "task_id",
+            "in": "path",
+            "required": true,
+            "description": "The ID of the parent task",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Subtasks retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Subtask"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Task not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["Subtasks"],
+        "summary": "Create a new subtask",
+        "description": "Create a new subtask under the specified task",
+        "parameters": [
+          {
+            "name": "task_id",
+            "in": "path",
+            "required": true,
+            "description": "The ID of the parent task",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["title"],
+                "properties": {
+                  "title": {
+                    "type": "string",
+                    "maxLength": 255,
+                    "example": "Write introduction section",
+                    "description": "Title of the subtask"
+                  },
+                  "status": {
+                    "type": "string",
+                    "enum": ["Unassigned", "In Progress", "Completed", "On Hold"],
+                    "default": "Unassigned",
+                    "example": "Unassigned",
+                    "description": "Current status of the subtask"
+                  }
+                }
               }
             }
           }
@@ -420,13 +719,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "error": {
-                      "type": "string",
-                      "example": "Subtask title is required"
-                    }
-                  }
+                  "$ref": "#/components/schemas/Error"
                 }
               }
             }
@@ -436,27 +729,105 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "error": {
-                      "type": "string",
-                      "example": "Task not found"
-                    }
-                  }
+                  "$ref": "#/components/schemas/Error"
                 }
               }
             }
           },
           "500": {
-            "description": "Server error",
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/tasks/{task_id}/subtasks/{subtask_id}": {
+      "get": {
+        "tags": ["Subtasks"],
+        "summary": "Get a specific subtask",
+        "description": "Get detailed information about a specific subtask",
+        "parameters": [
+          {
+            "name": "task_id",
+            "in": "path",
+            "required": true,
+            "description": "The ID of the parent task",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "name": "subtask_id",
+            "in": "path",
+            "required": true,
+            "description": "The ID of the subtask to retrieve",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Subtask retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SubtaskDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Subtask not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/health": {
+      "get": {
+        "tags": ["Health"],
+        "summary": "Task service health check",
+        "description": "Check if the task management service is running and healthy",
+        "responses": {
+          "200": {
+            "description": "Service is healthy",
             "content": {
               "application/json": {
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "error": {
+                    "status": {
                       "type": "string",
-                      "example": "Internal server error"
+                      "example": "healthy"
+                    },
+                    "service": {
+                      "type": "string",
+                      "example": "task_management"
                     }
                   }
                 }
@@ -474,105 +845,281 @@
         "properties": {
           "id": {
             "type": "integer",
-            "example": 1
+            "example": 1,
+            "description": "Unique identifier for the user"
           },
           "username": {
             "type": "string",
-            "example": "johndoe"
+            "example": "johndoe",
+            "description": "Unique username"
           },
           "name": {
             "type": "string",
-            "example": "john"
+            "example": "John Doe",
+            "description": "Full name of the user"
           },
           "email": {
             "type": "string",
             "format": "email",
-            "example": "john.doe@example.com"
+            "example": "john.doe@example.com",
+            "description": "Email address"
           },
           "role": {
             "type": "string",
-            "example": "staff"
+            "enum": ["staff", "manager", "director"],
+            "example": "staff",
+            "description": "User role in the system"
           }
-        }
+        },
+        "required": ["id", "username", "name", "email", "role"]
       },
-      "Task": {
+      "TaskSummary": {
         "type": "object",
         "properties": {
-          "id": { "type": "integer", "example": 101 },
-          "title": { "type": "string", "example": "Finish project report" },
+          "id": {
+            "type": "integer",
+            "example": 101,
+            "description": "Unique identifier for the task"
+          },
+          "title": {
+            "type": "string",
+            "example": "Finish project report",
+            "description": "Title of the task"
+          },
           "description": {
             "type": "string",
-            "example": "Complete and submit the project report by deadline"
+            "example": "Complete and submit the project report by deadline",
+            "description": "Detailed description of the task"
           },
           "deadline": {
             "type": "string",
             "format": "date-time",
-            "example": "2025-09-30T23:59:59Z"
+            "example": "2025-09-30 23:59:59",
+            "description": "Deadline for task completion"
           },
-          "status": { "type": "string", "example": "Unassigned" },
-          "owner_id": { "type": "integer", "example": 1 },
+          "status": {
+            "type": "string",
+            "enum": ["Unassigned", "In Progress", "Completed", "On Hold"],
+            "example": "Unassigned",
+            "description": "Current status of the task"
+          },
+          "owner_id": {
+            "type": "integer",
+            "example": 1,
+            "description": "ID of the user who owns this task"
+          },
+          "subtask_count": {
+            "type": "integer",
+            "example": 3,
+            "description": "Number of subtasks associated with this task"
+          },
+          "comment_count": {
+            "type": "integer",
+            "example": 2,
+            "description": "Number of comments on this task"
+          },
+          "attachment_count": {
+            "type": "integer",
+            "example": 1,
+            "description": "Number of attachments on this task"
+          }
+        },
+        "required": ["id", "title", "status", "owner_id", "subtask_count", "comment_count", "attachment_count"]
+      },
+      "TaskDetails": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "example": 101,
+            "description": "Unique identifier for the task"
+          },
+          "title": {
+            "type": "string",
+            "example": "Finish project report",
+            "description": "Title of the task"
+          },
+          "description": {
+            "type": "string",
+            "example": "Complete and submit the project report by deadline",
+            "description": "Detailed description of the task"
+          },
+          "deadline": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2025-09-30 23:59:59",
+            "description": "Deadline for task completion"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["Unassigned", "In Progress", "Completed", "On Hold"],
+            "example": "Unassigned",
+            "description": "Current status of the task"
+          },
+          "owner_id": {
+            "type": "integer",
+            "example": 1,
+            "description": "ID of the user who owns this task"
+          },
           "subtasks": {
             "type": "array",
-            "items": { "$ref": "#/components/schemas/Subtask" }
+            "items": {
+              "$ref": "#/components/schemas/Subtask"
+            },
+            "description": "List of subtasks associated with this task"
           },
           "comments": {
             "type": "array",
-            "items": { "$ref": "#/components/schemas/Comment" }
+            "items": {
+              "$ref": "#/components/schemas/Comment"
+            },
+            "description": "List of comments on this task"
           },
           "attachments": {
             "type": "array",
-            "items": { "$ref": "#/components/schemas/Attachment" }
+            "items": {
+              "$ref": "#/components/schemas/Attachment"
+            },
+            "description": "List of attachments on this task"
           }
-        }
+        },
+        "required": ["id", "title", "status", "owner_id", "subtasks", "comments", "attachments"]
       },
-
       "Subtask": {
         "type": "object",
         "properties": {
-          "id": { "type": "integer", "example": 201 },
+          "id": {
+            "type": "integer",
+            "example": 201,
+            "description": "Unique identifier for the subtask"
+          },
           "title": {
             "type": "string",
-            "example": "Draft introduction section"
+            "example": "Draft introduction section",
+            "description": "Title of the subtask"
           },
-          "status": { "type": "string", "example": "In Progress" },
-          "task_id": { "type": "integer", "example": 101 }
-        }
+          "status": {
+            "type": "string",
+            "enum": ["Unassigned", "In Progress", "Completed", "On Hold"],
+            "example": "In Progress",
+            "description": "Current status of the subtask"
+          },
+          "task_id": {
+            "type": "integer",
+            "example": 101,
+            "description": "ID of the parent task"
+          }
+        },
+        "required": ["id", "title", "status", "task_id"]
       },
-
+      "SubtaskDetails": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "example": 201,
+            "description": "Unique identifier for the subtask"
+          },
+          "title": {
+            "type": "string",
+            "example": "Draft introduction section",
+            "description": "Title of the subtask"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["Unassigned", "In Progress", "Completed", "On Hold"],
+            "example": "In Progress",
+            "description": "Current status of the subtask"
+          },
+          "task_id": {
+            "type": "integer",
+            "example": 101,
+            "description": "ID of the parent task"
+          },
+          "parent_task": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "integer",
+                "example": 101
+              },
+              "title": {
+                "type": "string",
+                "example": "Finish project report"
+              },
+              "status": {
+                "type": "string",
+                "example": "In Progress"
+              }
+            },
+            "description": "Summary information about the parent task"
+          }
+        },
+        "required": ["id", "title", "status", "task_id", "parent_task"]
+      },
       "Comment": {
         "type": "object",
         "properties": {
-          "id": { "type": "integer", "example": 301 },
+          "id": {
+            "type": "integer",
+            "example": 301,
+            "description": "Unique identifier for the comment"
+          },
           "body": {
             "type": "string",
-            "example": "Please review the draft by tomorrow"
+            "example": "Please review the draft by tomorrow",
+            "description": "Content of the comment"
           },
-          "author_id": { "type": "integer", "example": 1 },
-          "task_id": { "type": "integer", "example": 101 }
-        }
+          "author_id": {
+            "type": "integer",
+            "example": 1,
+            "description": "ID of the user who authored the comment"
+          },
+          "task_id": {
+            "type": "integer",
+            "example": 101,
+            "description": "ID of the task this comment belongs to"
+          }
+        },
+        "required": ["id", "body", "author_id", "task_id"]
       },
-
       "Attachment": {
         "type": "object",
         "properties": {
-          "id": { "type": "integer", "example": 401 },
-          "filename": { "type": "string", "example": "report_draft.pdf" },
+          "id": {
+            "type": "integer",
+            "example": 401,
+            "description": "Unique identifier for the attachment"
+          },
+          "filename": {
+            "type": "string",
+            "example": "report_draft.pdf",
+            "description": "Original filename of the attachment"
+          },
           "url": {
             "type": "string",
             "format": "uri",
-            "example": "https://example.com/files/report_draft.pdf"
+            "example": "https://example.com/files/report_draft.pdf",
+            "description": "URL to access the attachment"
           },
-          "task_id": { "type": "integer", "example": 101 }
-        }
+          "task_id": {
+            "type": "integer",
+            "example": 101,
+            "description": "ID of the task this attachment belongs to"
+          }
+        },
+        "required": ["id", "filename", "url", "task_id"]
       },
       "Error": {
         "type": "object",
         "properties": {
           "error": {
             "type": "string",
-            "example": "Error message describing the issue."
+            "example": "Error message describing the issue.",
+            "description": "Human-readable error message"
           }
-        }
+        },
+        "required": ["error"]
       }
     },
     "securitySchemes": {
