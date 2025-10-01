@@ -78,36 +78,17 @@
             />
           </div>
 
-          <!-- Status -->
-          <div>
-            <label for="status" class="block text-sm font-medium text-gray-700">Status</label>
-            <select 
-              v-model="editedTask.status" 
-              id="status"
-              class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm px-3 py-2 border"
-              :disabled="originalTask.status === 'Completed'"
-            >
-              <option value="Unassigned">Unassigned</option>
-              <option value="Ongoing">Ongoing</option>
-              <option value="Under Review">Under Review</option>
-              <option value="Completed">Completed</option>
-            </select>
-            <p v-if="originalTask.status === 'Completed'" class="mt-1 text-sm text-red-600">
-              Completed tasks cannot be edited
-            </p>
-          </div>
-
           <!-- Collaborators Section -->
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-2">Collaborators</label>
             <div class="space-y-2">
               <!-- List existing collaborators -->
-              <div v-for="collaborator in collaborators" :key="collaborator.id" 
+              <div v-for="collaborator in collaborators" :key="collaborator.user_id" 
                    class="flex items-center justify-between p-3 bg-gray-50 rounded-md">
-                <span class="text-sm text-gray-900">{{ collaborator.name }} (ID: {{ collaborator.id }})</span>
+                <span class="text-sm text-gray-900">User ID: {{ collaborator.user_id }}</span>
                 <button 
                   type="button"
-                  @click="removeCollaborator(collaborator.id)"
+                  @click="removeCollaborator(collaborator.user_id)"
                   class="text-red-600 hover:text-red-800 text-sm"
                 >
                   Remove
@@ -133,59 +114,29 @@
             </div>
           </div>
 
-          <!-- Attachments Section -->
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-2">Attachments</label>
-            <div class="space-y-2">
-              <!-- List existing attachments -->
-              <div v-for="attachment in editedTask.attachments" :key="attachment.id" 
-                   class="flex items-center justify-between p-3 bg-gray-50 rounded-md">
-                <div class="flex items-center space-x-2">
-                  <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"></path>
-                  </svg>
-                  <span class="text-sm text-gray-900">{{ attachment.filename }}</span>
-                </div>
-                <button 
-                  type="button"
-                  @click="removeAttachment(attachment.id)"
-                  class="text-red-600 hover:text-red-800 text-sm"
-                >
-                  Remove
-                </button>
-              </div>
-              
-              <!-- Add new attachment -->
-              <div class="mt-3 p-3 border-2 border-dashed border-gray-300 rounded-md">
-                <input 
-                  type="file" 
-                  @change="handleFileUpload"
-                  class="w-full text-sm text-gray-500"
-                />
-              </div>
-            </div>
-          </div>
-
-          <!-- Assign Task (for Managers/Directors only) -->
+          <!-- Transfer Ownership (for Managers/Directors only) -->
           <div v-if="userRole === 'manager' || userRole === 'director'" class="border-t pt-6">
-            <h3 class="text-lg font-medium text-gray-900 mb-4">Assign Task</h3>
+            <h3 class="text-lg font-medium text-gray-900 mb-4">Transfer Task Ownership</h3>
+            <p class="text-sm text-gray-600 mb-4">
+              As a {{ userRole }}, you can transfer this task to someone in your department with a lower role.
+            </p>
             <div class="flex items-center space-x-4">
               <select 
-                v-model="assignToUserId"
+                v-model="transferToUserId"
                 class="flex-1 border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm px-3 py-2 border"
               >
-                <option value="">Select user to assign</option>
+                <option value="">Select user to transfer to</option>
                 <option v-for="user in availableUsers" :key="user.id" :value="user.id">
                   {{ user.name }} ({{ user.role }})
                 </option>
               </select>
               <button 
                 type="button"
-                @click="assignTask"
-                :disabled="!assignToUserId"
+                @click="transferOwnership"
+                :disabled="!transferToUserId"
                 class="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white text-sm font-medium rounded-md disabled:opacity-50"
               >
-                Assign Task
+                Transfer Ownership
               </button>
             </div>
           </div>
@@ -225,7 +176,7 @@
               <h3 class="text-lg leading-6 font-medium text-gray-900">Confirm Changes</h3>
               <div class="mt-2">
                 <p class="text-sm text-gray-500">
-                  Are you sure you want to save these changes? This will update the task for all collaborators.
+                  Are you sure you want to save these changes? This will update the task for all collaborators in real-time.
                 </p>
               </div>
             </div>
@@ -272,13 +223,13 @@ const saving = ref(false)
 const error = ref(null)
 const showConfirmModal = ref(false)
 const newCollaboratorId = ref('')
-const assignToUserId = ref('')
+const transferToUserId = ref('')
 const availableUsers = ref([])
 
 // User role and permissions
 const userRole = ref(authStore.user?.role || 'staff')
 const userId = ref(authStore.user?.id)
-const userDepartment = ref(authStore.user?.department || 'engineering') // You'll need to add this to auth store
+const userDepartment = ref(authStore.user?.department || 'engineering')
 
 // API configuration
 const KONG_API_URL = "http://localhost:8000"
@@ -309,7 +260,8 @@ const fetchTaskDetails = async () => {
       // Check ownership
       if (task.value.owner_id !== userId.value) {
         error.value = 'You are not authorized to edit this task'
-        router.push(`/tasks/${taskId.value}`)
+        setTimeout(() => router.push(`/tasks/${taskId.value}`), 2000)
+        return
       }
       
       // Check if completed
@@ -317,9 +269,8 @@ const fetchTaskDetails = async () => {
         error.value = 'Completed tasks cannot be edited'
       }
       
-      // Fetch collaborators if any
-      // This would be a separate API call in production
-      collaborators.value = []
+      // Fetch collaborators
+      await fetchCollaborators()
       
     } else if (response.status === 404) {
       error.value = 'Task not found'
@@ -334,10 +285,26 @@ const fetchTaskDetails = async () => {
   }
 }
 
-// Fetch available users for assignment
+// Fetch collaborators
+const fetchCollaborators = async () => {
+  try {
+    const response = await fetch(`${KONG_API_URL}/tasks/${taskId.value}/collaborators`, {
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    })
+    
+    if (response.ok) {
+      collaborators.value = await response.json()
+    }
+  } catch (err) {
+    console.error('Error fetching collaborators:', err)
+  }
+}
+
+// Fetch available users for transfer (mock data for now)
 const fetchAvailableUsers = async () => {
-  // This would be an API call to get users in the same department with lower roles
-  // For now, using mock data
+  // Mock data - in production, fetch from user service
   if (userRole.value === 'director') {
     availableUsers.value = [
       { id: 2, name: 'John Manager', role: 'manager' },
@@ -363,9 +330,13 @@ const saveTask = async () => {
     showConfirmModal.value = false
     
     const updateData = {
-      ...editedTask.value,
+      title: editedTask.value.title,
+      description: editedTask.value.description,
+      deadline: editedTask.value.deadline || null,
       requesting_user_id: userId.value
     }
+    
+    console.log('Sending update request:', updateData)
     
     const response = await fetch(`${KONG_API_URL}/tasks/${taskId.value}`, {
       method: 'PUT',
@@ -375,15 +346,18 @@ const saveTask = async () => {
       body: JSON.stringify(updateData)
     })
     
+    const responseData = await response.json()
+    console.log('Response:', responseData)
+    
     if (response.ok) {
+      alert('Task updated successfully!')
       router.push(`/tasks/${taskId.value}`)
     } else {
-      const errorData = await response.json()
-      error.value = errorData.error || 'Failed to update task'
+      error.value = responseData.error || 'Failed to update task'
     }
   } catch (err) {
     console.error('Error updating task:', err)
-    error.value = 'Failed to save changes'
+    error.value = 'Failed to save changes: ' + err.message
   } finally {
     saving.value = false
   }
@@ -406,11 +380,9 @@ const addCollaborator = async () => {
     })
     
     if (response.ok) {
-      collaborators.value.push({
-        id: parseInt(newCollaboratorId.value),
-        name: `User ${newCollaboratorId.value}`
-      })
+      await fetchCollaborators()
       newCollaboratorId.value = ''
+      alert('Collaborator added successfully!')
     } else {
       const errorData = await response.json()
       alert(errorData.error || 'Failed to add collaborator')
@@ -429,7 +401,8 @@ const removeCollaborator = async (collaboratorId) => {
     })
     
     if (response.ok) {
-      collaborators.value = collaborators.value.filter(c => c.id !== collaboratorId)
+      await fetchCollaborators()
+      alert('Collaborator removed successfully!')
     } else {
       const errorData = await response.json()
       alert(errorData.error || 'Failed to remove collaborator')
@@ -440,36 +413,16 @@ const removeCollaborator = async (collaboratorId) => {
   }
 }
 
-// Handle file upload
-const handleFileUpload = (event) => {
-  const file = event.target.files[0]
-  if (file) {
-    // In production, you'd upload the file to a storage service
-    // For now, just add to the attachments list
-    const newAttachment = {
-      id: Date.now(),
-      filename: file.name,
-      url: URL.createObjectURL(file)
-    }
-    
-    if (!editedTask.value.attachments) {
-      editedTask.value.attachments = []
-    }
-    editedTask.value.attachments.push(newAttachment)
+// Transfer ownership
+const transferOwnership = async () => {
+  if (!transferToUserId.value) return
+  
+  if (!confirm('Are you sure you want to transfer ownership of this task? You will no longer be the owner.')) {
+    return
   }
-}
-
-// Remove attachment
-const removeAttachment = (attachmentId) => {
-  editedTask.value.attachments = editedTask.value.attachments.filter(a => a.id !== attachmentId)
-}
-
-// Assign task
-const assignTask = async () => {
-  if (!assignToUserId.value) return
   
   try {
-    const selectedUser = availableUsers.value.find(u => u.id === parseInt(assignToUserId.value))
+    const selectedUser = availableUsers.value.find(u => u.id === parseInt(transferToUserId.value))
     
     const response = await fetch(`${KONG_API_URL}/tasks/${taskId.value}/assign`, {
       method: 'POST',
@@ -480,22 +433,22 @@ const assignTask = async () => {
         requesting_user_id: userId.value,
         requesting_user_role: userRole.value,
         requesting_user_department: userDepartment.value,
-        new_owner_id: parseInt(assignToUserId.value),
+        new_owner_id: parseInt(transferToUserId.value),
         new_owner_role: selectedUser.role,
-        new_owner_department: userDepartment.value // Same department requirement
+        new_owner_department: userDepartment.value
       })
     })
     
     if (response.ok) {
-      alert('Task assigned successfully!')
+      alert('Task ownership transferred successfully!')
       router.push(`/tasks/${taskId.value}`)
     } else {
       const errorData = await response.json()
-      alert(errorData.error || 'Failed to assign task')
+      alert(errorData.error || 'Failed to transfer ownership')
     }
   } catch (err) {
-    console.error('Error assigning task:', err)
-    alert('Failed to assign task')
+    console.error('Error transferring ownership:', err)
+    alert('Failed to transfer ownership')
   }
 }
 
@@ -505,7 +458,3 @@ onMounted(() => {
   fetchAvailableUsers()
 })
 </script>
-
-<style scoped>
-/* Add any custom styles here */
-</style>
