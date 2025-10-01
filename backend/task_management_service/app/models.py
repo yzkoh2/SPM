@@ -36,6 +36,14 @@ class TaskCollaborator(db.Model):
     added_at = db.Column(db.DateTime, default=lambda: datetime.now())
     role = db.Column(db.String(50), default="collaborator")
 
+class SubtaskCollaborator(db.Model):
+    __tablename__ = "subtask_collaborators"
+    
+    subtask_id = db.Column(db.Integer, db.ForeignKey("subtasks.id"), primary_key=True)
+    user_id = db.Column(db.Integer, primary_key=True)
+    added_at = db.Column(db.DateTime, default=lambda: datetime.now())
+    role = db.Column(db.String(50), default="collaborator")
+
 class Comment(db.Model):
     __tablename__ = "comments"
 

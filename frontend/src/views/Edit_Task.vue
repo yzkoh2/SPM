@@ -39,8 +39,21 @@
         </div>
       </div>
 
+      <!-- Completed Task Warning -->
+      <div v-if="task && task.status === 'Completed'" class="bg-yellow-50 border border-yellow-200 rounded-md p-6 mb-6">
+        <div class="flex items-center">
+          <svg class="w-6 h-6 text-yellow-600 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+          </svg>
+          <div>
+            <h3 class="text-sm font-medium text-yellow-800">Completed Task</h3>
+            <p class="text-sm text-yellow-700 mt-1">This task is marked as completed and cannot be edited.</p>
+          </div>
+        </div>
+      </div>
+
       <!-- Edit Form -->
-      <div v-if="task && !loading" class="bg-white rounded-lg shadow-md p-6">
+      <div v-if="task && !loading && task.status !== 'Completed'" class="bg-white rounded-lg shadow-md p-6">
         <form @submit.prevent="confirmUpdate" class="space-y-6">
           <!-- Task Title -->
           <div>
@@ -85,11 +98,11 @@
               <!-- List existing collaborators -->
               <div v-for="collaborator in collaborators" :key="collaborator.user_id" 
                    class="flex items-center justify-between p-3 bg-gray-50 rounded-md">
-                <span class="text-sm text-gray-900">User ID: {{ collaborator.user_id }}</span>
+                <span class="text-sm text-gray-700">User ID: {{ collaborator.user_id }}</span>
                 <button 
                   type="button"
                   @click="removeCollaborator(collaborator.user_id)"
-                  class="text-red-600 hover:text-red-800 text-sm"
+                  class="text-red-600 hover:text-red-700 text-sm font-medium"
                 >
                   Remove
                 </button>
@@ -98,15 +111,16 @@
               <!-- Add new collaborator -->
               <div class="flex items-center space-x-2 mt-3">
                 <input 
-                  v-model="newCollaboratorId" 
-                  type="number" 
-                  placeholder="User ID"
+                  v-model="newCollaboratorId"
+                  type="number"
+                  placeholder="Enter user ID"
                   class="flex-1 border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm px-3 py-2 border"
                 />
                 <button 
                   type="button"
                   @click="addCollaborator"
-                  class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-md"
+                  :disabled="!newCollaboratorId"
+                  class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-md disabled:opacity-50"
                 >
                   Add Collaborator
                 </button>
@@ -114,11 +128,11 @@
             </div>
           </div>
 
-          <!-- Transfer Ownership (for Managers/Directors only) -->
+          <!-- Transfer Ownership Section -->
           <div v-if="userRole === 'manager' || userRole === 'director'" class="border-t pt-6">
-            <h3 class="text-lg font-medium text-gray-900 mb-4">Transfer Task Ownership</h3>
-            <p class="text-sm text-gray-600 mb-4">
-              As a {{ userRole }}, you can transfer this task to someone in your department with a lower role.
+            <label class="block text-sm font-medium text-gray-700 mb-2">Transfer Ownership</label>
+            <p class="text-xs text-gray-500 mb-3">
+              Transfer this task to another user in your department with a lower role.
             </p>
             <div class="flex items-center space-x-4">
               <select 
@@ -136,7 +150,7 @@
                 :disabled="!transferToUserId"
                 class="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white text-sm font-medium rounded-md disabled:opacity-50"
               >
-                Transfer Ownership
+                Transfer Task
               </button>
             </div>
           </div>
@@ -151,10 +165,10 @@
             </router-link>
             <button 
               type="submit"
-              :disabled="saving || originalTask.status === 'Completed'"
+              :disabled="saving"
               class="px-6 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-md disabled:opacity-50"
             >
-              {{ saving ? 'Saving...' : 'Save Changes' }}
+              {{ saving ? 'Saving...' : 'Update Task' }}
             </button>
           </div>
         </form>
@@ -162,37 +176,43 @@
     </div>
 
     <!-- Confirmation Modal -->
-    <div v-if="showConfirmModal" class="fixed z-50 inset-0 overflow-y-auto">
+    <div v-if="showConfirmModal" class="fixed z-50 inset-0 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
       <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-        <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"></div>
+        <!-- Background overlay -->
+        <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" aria-hidden="true" @click="showConfirmModal = false"></div>
+
+        <!-- Center modal -->
+        <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+
         <div class="inline-block align-bottom bg-white rounded-lg px-4 pt-5 pb-4 text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full sm:p-6">
-          <div class="sm:flex sm:items-start">
-            <div class="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-yellow-100 sm:mx-0 sm:h-10 sm:w-10">
-              <svg class="h-6 w-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+          <div>
+            <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-indigo-100">
+              <svg class="h-6 w-6 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
               </svg>
             </div>
-            <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left">
-              <h3 class="text-lg leading-6 font-medium text-gray-900">Confirm Changes</h3>
+            <div class="mt-3 text-center sm:mt-5">
+              <h3 class="text-lg leading-6 font-medium text-gray-900" id="modal-title">Confirm Update</h3>
               <div class="mt-2">
                 <p class="text-sm text-gray-500">
-                  Are you sure you want to save these changes? This will update the task for all collaborators in real-time.
+                  Are you sure you want to update this task? 
+                  This will update the task for all collaborators in real-time.
                 </p>
               </div>
             </div>
           </div>
-          <div class="mt-5 sm:mt-4 sm:flex sm:flex-row-reverse">
+          <div class="mt-5 sm:mt-6 sm:grid sm:grid-cols-2 sm:gap-3 sm:grid-flow-row-dense">
             <button 
               @click="saveTask"
               type="button"
-              class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-indigo-600 text-base font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:ml-3 sm:w-auto sm:text-sm"
+              class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-indigo-600 text-base font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:col-start-2 sm:text-sm"
             >
               Confirm
             </button>
             <button 
               @click="showConfirmModal = false"
               type="button"
-              class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:w-auto sm:text-sm"
+              class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:col-start-1 sm:text-sm"
             >
               Cancel
             </button>
@@ -212,10 +232,12 @@ const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
 
+// API configuration
+const KONG_API_URL = "http://localhost:8000"
+
 // Reactive data
 const taskId = ref(route.params.id)
 const task = ref(null)
-const originalTask = ref(null)
 const editedTask = ref({})
 const collaborators = ref([])
 const loading = ref(true)
@@ -229,10 +251,16 @@ const availableUsers = ref([])
 // User role and permissions
 const userRole = ref(authStore.user?.role || 'staff')
 const userId = ref(authStore.user?.id)
-const userDepartment = ref(authStore.user?.department || 'engineering')
+const userDepartment = ref(authStore.user?.department)
 
-// API configuration
-const KONG_API_URL = "http://localhost:8000"
+// Lifecycle hooks
+onMounted(async () => {
+  await fetchTaskDetails()
+  await fetchCollaborators()
+  if (userRole.value !== 'staff') {
+    await fetchAvailableUsers()
+  }
+})
 
 // Fetch task details
 const fetchTaskDetails = async () => {
@@ -248,30 +276,15 @@ const fetchTaskDetails = async () => {
     
     if (response.ok) {
       task.value = await response.json()
-      originalTask.value = JSON.parse(JSON.stringify(task.value))
-      editedTask.value = JSON.parse(JSON.stringify(task.value))
       
-      // Convert deadline to datetime-local format
-      if (editedTask.value.deadline) {
-        const date = new Date(editedTask.value.deadline)
-        editedTask.value.deadline = date.toISOString().slice(0, 16)
+      // Initialize editedTask with current values
+      editedTask.value = {
+        title: task.value.title,
+        description: task.value.description || '',
+        deadline: task.value.deadline ? formatDateForInput(task.value.deadline) : ''
       }
       
-      // Check ownership
-      if (task.value.owner_id !== userId.value) {
-        error.value = 'You are not authorized to edit this task'
-        setTimeout(() => router.push(`/tasks/${taskId.value}`), 2000)
-        return
-      }
-      
-      // Check if completed
-      if (task.value.status === 'Completed') {
-        error.value = 'Completed tasks cannot be edited'
-      }
-      
-      // Fetch collaborators
-      await fetchCollaborators()
-      
+      console.log('Task loaded:', task.value)
     } else if (response.status === 404) {
       error.value = 'Task not found'
     } else {
@@ -302,20 +315,33 @@ const fetchCollaborators = async () => {
   }
 }
 
-// Fetch available users for transfer (mock data for now)
+// Fetch available users for transfer (mock data - replace with actual API call)
 const fetchAvailableUsers = async () => {
-  // Mock data - in production, fetch from user service
+  // In production, fetch from user service based on department and role
+  // For now, using mock data
   if (userRole.value === 'director') {
     availableUsers.value = [
-      { id: 2, name: 'John Manager', role: 'manager' },
-      { id: 3, name: 'Jane Staff', role: 'staff' }
+      { id: 2, name: 'John Manager', role: 'manager', department: userDepartment.value },
+      { id: 3, name: 'Jane Staff', role: 'staff', department: userDepartment.value }
     ]
   } else if (userRole.value === 'manager') {
     availableUsers.value = [
-      { id: 3, name: 'Jane Staff', role: 'staff' },
-      { id: 4, name: 'Bob Staff', role: 'staff' }
+      { id: 3, name: 'Jane Staff', role: 'staff', department: userDepartment.value },
+      { id: 4, name: 'Bob Staff', role: 'staff', department: userDepartment.value }
     ]
   }
+}
+
+// Format date for datetime-local input
+const formatDateForInput = (dateString) => {
+  if (!dateString) return ''
+  const date = new Date(dateString)
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  const hours = String(date.getHours()).padStart(2, '0')
+  const minutes = String(date.getMinutes()).padStart(2, '0')
+  return `${year}-${month}-${day}T${hours}:${minutes}`
 }
 
 // Confirm update
@@ -384,32 +410,35 @@ const addCollaborator = async () => {
       newCollaboratorId.value = ''
       alert('Collaborator added successfully!')
     } else {
-      const errorData = await response.json()
-      alert(errorData.error || 'Failed to add collaborator')
+      const data = await response.json()
+      alert('Failed to add collaborator: ' + (data.error || 'Unknown error'))
     }
   } catch (err) {
     console.error('Error adding collaborator:', err)
-    alert('Failed to add collaborator')
+    alert('Failed to add collaborator: ' + err.message)
   }
 }
 
 // Remove collaborator
 const removeCollaborator = async (collaboratorId) => {
+  if (!confirm('Are you sure you want to remove this collaborator?')) return
+  
   try {
-    const response = await fetch(`${KONG_API_URL}/tasks/${taskId.value}/collaborators/${collaboratorId}?requesting_user_id=${userId.value}`, {
-      method: 'DELETE'
-    })
+    const response = await fetch(
+      `${KONG_API_URL}/tasks/${taskId.value}/collaborators/${collaboratorId}?requesting_user_id=${userId.value}`,
+      { method: 'DELETE' }
+    )
     
     if (response.ok) {
       await fetchCollaborators()
       alert('Collaborator removed successfully!')
     } else {
-      const errorData = await response.json()
-      alert(errorData.error || 'Failed to remove collaborator')
+      const data = await response.json()
+      alert('Failed to remove collaborator: ' + (data.error || 'Unknown error'))
     }
   } catch (err) {
     console.error('Error removing collaborator:', err)
-    alert('Failed to remove collaborator')
+    alert('Failed to remove collaborator: ' + err.message)
   }
 }
 
@@ -417,14 +446,13 @@ const removeCollaborator = async (collaboratorId) => {
 const transferOwnership = async () => {
   if (!transferToUserId.value) return
   
-  if (!confirm('Are you sure you want to transfer ownership of this task? You will no longer be the owner.')) {
-    return
-  }
+  const selectedUser = availableUsers.value.find(u => u.id === parseInt(transferToUserId.value))
+  if (!selectedUser) return
+  
+  if (!confirm(`Transfer task ownership to ${selectedUser.name}?`)) return
   
   try {
-    const selectedUser = availableUsers.value.find(u => u.id === parseInt(transferToUserId.value))
-    
-    const response = await fetch(`${KONG_API_URL}/tasks/${taskId.value}/assign`, {
+    const response = await fetch(`${KONG_API_URL}/tasks/${taskId.value}/transfer`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
@@ -433,28 +461,23 @@ const transferOwnership = async () => {
         requesting_user_id: userId.value,
         requesting_user_role: userRole.value,
         requesting_user_department: userDepartment.value,
-        new_owner_id: parseInt(transferToUserId.value),
+        new_owner_id: selectedUser.id,
         new_owner_role: selectedUser.role,
-        new_owner_department: userDepartment.value
+        new_owner_department: selectedUser.department
       })
     })
     
+    const data = await response.json()
+    
     if (response.ok) {
       alert('Task ownership transferred successfully!')
-      router.push(`/tasks/${taskId.value}`)
+      router.push('/tasks')
     } else {
-      const errorData = await response.json()
-      alert(errorData.error || 'Failed to transfer ownership')
+      alert('Failed to transfer ownership: ' + (data.error || 'Unknown error'))
     }
   } catch (err) {
     console.error('Error transferring ownership:', err)
-    alert('Failed to transfer ownership')
+    alert('Failed to transfer ownership: ' + err.message)
   }
 }
-
-// Load data on mount
-onMounted(() => {
-  fetchTaskDetails()
-  fetchAvailableUsers()
-})
 </script>
