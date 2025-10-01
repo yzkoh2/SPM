@@ -194,6 +194,51 @@ def check_all_subtasks_completed(task_id):
         print(f"Error in check_all_subtasks_completed: {e}")
         return False, 0
 
+def add_task_comment(task_id, author_id, comment_body):
+    #Add a comment to a task
+    try:
+        task = Task.query.filter_by(id=task_id).first()
+        if not task:
+            return None
+        
+        new_comment = Comment(
+            body=comment_body,
+            author_id=author_id,
+            task_id=task_id
+        )
+        
+        db.session.add(new_comment)
+        db.session.commit()
+        
+        return {
+            "id": new_comment.id,
+            "body": new_comment.body,
+            "author_id": new_comment.author_id,
+            "task_id": new_comment.task_id
+        }
+        
+    except Exception as e:
+        print(f"Error in add_task_comment: {e}")
+        db.session.rollback()
+        raise e
+
+def get_task_comments(task_id):
+    #Get all comments for a task
+    try:
+        task = Task.query.filter_by(id=task_id).first()
+        if not task:
+            return None
+        
+        return [{
+            "id": comment.id,
+            "body": comment.body,
+            "author_id": comment.author_id
+        } for comment in task.comments]
+        
+    except Exception as e:
+        print(f"Error in get_task_comments: {e}")
+        raise e
+
 def delete_task(task_id):
     #Delete a task by ID
     try:
@@ -322,5 +367,38 @@ def update_subtask_status(task_id, subtask_id, new_status):
         
     except Exception as e:
         print(f"Error in update_subtask_status: {e}")
+        db.session.rollback()
+        raise e
+
+def add_subtask_comment(task_id, subtask_id, author_id, comment_body):
+    #Add a comment to a subtask (stored as task comment with reference)
+    try:
+        # Verify subtask exists
+        subtask = Subtask.query.filter_by(id=subtask_id, task_id=task_id).first()
+        if not subtask:
+            return None
+        
+        # Add comment to parent task with subtask reference in body
+        comment_with_ref = f"[Subtask #{subtask_id}: {subtask.title}] {comment_body}"
+        
+        new_comment = Comment(
+            body=comment_with_ref,
+            author_id=author_id,
+            task_id=task_id
+        )
+        
+        db.session.add(new_comment)
+        db.session.commit()
+        
+        return {
+            "id": new_comment.id,
+            "body": new_comment.body,
+            "author_id": new_comment.author_id,
+            "task_id": new_comment.task_id,
+            "subtask_id": subtask_id
+        }
+        
+    except Exception as e:
+        print(f"Error in add_subtask_comment: {e}")
         db.session.rollback()
         raise e
