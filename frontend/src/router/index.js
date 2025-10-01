@@ -40,6 +40,12 @@ const router = createRouter({
       name: 'task-subtasks-details',
       component: () => import('@/views/View_Individual_SubTask.vue'),
       meta: { requiresAuth: true }
+    },
+    {
+      path: '/projects',
+      name: 'projects',
+      component: () => import('@/views/ProjectTaskboard.vue'),
+      meta: { requiresAuth: true }
     }
   ],
 })
