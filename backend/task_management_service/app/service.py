@@ -2,7 +2,7 @@ from .models import db, Task, Subtask, Comment, Attachment
 from datetime import datetime
 
 def get_all_tasks(owner_id=None, status=None):
-    """Fetch all tasks with optional filtering"""
+    #Fetch all tasks with optional filtering
     try:
         query = Task.query
         
@@ -32,16 +32,14 @@ def get_all_tasks(owner_id=None, status=None):
         raise e
 
 def create_task(task_data):
-    """Create a new task"""
+    #Create a new task
     try:
         print(f"Creating task with data: {task_data}")
         
-        # Parse deadline if provided
         deadline = None
         if task_data.get('deadline'):
             try:
                 if isinstance(task_data['deadline'], str) and task_data['deadline'].strip():
-                    # Handle datetime-local format from HTML input
                     deadline_str = task_data['deadline']
                     if 'T' in deadline_str:
                         deadline = datetime.fromisoformat(deadline_str)
@@ -52,8 +50,8 @@ def create_task(task_data):
             except ValueError as e:
                 print(f"Error parsing deadline: {e}")
                 deadline = None
-        
-        # Create new task
+
+        #Create new Task initialisation
         new_task = Task(
             title=task_data['title'],
             description=task_data.get('description'),
@@ -62,13 +60,13 @@ def create_task(task_data):
             owner_id=task_data['owner_id']
         )
         
-        # Add to database
+        #Add to DB new task
         db.session.add(new_task)
         db.session.commit()
         
         print(f"Task created with ID: {new_task.id}")
         
-        # Return the created task
+        #return upon successful creation
         return {
             "id": new_task.id,
             "title": new_task.title,
@@ -87,13 +85,12 @@ def create_task(task_data):
         raise e
 
 def update_task(task_id, task_data):
-    """Update an existing task"""
+    #Update an existing task
     try:
         task = Task.query.filter_by(id=task_id).first()
         if not task:
             return None
         
-        # Update fields if provided
         if 'title' in task_data:
             task.title = task_data['title']
         if 'description' in task_data:
@@ -131,8 +128,74 @@ def update_task(task_id, task_data):
         db.session.rollback()
         raise e
 
+def update_task_status(task_id, new_status):
+    #Update only the task status
+    try:
+        task = Task.query.filter_by(id=task_id).first()
+        if not task:
+            return None
+        
+        task.status = new_status
+        db.session.commit()
+        
+        return {
+            "id": task.id,
+            "title": task.title,
+            "description": task.description,
+            "deadline": str(task.deadline) if task.deadline else None,
+            "status": task.status,
+            "owner_id": task.owner_id,
+            "subtask_count": len(task.subtasks),
+            "comment_count": len(task.comments),
+            "attachment_count": len(task.attachments)
+        }
+        
+    except Exception as e:
+        print(f"Error in update_task_status: {e}")
+        db.session.rollback()
+        raise e
+
+def is_task_collaborator(task_id, user_id):
+    #Check if user is owner or collaborator of task
+    try:
+        task = Task.query.filter_by(id=task_id).first()
+        if not task:
+            return False
+        
+        # User is owner
+        if task.owner_id == user_id:
+            return True
+        
+        # TODO: Add collaborator logic when implemented
+        # For now, only owner can update
+        return False
+        
+    except Exception as e:
+        print(f"Error in is_task_collaborator: {e}")
+        return False
+
+def check_all_subtasks_completed(task_id):
+    #Check if all subtasks are completed
+    try:
+        task = Task.query.filter_by(id=task_id).first()
+        if not task:
+            return False, 0
+        
+        subtasks = task.subtasks
+        if not subtasks or len(subtasks) == 0:
+            # No subtasks, so can be marked as completed
+            return True, 0
+        
+        incomplete_subtasks = [s for s in subtasks if s.status != 'Completed']
+        
+        return len(incomplete_subtasks) == 0, len(incomplete_subtasks)
+        
+    except Exception as e:
+        print(f"Error in check_all_subtasks_completed: {e}")
+        return False, 0
+
 def delete_task(task_id):
-    """Delete a task by ID"""
+    #Delete a task by ID
     try:
         task = Task.query.filter_by(id=task_id).first()
         if not task:
@@ -149,7 +212,7 @@ def delete_task(task_id):
         raise e
 
 def get_task_details(task_id):
-    """Fetch a task with its subtasks, comments, and attachments"""
+    #Fetch a task with its subtasks, comments, and attachments
     try:
         task = Task.query.filter_by(id=task_id).first()
         if not task:
@@ -172,7 +235,7 @@ def get_task_details(task_id):
         raise e
 
 def get_task_subtasks(task_id):
-    """Fetch all subtasks for a specific task"""
+    #Fetch all subtasks for a specific task
     try:
         task = Task.query.filter_by(id=task_id).first()
         if not task:
@@ -190,14 +253,12 @@ def get_task_subtasks(task_id):
         raise e
 
 def create_subtask(task_id, subtask_data):
-    """Create a new subtask for a task"""
+    #Create a new subtask for a task
     try:
-        # Check if parent task exists
         task = Task.query.filter_by(id=task_id).first()
         if not task:
             return None
         
-        # Create new subtask
         new_subtask = Subtask(
             title=subtask_data['title'],
             status=subtask_data.get('status', 'Unassigned'),
@@ -220,7 +281,7 @@ def create_subtask(task_id, subtask_data):
         raise e
 
 def get_subtask_details(task_id, subtask_id):
-    """Fetch a specific subtask"""
+    #Fetch a specific subtask
     try:
         subtask = Subtask.query.filter_by(id=subtask_id, task_id=task_id).first()
         if not subtask:
@@ -240,4 +301,26 @@ def get_subtask_details(task_id, subtask_id):
         
     except Exception as e:
         print(f"Error in get_subtask_details: {e}")
+        raise e
+
+def update_subtask_status(task_id, subtask_id, new_status):
+    #Update only the subtask status
+    try:
+        subtask = Subtask.query.filter_by(id=subtask_id, task_id=task_id).first()
+        if not subtask:
+            return None
+        
+        subtask.status = new_status
+        db.session.commit()
+        
+        return {
+            "id": subtask.id,
+            "title": subtask.title,
+            "status": subtask.status,
+            "task_id": subtask.task_id
+        }
+        
+    except Exception as e:
+        print(f"Error in update_subtask_status: {e}")
+        db.session.rollback()
         raise e
