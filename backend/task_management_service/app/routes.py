@@ -109,8 +109,8 @@ def update_task_status(task_id):
         updated_task = service.update_task_status(task_id, new_status)
         
         # Add comment if provided
-        # if comment and comment.strip():
-        #     service.add_task_comment(task_id, user_id, comment)
+        if comment and comment.strip():
+            service.add_task_comment(task_id, user_id, comment)
         
         return jsonify({
             "success": True,
@@ -216,8 +216,8 @@ def update_subtask_status(task_id, subtask_id):
             return jsonify({"error": "Subtask not found"}), 404
         
         # Add comment if provided
-        # if comment and comment.strip():
-        #     service.add_subtask_comment(task_id, subtask_id, user_id, comment)
+        if comment and comment.strip():
+            service.add_subtask_comment(task_id, subtask_id, user_id, comment)
         
         return jsonify({
             "success": True,
@@ -229,8 +229,74 @@ def update_subtask_status(task_id, subtask_id):
         print(f"Error in update_subtask_status: {e}")
         return jsonify({"error": str(e)}), 500
 
+@task_bp.route("/tasks/<int:task_id>/subtasks/<int:subtask_id>/comments", methods=["POST"])
+def add_subtask_comment(task_id, subtask_id):
+    #Add a comment to a subtask
+    try:
+        data = request.get_json()
+        
+        if not data or not data.get('body'):
+            return jsonify({"error": "Comment body is required"}), 400
+            
+        if not data.get('author_id'):
+            return jsonify({"error": "Author ID is required"}), 400
+        
+        comment = service.add_subtask_comment(
+            task_id,
+            subtask_id,
+            data['author_id'], 
+            data['body']
+        )
+        
+        if not comment:
+            return jsonify({"error": "Subtask not found"}), 404
+            
+        return jsonify(comment), 201
+    except Exception as e:
+        print(f"Error in add_subtask_comment: {e}")
+        return jsonify({"error": str(e)}), 500
+
+@task_bp.route("/tasks/<int:task_id>/comments", methods=["POST"])
+def add_comment(task_id):
+    #Add a comment to a task
+    try:
+        data = request.get_json()
+        
+        if not data or not data.get('body'):
+            return jsonify({"error": "Comment body is required"}), 400
+            
+        if not data.get('author_id'):
+            return jsonify({"error": "Author ID is required"}), 400
+        
+        comment = service.add_task_comment(
+            task_id, 
+            data['author_id'], 
+            data['body']
+        )
+        
+        if not comment:
+            return jsonify({"error": "Task not found"}), 404
+            
+        return jsonify(comment), 201
+    except Exception as e:
+        print(f"Error in add_comment: {e}")
+        return jsonify({"error": str(e)}), 500
+
+@task_bp.route("/tasks/<int:task_id>/comments", methods=["GET"])
+def get_comments(task_id):
+    #Get all comments for a task
+    try:
+        comments = service.get_task_comments(task_id)
+        if comments is None:
+            return jsonify({"error": "Task not found"}), 404
+        return jsonify(comments), 200
+    except Exception as e:
+        print(f"Error in get_comments: {e}")
+        return jsonify({"error": str(e)}), 500
+
 # Health check endpoint
 @task_bp.route("/health", methods=["GET"])
 def health_check():
     """Health check endpoint"""
     return jsonify({"status": "healthy", "service": "task_management"}), 200
+
