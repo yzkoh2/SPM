@@ -114,7 +114,7 @@ services:
     networks:
       - spm-net
     environment:
-      DATABASE_URL: ${PROJECT_DATABASE_URL}
+      PROJECT_DATABASE_URL: ${PROJECT_DATABASE_URL}
       SECRET_KEY: ${SECRET_KEY}
     depends_on:
       - project_db

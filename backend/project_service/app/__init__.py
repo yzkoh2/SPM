@@ -2,7 +2,7 @@ from flask import Flask
 from flask_cors import CORS
 from config import Config
 from .models import db
-from .routes import task_bp
+from .routes import project_bp
 
 def create_app():
     app = Flask(__name__)
@@ -14,8 +14,8 @@ def create_app():
     # Initialize database
     db.init_app(app)
     
-    # Register blueprint - Use prefix="" because Kong routes /tasks to this service
-    app.register_blueprint(task_bp, url_prefix="")
+    # Register blueprint - Use prefix="" because Kong routes /projects to this service
+    app.register_blueprint(project_bp, url_prefix="")
     
     # Create tables if they don't exist
     with app.app_context():
