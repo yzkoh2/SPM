@@ -432,8 +432,7 @@ const addComment = async () => {
 
 // Action methods
 const editTask = () => {
-  console.log('Edit task:', task.value)
-  alert('Edit functionality coming soon!')
+  router.push(`/tasks/${task.value.id}/edit`)
 }
 
 const deleteTask = async () => {

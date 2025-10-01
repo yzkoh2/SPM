@@ -293,6 +293,121 @@ def get_comments(task_id):
     except Exception as e:
         print(f"Error in get_comments: {e}")
         return jsonify({"error": str(e)}), 500
+    
+@task_bp.route("/tasks/<int:task_id>", methods=["PUT"])
+def update_task(task_id):
+    """Update a task - enhanced version with all fields"""
+    try:
+        data = request.get_json()
+        print(f"Updating task {task_id} with data: {data}")
+        
+        # Get the requesting user's ID from the request (you'll need to implement JWT auth)
+        # For now, we'll get it from the request body
+        requesting_user_id = data.get('requesting_user_id')
+        
+        # Check if task exists and get current task data
+        current_task = service.get_task_details(task_id)
+        if not current_task:
+            return jsonify({"error": "Task not found"}), 404
+            
+        # Check if user is the owner of the task
+        if current_task['owner_id'] != requesting_user_id:
+            return jsonify({"error": "Only task owner can edit the task"}), 403
+            
+        # Check if task is completed (cannot edit completed tasks)
+        if current_task['status'] == 'Completed':
+            return jsonify({"error": "Cannot edit completed tasks"}), 403
+        
+        updated_task = service.update_task(task_id, data)
+        if not updated_task:
+            return jsonify({"error": "Task not found"}), 404
+        return jsonify(updated_task), 200
+    except Exception as e:
+        print(f"Error in update_task: {e}")
+        return jsonify({"error": str(e)}), 500
+
+@task_bp.route("/tasks/<int:task_id>/subtasks/<int:subtask_id>", methods=["PUT", "PATCH"])
+def update_subtask(task_id, subtask_id):
+    """Update a subtask"""
+    try:
+        data = request.get_json()
+        print(f"Updating subtask {subtask_id} for task {task_id} with data: {data}")
+        
+        # Get the requesting user's ID from the request
+        requesting_user_id = data.get('requesting_user_id')
+        
+        # Check if subtask exists and get current data
+        current_subtask = service.get_subtask_details(task_id, subtask_id)
+        if not current_subtask:
+            return jsonify({"error": "Subtask not found"}), 404
+            
+        # Check if user is the owner of the parent task
+        parent_task = service.get_task_details(task_id)
+        if parent_task['owner_id'] != requesting_user_id:
+            return jsonify({"error": "Only task owner can edit subtasks"}), 403
+            
+        # Check if subtask is completed
+        if current_subtask['status'] == 'Completed':
+            return jsonify({"error": "Cannot edit completed subtasks"}), 403
+        
+        updated_subtask = service.update_subtask(task_id, subtask_id, data)
+        if not updated_subtask:
+            return jsonify({"error": "Subtask not found"}), 404
+        return jsonify(updated_subtask), 200
+    except Exception as e:
+        print(f"Error in update_subtask: {e}")
+        return jsonify({"error": str(e)}), 500
+
+@task_bp.route("/tasks/<int:task_id>/collaborators", methods=["POST"])
+def add_collaborator(task_id):
+    """Add a collaborator to a task"""
+    try:
+        data = request.get_json()
+        print(f"Adding collaborator to task {task_id}")
+        
+        requesting_user_id = data.get('requesting_user_id')
+        new_collaborator_id = data.get('collaborator_id')
+        
+        # Check if user is the owner of the task
+        current_task = service.get_task_details(task_id)
+        if not current_task:
+            return jsonify({"error": "Task not found"}), 404
+            
+        if current_task['owner_id'] != requesting_user_id:
+            return jsonify({"error": "Only task owner can add collaborators"}), 403
+        
+        result = service.add_collaborator(task_id, new_collaborator_id)
+        if result:
+            return jsonify({"message": "Collaborator added successfully"}), 200
+        else:
+            return jsonify({"error": "Failed to add collaborator"}), 400
+    except Exception as e:
+        print(f"Error in add_collaborator: {e}")
+        return jsonify({"error": str(e)}), 500
+
+@task_bp.route("/tasks/<int:task_id>/collaborators/<int:collaborator_id>", methods=["DELETE"])
+def remove_collaborator(task_id, collaborator_id):
+    """Remove a collaborator from a task"""
+    try:
+        # Get requesting user ID from headers/JWT
+        requesting_user_id = request.args.get('requesting_user_id')
+        
+        # Check if user is the owner of the task
+        current_task = service.get_task_details(task_id)
+        if not current_task:
+            return jsonify({"error": "Task not found"}), 404
+            
+        if current_task['owner_id'] != requesting_user_id:
+            return jsonify({"error": "Only task owner can remove collaborators"}), 403
+        
+        result = service.remove_collaborator(task_id, collaborator_id)
+        if result:
+            return jsonify({"message": "Collaborator removed successfully"}), 200
+        else:
+            return jsonify({"error": "Failed to remove collaborator"}), 400
+    except Exception as e:
+        print(f"Error in remove_collaborator: {e}")
+        return jsonify({"error": str(e)}), 500    
 
 # Health check endpoint
 @task_bp.route("/health", methods=["GET"])

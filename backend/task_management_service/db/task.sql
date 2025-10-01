@@ -30,6 +30,25 @@ CREATE TABLE attachments (
     task_id INT REFERENCES tasks(id) ON DELETE CASCADE
 );
 
+ALTER TABLE subtasks 
+ADD COLUMN IF NOT EXISTS description TEXT,
+ADD COLUMN IF NOT EXISTS deadline TIMESTAMP,
+ADD COLUMN IF NOT EXISTS assignee_id INTEGER;
+
+-- Create task_collaborators table for managing collaborators
+CREATE TABLE IF NOT EXISTS task_collaborators (
+    task_id INTEGER REFERENCES tasks(id) ON DELETE CASCADE,
+    user_id INTEGER NOT NULL,
+    added_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    role VARCHAR(50) DEFAULT 'collaborator',
+    PRIMARY KEY (task_id, user_id)
+);
+
+-- Create indexes for better performance
+CREATE INDEX IF NOT EXISTS idx_task_collaborators_task_id ON task_collaborators(task_id);
+CREATE INDEX IF NOT EXISTS idx_task_collaborators_user_id ON task_collaborators(user_id);
+CREATE INDEX IF NOT EXISTS idx_subtasks_assignee_id ON subtasks(assignee_id);
+
 -- Sample Data
 -- Task 1
 INSERT INTO tasks (title, description, deadline, status, owner_id)

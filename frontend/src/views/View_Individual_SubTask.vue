@@ -291,9 +291,7 @@ const updateSubtaskStatus = async (newStatus) => {
 
 // Action methods
 const editSubtask = () => {
-  console.log('Edit subtask:', subtask.value)
-  // TODO: Implement edit functionality
-  alert('Edit functionality coming soon!')
+  router.push(`/tasks/${route.params.id}/subtasks/${route.params.subtaskId}/edit`)
 }
 
 const deleteSubtask = async () => {
