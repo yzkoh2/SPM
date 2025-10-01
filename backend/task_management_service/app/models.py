@@ -1,5 +1,5 @@
 from flask_sqlalchemy import SQLAlchemy
-
+from datetime import datetime
 db = SQLAlchemy()
 
 class Task(db.Model):
@@ -33,7 +33,7 @@ class TaskCollaborator(db.Model):
     
     task_id = db.Column(db.Integer, db.ForeignKey("tasks.id"), primary_key=True)
     user_id = db.Column(db.Integer, primary_key=True)
-    added_at = db.Column(db.DateTime, default=datetime.utcnow)
+    added_at = db.Column(db.DateTime, default=lambda: datetime.now())
     role = db.Column(db.String(50), default="collaborator")
 
 class Comment(db.Model):

@@ -55,20 +55,20 @@ def get_task(task_id):
         print(f"Error in get_task: {e}")
         return jsonify({"error": str(e)}), 500
 
-@task_bp.route("/tasks/<int:task_id>", methods=["PUT"])
-def update_task(task_id):
-    #Update a task
-    try:
-        data = request.get_json()
-        print(f"Updating task {task_id} with data: {data}")
+# @task_bp.route("/tasks/<int:task_id>", methods=["PUT"])
+# def update_task(task_id):
+#     #Update a task
+#     try:
+#         data = request.get_json()
+#         print(f"Updating task {task_id} with data: {data}")
         
-        updated_task = service.update_task(task_id, data)
-        if not updated_task:
-            return jsonify({"error": "Task not found"}), 404
-        return jsonify(updated_task), 200
-    except Exception as e:
-        print(f"Error in update_task: {e}")
-        return jsonify({"error": str(e)}), 500
+#         updated_task = service.update_task(task_id, data)
+#         if not updated_task:
+#             return jsonify({"error": "Task not found"}), 404
+#         return jsonify(updated_task), 200
+#     except Exception as e:
+#         print(f"Error in update_task: {e}")
+#         return jsonify({"error": str(e)}), 500
 
 @task_bp.route("/tasks/<int:task_id>/status", methods=["PATCH"])
 def update_task_status(task_id):
