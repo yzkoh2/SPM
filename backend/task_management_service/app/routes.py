@@ -7,7 +7,7 @@ task_bp = Blueprint("task_bp", __name__)
 
 @task_bp.route("/tasks", methods=["GET"])
 def get_all_tasks():
-    """Get all tasks, optionally filtered by owner_id"""
+    #Get all tasks, optionally filtered by owner_id
     try:
         owner_id = request.args.get('owner_id', type=int)
         status = request.args.get('status')
@@ -22,7 +22,7 @@ def get_all_tasks():
 
 @task_bp.route("/tasks", methods=["POST"])
 def create_task():
-    """Create a new task"""
+    #Create a new task
     try:
         data = request.get_json()
         print(f"Creating task with data: {data}")
@@ -43,7 +43,7 @@ def create_task():
 
 @task_bp.route("/tasks/<int:task_id>", methods=["GET"])
 def get_task(task_id):
-    """Get a specific task with its subtasks, comments, and attachments"""
+    #Get a specific task with its subtasks, comments, and attachments
     try:
         print(f"Getting task with id={task_id}")
         
@@ -57,7 +57,7 @@ def get_task(task_id):
 
 @task_bp.route("/tasks/<int:task_id>", methods=["PUT"])
 def update_task(task_id):
-    """Update a task"""
+    #Update a task
     try:
         data = request.get_json()
         print(f"Updating task {task_id} with data: {data}")
@@ -94,7 +94,7 @@ def update_task(task_id):
 
 @task_bp.route("/tasks/<int:task_id>", methods=["DELETE"])
 def delete_task(task_id):
-    """Delete a task"""
+    #Delete a task
     try:
         print(f"Deleting task with id={task_id}")
         
@@ -109,7 +109,7 @@ def delete_task(task_id):
 
 @task_bp.route("/tasks/<int:task_id>/status", methods=["PATCH"])
 def update_task_status(task_id):
-    """Update task status with validation"""
+    #Update task status with validation
     try:
         data = request.get_json()
         user_id = data.get('user_id')
@@ -163,7 +163,7 @@ def update_task_status(task_id):
 
 @task_bp.route("/tasks/<int:task_id>/collaborators", methods=["GET"])
 def get_task_collaborators(task_id):
-    """Get all collaborators for a task"""
+    #Get all collaborators for a task
     try:
         collaborators = service.get_task_collaborators(task_id)
         return jsonify(collaborators), 200
@@ -173,7 +173,7 @@ def get_task_collaborators(task_id):
 
 @task_bp.route("/tasks/<int:task_id>/collaborators", methods=["POST"])
 def add_task_collaborator(task_id):
-    """Add a collaborator to a task"""
+    #Add a collaborator to a task
     try:
         data = request.get_json()
         print(f"Adding collaborator to task {task_id}")
@@ -203,7 +203,7 @@ def add_task_collaborator(task_id):
 
 @task_bp.route("/tasks/<int:task_id>/collaborators/<int:collaborator_id>", methods=["DELETE"])
 def remove_task_collaborator(task_id, collaborator_id):
-    """Remove a collaborator from a task"""
+    #Remove a collaborator from a task
     try:
         requesting_user_id = request.args.get('requesting_user_id', type=int)
         
@@ -231,7 +231,7 @@ def remove_task_collaborator(task_id, collaborator_id):
 
 @task_bp.route("/tasks/<int:task_id>/transfer", methods=["POST"])
 def transfer_task_ownership(task_id):
-    """Transfer task ownership to another user"""
+    #Transfer task ownership to another user
     try:
         data = request.get_json()
         print(f"Transferring task {task_id} ownership")
@@ -304,7 +304,7 @@ def transfer_task_ownership(task_id):
 
 @task_bp.route("/tasks/<int:task_id>/subtasks", methods=["GET"])
 def get_task_subtasks(task_id):
-    """Get all subtasks for a specific task"""
+    #Get all subtasks for a specific task
     try:
         print(f"Getting subtasks for task {task_id}")
         
@@ -318,7 +318,7 @@ def get_task_subtasks(task_id):
 
 @task_bp.route("/tasks/<int:task_id>/subtasks", methods=["POST"])
 def create_subtask(task_id):
-    """Create a new subtask for a task"""
+    #Create a new subtask for a task
     try:
         data = request.get_json()
         print(f"Creating subtask for task {task_id} with data: {data}")
@@ -336,7 +336,7 @@ def create_subtask(task_id):
 
 @task_bp.route("/tasks/<int:task_id>/subtasks/<int:subtask_id>", methods=["GET"])
 def get_subtask(task_id, subtask_id):
-    """Get a specific subtask"""
+    #Get a specific subtask
     try:
         print(f"Getting subtask {subtask_id} for task {task_id}")
         
@@ -350,7 +350,7 @@ def get_subtask(task_id, subtask_id):
 
 @task_bp.route("/tasks/<int:task_id>/subtasks/<int:subtask_id>", methods=["PUT"])
 def update_subtask(task_id, subtask_id):
-    """Update a subtask"""
+    #Update a subtask
     try:
         data = request.get_json()
         print(f"Updating subtask {subtask_id} for task {task_id} with data: {data}")
@@ -388,7 +388,7 @@ def update_subtask(task_id, subtask_id):
 
 @task_bp.route("/tasks/<int:task_id>/subtasks/<int:subtask_id>/status", methods=["PATCH"])
 def update_subtask_status(task_id, subtask_id):
-    """Update subtask status with validation"""
+    #Update subtask status with validation
     try:
         data = request.get_json()
         user_id = data.get('user_id')
@@ -434,7 +434,7 @@ def update_subtask_status(task_id, subtask_id):
 
 @task_bp.route("/tasks/<int:task_id>/subtasks/<int:subtask_id>", methods=["DELETE"])
 def delete_subtask(task_id, subtask_id):
-    """Delete a subtask"""
+    #Delete a subtask
     try:
         print(f"Deleting subtask {subtask_id} from task {task_id}")
         
@@ -460,7 +460,7 @@ def delete_subtask(task_id, subtask_id):
 
 @task_bp.route("/tasks/<int:task_id>/subtasks/<int:subtask_id>/collaborators", methods=["GET"])
 def get_subtask_collaborators(task_id, subtask_id):
-    """Get all collaborators for a subtask"""
+    #Get all collaborators for a subtask
     try:
         collaborators = service.get_subtask_collaborators(subtask_id)
         return jsonify(collaborators), 200
@@ -470,7 +470,7 @@ def get_subtask_collaborators(task_id, subtask_id):
 
 @task_bp.route("/tasks/<int:task_id>/subtasks/<int:subtask_id>/collaborators", methods=["POST"])
 def add_subtask_collaborator(task_id, subtask_id):
-    """Add a collaborator to a subtask"""
+    #Add a collaborator to a subtask
     try:
         data = request.get_json()
         print(f"Adding collaborator to subtask {subtask_id}")
@@ -500,7 +500,7 @@ def add_subtask_collaborator(task_id, subtask_id):
 
 @task_bp.route("/tasks/<int:task_id>/subtasks/<int:subtask_id>/collaborators/<int:collaborator_id>", methods=["DELETE"])
 def remove_subtask_collaborator(task_id, subtask_id, collaborator_id):
-    """Remove a collaborator from a subtask"""
+    #Remove a collaborator from a subtask
     try:
         requesting_user_id = request.args.get('requesting_user_id', type=int)
         
@@ -528,7 +528,7 @@ def remove_subtask_collaborator(task_id, subtask_id, collaborator_id):
 
 @task_bp.route("/tasks/<int:task_id>/subtasks/<int:subtask_id>/transfer", methods=["POST"])
 def transfer_subtask_ownership(task_id, subtask_id):
-    """Transfer subtask ownership (assignee) to another user"""
+    #Transfer subtask ownership (assignee) to another user
     try:
         data = request.get_json()
         print(f"Transferring subtask {subtask_id} ownership")
@@ -600,7 +600,7 @@ def transfer_subtask_ownership(task_id, subtask_id):
 
 @task_bp.route("/tasks/<int:task_id>/comments", methods=["POST"])
 def add_task_comment(task_id):
-    """Add a comment to a task"""
+    #Add a comment to a task
     try:
         data = request.get_json()
         
@@ -626,7 +626,7 @@ def add_task_comment(task_id):
 
 @task_bp.route("/tasks/<int:task_id>/comments", methods=["GET"])
 def get_task_comments(task_id):
-    """Get all comments for a task"""
+    #Get all comments for a task
     try:
         comments = service.get_task_comments(task_id)
         if comments is None:
@@ -638,7 +638,7 @@ def get_task_comments(task_id):
 
 @task_bp.route("/tasks/<int:task_id>/subtasks/<int:subtask_id>/comments", methods=["POST"])
 def add_subtask_comment(task_id, subtask_id):
-    """Add a comment to a subtask"""
+    #Add a comment to a subtask
     try:
         data = request.get_json()
         
@@ -667,5 +667,5 @@ def add_subtask_comment(task_id, subtask_id):
 
 @task_bp.route("/health", methods=["GET"])
 def health_check():
-    """Health check endpoint"""
+    #Health check endpoint
     return jsonify({"status": "healthy", "service": "task_management"}), 200

@@ -2,7 +2,7 @@ from .models import db, Task, Subtask, Comment, Attachment, TaskCollaborator, Su
 from datetime import datetime
 
 def get_all_tasks(owner_id=None, status=None):
-    """Retrieve all tasks with optional filters"""
+    #Retrieve all tasks with optional filters
     try:
         query = Task.query
         
@@ -31,7 +31,7 @@ def get_all_tasks(owner_id=None, status=None):
         raise e
 
 def get_task_details(task_id):
-    """Get detailed task information"""
+    #Get detailed task information
     try:
         task = Task.query.filter_by(id=task_id).first()
         if not task:
@@ -72,7 +72,7 @@ def get_task_details(task_id):
         raise e
 
 def create_task(task_data):
-    """Create a new task"""
+    #Create a new task
     try:
         new_task = Task(
             title=task_data['title'],
@@ -103,7 +103,7 @@ def create_task(task_data):
         raise e
 
 def update_task(task_id, task_data):
-    """Update an existing task"""
+    #Update an existing task
     try:
         task = Task.query.filter_by(id=task_id).first()
         if not task:
@@ -161,7 +161,7 @@ def update_task(task_id, task_data):
         raise e
 
 def delete_task(task_id):
-    """Delete a task"""
+    #Delete a task
     try:
         task = Task.query.filter_by(id=task_id).first()
         if not task:
@@ -179,7 +179,7 @@ def delete_task(task_id):
 # ============= SUBTASK OPERATIONS =============
 
 def get_task_subtasks(task_id):
-    """Get all subtasks for a task"""
+    #Get all subtasks for a task
     try:
         task = Task.query.filter_by(id=task_id).first()
         if not task:
@@ -200,7 +200,7 @@ def get_task_subtasks(task_id):
         raise e
 
 def create_subtask(task_id, subtask_data):
-    """Create a new subtask"""
+    #Create a new subtask
     try:
         task = Task.query.filter_by(id=task_id).first()
         if not task:
@@ -234,7 +234,7 @@ def create_subtask(task_id, subtask_data):
         raise e
 
 def get_subtask_details(task_id, subtask_id):
-    """Get detailed subtask information"""
+    #Get detailed subtask information
     try:
         subtask = Subtask.query.filter_by(id=subtask_id, task_id=task_id).first()
         if not subtask:
@@ -266,7 +266,7 @@ def get_subtask_details(task_id, subtask_id):
         raise e
 
 def update_subtask(task_id, subtask_id, subtask_data):
-    """Update an existing subtask"""
+    #Update an existing subtask
     try:
         subtask = Subtask.query.filter_by(id=subtask_id, task_id=task_id).first()
         if not subtask:
@@ -322,7 +322,7 @@ def update_subtask(task_id, subtask_id, subtask_data):
         raise e
 
 def update_subtask_status(task_id, subtask_id, new_status):
-    """Update only the subtask status"""
+    #Update only the subtask status
     try:
         subtask = Subtask.query.filter_by(id=subtask_id, task_id=task_id).first()
         if not subtask:
@@ -350,15 +350,15 @@ def update_subtask_status(task_id, subtask_id, new_status):
 
 # Legacy function names for backwards compatibility
 def add_collaborator(task_id, collaborator_id):
-    """Add a collaborator to a task (legacy name)"""
+    #Add a collaborator to a task (legacy name)
     return add_task_collaborator(task_id, collaborator_id)
 
 def remove_collaborator(task_id, collaborator_id):
-    """Remove a collaborator from a task (legacy name)"""
+    #Remove a collaborator from a task (legacy name)
     return remove_task_collaborator(task_id, collaborator_id)
 
 def add_task_collaborator(task_id, collaborator_id):
-    """Add a collaborator to a task"""
+    #Add a collaborator to a task
     try:
         task = Task.query.filter_by(id=task_id).first()
         if not task:
@@ -392,7 +392,7 @@ def add_task_collaborator(task_id, collaborator_id):
         raise e
 
 def remove_task_collaborator(task_id, collaborator_id):
-    """Remove a collaborator from a task"""
+    #Remove a collaborator from a task
     try:
         collaborator = TaskCollaborator.query.filter_by(
             task_id=task_id,
@@ -414,7 +414,7 @@ def remove_task_collaborator(task_id, collaborator_id):
         raise e
 
 def get_task_collaborators(task_id):
-    """Get all collaborators for a task"""
+    #Get all collaborators for a task
     try:
         collaborators = TaskCollaborator.query.filter_by(task_id=task_id).all()
         
@@ -429,7 +429,7 @@ def get_task_collaborators(task_id):
         raise e
 
 def add_subtask_collaborator(subtask_id, collaborator_id):
-    """Add a collaborator to a subtask"""
+    #Add a collaborator to a subtask
     try:
         subtask = Subtask.query.filter_by(id=subtask_id).first()
         if not subtask:
@@ -463,7 +463,7 @@ def add_subtask_collaborator(subtask_id, collaborator_id):
         raise e
 
 def remove_subtask_collaborator(subtask_id, collaborator_id):
-    """Remove a collaborator from a subtask"""
+    #Remove a collaborator from a subtask
     try:
         collaborator = SubtaskCollaborator.query.filter_by(
             subtask_id=subtask_id,
@@ -485,7 +485,7 @@ def remove_subtask_collaborator(subtask_id, collaborator_id):
         raise e
 
 def get_subtask_collaborators(subtask_id):
-    """Get all collaborators for a subtask"""
+    #Get all collaborators for a subtask
     try:
         collaborators = SubtaskCollaborator.query.filter_by(subtask_id=subtask_id).all()
         
@@ -502,7 +502,7 @@ def get_subtask_collaborators(subtask_id):
 # ============= UTILITY FUNCTIONS =============
 
 def is_task_collaborator(task_id, user_id):
-    """Check if user is owner or collaborator of task"""
+    #Check if user is owner or collaborator of task
     try:
         task = Task.query.filter_by(id=task_id).first()
         if not task:
@@ -525,7 +525,7 @@ def is_task_collaborator(task_id, user_id):
         return False
 
 def is_subtask_collaborator(subtask_id, user_id):
-    """Check if user is assignee or collaborator of subtask"""
+    #Check if user is assignee or collaborator of subtask
     try:
         subtask = Subtask.query.filter_by(id=subtask_id).first()
         if not subtask:
@@ -548,7 +548,7 @@ def is_subtask_collaborator(subtask_id, user_id):
         return False
 
 def check_all_subtasks_completed(task_id):
-    """Check if all subtasks are completed"""
+    #Check if all subtasks are completed
     try:
         task = Task.query.filter_by(id=task_id).first()
         if not task:
@@ -569,7 +569,7 @@ def check_all_subtasks_completed(task_id):
 # ============= COMMENT OPERATIONS =============
 
 def add_task_comment(task_id, author_id, comment_body):
-    """Add a comment to a task"""
+    #Add a comment to a task
     try:
         task = Task.query.filter_by(id=task_id).first()
         if not task:
@@ -597,7 +597,7 @@ def add_task_comment(task_id, author_id, comment_body):
         raise e
 
 def get_task_comments(task_id):
-    """Get all comments for a task"""
+    #Get all comments for a task
     try:
         task = Task.query.filter_by(id=task_id).first()
         if not task:
@@ -615,7 +615,7 @@ def get_task_comments(task_id):
         raise e
 
 def add_subtask_comment(task_id, subtask_id, author_id, comment_body):
-    """Add a comment to a subtask"""
+    #Add a comment to a subtask
     try:
         subtask = Subtask.query.filter_by(id=subtask_id, task_id=task_id).first()
         if not subtask:
@@ -646,7 +646,7 @@ def add_subtask_comment(task_id, subtask_id, author_id, comment_body):
         raise e
 
 def update_task_status(task_id, new_status):
-    """Update only the task status"""
+    #Update only the task status
     try:
         task = Task.query.filter_by(id=task_id).first()
         if not task:
