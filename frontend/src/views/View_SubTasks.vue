@@ -322,7 +322,7 @@ async function createSubtask() {
   }
 }
 
-// FIXED: Function to update subtask status with proper payload
+//Function to update subtask status with proper payload
 async function updateSubtaskStatus(subtask, newStatus) {
   try {
     updatingSubtaskId.value = subtask.id;
@@ -333,7 +333,7 @@ async function updateSubtaskStatus(subtask, newStatus) {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        user_id: authStore.user.id,  // FIXED: Added user_id
+        user_id: authStore.user.id, 
         status: newStatus,
         comment: `Status changed to ${newStatus}` // Optional comment
       })
