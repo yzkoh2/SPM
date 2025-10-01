@@ -19,8 +19,9 @@
       </div>
     </header>
     
-    <!-- Status Update Modal -->
+   <!-- Status Update Modal - Only render when task is loaded -->
     <StatusUpdateModal 
+      v-if="task && showStatusModal"
       :show="showStatusModal"
       :task="task"
       @close="showStatusModal = false"
