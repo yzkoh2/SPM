@@ -18,6 +18,14 @@
         </div>
       </div>
     </header>
+    
+    <!-- Status Update Modal -->
+    <StatusUpdateModal 
+      :show="showStatusModal"
+      :task="task"
+      @close="showStatusModal = false"
+      @update-status="handleStatusUpdate"
+    />
 
     <!-- Main Content -->
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -51,17 +59,35 @@
           <div class="flex justify-between items-start mb-4">
             <div class="flex-1">
               <h2 class="text-3xl font-bold text-gray-900 mb-2">{{ task.title }}</h2>
-              <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium"
-                    :class="getStatusBadgeColor(task.status)">
-                {{ task.status }}
-              </span>
+              <div class="flex items-center space-x-3">
+                <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium"
+                      :class="getStatusBadgeColor(task.status)">
+                  {{ task.status }}
+                </span>
+                <!-- Permission indicator -->
+                <span v-if="canUpdateTask" class="text-xs text-gray-500 flex items-center">
+                  <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                  </svg>
+                  You can update this task
+                </span>
+              </div>
             </div>
             <div class="flex items-center space-x-2 ml-4">
-              <button @click="editTask" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-md text-sm font-medium">
+              <button 
+                v-if="canUpdateTask"
+                @click="showStatusModal = true" 
+                class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-md text-sm font-medium flex items-center">
+                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                </svg>
+                Update Status
+              </button>
+              <button @click="editTask" class="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-md text-sm font-medium">
                 Edit Task
               </button>
               <button @click="deleteTask" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md text-sm font-medium">
-                Delete Task
+                Delete
               </button>
             </div>
           </div>
@@ -87,8 +113,14 @@
               <p class="mt-1 text-lg text-gray-900">ID: {{ task.owner_id }}</p>
             </div>
             <div>
-              <h4 class="text-sm font-medium text-gray-500 uppercase tracking-wide">Created</h4>
-              <p class="mt-1 text-lg text-gray-900">{{ formatDate(task.deadline) }}</p>
+              <h4 class="text-sm font-medium text-gray-500 uppercase tracking-wide">Progress</h4>
+              <div class="mt-1 flex items-center">
+                <div class="flex-1 bg-gray-200 rounded-full h-2 mr-2">
+                  <div class="bg-indigo-600 h-2 rounded-full transition-all duration-300" 
+                       :style="{ width: getTaskProgress() + '%' }"></div>
+                </div>
+                <span class="text-sm text-gray-600">{{ getTaskProgress() }}%</span>
+              </div>
             </div>
           </div>
         </div>
@@ -118,7 +150,7 @@
               </div>
               <div class="ml-4">
                 <p class="text-sm font-medium text-gray-600">Comments</p>
-                <p class="text-2xl font-semibold text-gray-900">{{ task.comments?.length || 0 }}</p>
+                <p class="text-2xl font-semibold text-gray-900">{{ comments.length }}</p>
               </div>
             </div>
           </div>
@@ -151,7 +183,8 @@
           
           <div v-if="task.subtasks && task.subtasks.length > 0" class="space-y-3">
             <div v-for="subtask in task.subtasks.slice(0, 5)" :key="subtask.id" 
-                 class="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50">
+                 class="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer"
+                 @click="$router.push(`/tasks/${task.id}/subtasks/${subtask.id}`)">
               <div class="flex items-center space-x-3">
                 <div class="w-2 h-2 rounded-full" :class="getSubtaskStatusColor(subtask.status)"></div>
                 <span class="text-gray-900">{{ subtask.title }}</span>
@@ -180,13 +213,40 @@
 
         <!-- Comments Section -->
         <div class="bg-white rounded-lg shadow-md p-6">
-          <h3 class="text-xl font-semibold text-gray-900 mb-6">Comments ({{ task.comments?.length || 0 }})</h3>
+          <h3 class="text-xl font-semibold text-gray-900 mb-6">Comments ({{ comments.length }})</h3>
           
-          <div v-if="task.comments && task.comments.length > 0" class="space-y-4">
-            <div v-for="comment in task.comments" :key="comment.id" 
-                 class="border-l-4 border-indigo-200 pl-4 py-2">
+          <!-- Add Comment Form -->
+          <div class="mb-6 border-b border-gray-200 pb-6">
+            <label class="block text-sm font-medium text-gray-700 mb-2">Add a Comment</label>
+            <textarea 
+              v-model="newComment"
+              rows="3"
+              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+              placeholder="Share your progress or ask a question..."
+            ></textarea>
+            <div class="mt-2 flex justify-end">
+              <button 
+                @click="addComment"
+                :disabled="!newComment.trim() || addingComment"
+                class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-md text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed">
+                <span v-if="addingComment">Adding...</span>
+                <span v-else>Add Comment</span>
+              </button>
+            </div>
+          </div>
+          
+          <!-- Comments List -->
+          <div v-if="comments.length > 0" class="space-y-4">
+            <div v-for="comment in comments" :key="comment.id" 
+                 class="border-l-4 border-indigo-200 pl-4 py-3 bg-gray-50 rounded-r-md">
               <p class="text-gray-700">{{ comment.body }}</p>
-              <p class="text-xs text-gray-500 mt-1">Author ID: {{ comment.author_id }}</p>
+              <div class="flex items-center mt-2 text-xs text-gray-500">
+                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+                </svg>
+                <span class="mr-3">Author ID: {{ comment.author_id }}</span>
+                <span v-if="comment.created_at">{{ formatCommentDate(comment.created_at) }}</span>
+              </div>
             </div>
           </div>
           
@@ -194,7 +254,7 @@
             <svg class="mx-auto h-12 w-12 text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path>
             </svg>
-            <p>No comments yet</p>
+            <p>No comments yet. Be the first to comment!</p>
           </div>
         </div>
 
@@ -231,19 +291,32 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { useAuthStore } from '@/stores/auth'
+import StatusUpdateModal from '@/components/StatusUpdateModal.vue'
 
 const route = useRoute()
 const router = useRouter()
+const authStore = useAuthStore()
 
 // Reactive data
 const task = ref(null)
+const comments = ref([])
 const loading = ref(true)
 const error = ref(null)
+const showStatusModal = ref(false)
+const newComment = ref('')
+const addingComment = ref(false)
 
 // API configuration
 const KONG_API_URL = "http://localhost:8000"
+
+// Computed properties
+const canUpdateTask = computed(() => {
+  if (!task.value || !authStore.user) return false
+  return task.value.owner_id === authStore.user.id
+})
 
 // Fetch task details from API
 const fetchTaskDetails = async () => {
@@ -262,6 +335,7 @@ const fetchTaskDetails = async () => {
     
     if (response.ok) {
       task.value = await response.json()
+      comments.value = task.value.comments || []
       console.log('Task details loaded:', task.value)
     } else if (response.status === 404) {
       error.value = 'Task not found'
@@ -276,10 +350,77 @@ const fetchTaskDetails = async () => {
   }
 }
 
+// Handle status update
+const handleStatusUpdate = async ({ newStatus, comment }) => {
+  try {
+    const response = await fetch(`${KONG_API_URL}/tasks/${task.value.id}/status`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        user_id: authStore.user.id,
+        status: newStatus,
+        comment: comment
+      })
+    })
+    
+    const data = await response.json()
+    
+    if (!response.ok) {
+      throw new Error(data.error || 'Failed to update status')
+    }
+    
+    // Update local task data
+    task.value.status = newStatus
+    
+    // Refresh task details to get updated comments
+    await fetchTaskDetails()
+    
+    console.log('Status updated successfully')
+  } catch (err) {
+    console.error('Error updating status:', err)
+    throw err
+  }
+}
+
+// Add comment
+const addComment = async () => {
+  if (!newComment.value.trim()) return
+  
+  try {
+    addingComment.value = true
+    
+    const response = await fetch(`${KONG_API_URL}/tasks/${task.value.id}/comments`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        body: newComment.value,
+        author_id: authStore.user.id
+      })
+    })
+    
+    if (response.ok) {
+      const comment = await response.json()
+      comments.value.push(comment)
+      newComment.value = ''
+      console.log('Comment added successfully')
+    } else {
+      throw new Error('Failed to add comment')
+    }
+  } catch (err) {
+    console.error('Error adding comment:', err)
+    alert('Failed to add comment: ' + err.message)
+  } finally {
+    addingComment.value = false
+  }
+}
+
 // Action methods
 const editTask = () => {
   console.log('Edit task:', task.value)
-  // TODO: Implement edit functionality
   alert('Edit functionality coming soon!')
 }
 
@@ -303,6 +444,16 @@ const deleteTask = async () => {
     console.error('Error deleting task:', err)
     alert('Failed to delete task: ' + err.message)
   }
+}
+
+// Calculate task progress based on subtasks
+const getTaskProgress = () => {
+  if (!task.value.subtasks || task.value.subtasks.length === 0) {
+    return task.value.status === 'Completed' ? 100 : 0
+  }
+  
+  const completedCount = task.value.subtasks.filter(s => s.status === 'Completed').length
+  return Math.round((completedCount / task.value.subtasks.length) * 100)
 }
 
 // Utility methods
@@ -358,9 +509,20 @@ const formatDeadline = (deadline) => {
   })
 }
 
-const formatDate = (dateString) => {
-  if (!dateString) return 'Not specified'
+const formatCommentDate = (dateString) => {
+  if (!dateString) return ''
   const date = new Date(dateString)
+  const now = new Date()
+  const diffMs = now - date
+  const diffMins = Math.floor(diffMs / 60000)
+  const diffHours = Math.floor(diffMs / 3600000)
+  const diffDays = Math.floor(diffMs / 86400000)
+  
+  if (diffMins < 1) return 'Just now'
+  if (diffMins < 60) return `${diffMins} minute${diffMins > 1 ? 's' : ''} ago`
+  if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`
+  if (diffDays < 7) return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`
+  
   return date.toLocaleDateString('en-US', {
     year: 'numeric',
     month: 'short',
