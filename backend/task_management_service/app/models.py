@@ -22,10 +22,10 @@ class Subtask(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String(255), nullable=False)
-    description = db.Column(db.Text, nullable=True)  # Add description field
-    deadline = db.Column(db.DateTime, nullable=True)  # Add deadline field
+    description = db.Column(db.Text, nullable=True)  
+    deadline = db.Column(db.DateTime, nullable=True)  
     status = db.Column(db.String(50), default="Unassigned")
-    assignee_id = db.Column(db.Integer, nullable=True)  # Add assignee field
+    assignee_id = db.Column(db.Integer, nullable=True) 
     task_id = db.Column(db.Integer, db.ForeignKey("tasks.id"), nullable=False)
 
 class TaskCollaborator(db.Model):
