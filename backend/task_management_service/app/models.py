@@ -16,6 +16,7 @@ class Task(db.Model):
     subtasks = db.relationship("Subtask", backref="parent_task", lazy=True)
     comments = db.relationship("Comment", backref="task", lazy=True)
     attachments = db.relationship("Attachment", backref="task", lazy=True)
+    collaborators = db.relationship("TaskCollaborator", backref="task", lazy=True)
 
 class Subtask(db.Model):
     __tablename__ = "subtasks"
@@ -27,6 +28,10 @@ class Subtask(db.Model):
     status = db.Column(db.String(50), default="Unassigned")
     assignee_id = db.Column(db.Integer, nullable=True) 
     task_id = db.Column(db.Integer, db.ForeignKey("tasks.id"), nullable=False)
+
+    # Relationships
+    collaborators = db.relationship("SubtaskCollaborator", backref="subtask", lazy=True)
+
 
 class TaskCollaborator(db.Model):
     __tablename__ = "task_collaborators"
