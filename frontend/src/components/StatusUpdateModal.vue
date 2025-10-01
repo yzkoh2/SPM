@@ -23,7 +23,7 @@
               </h3>
               <div class="mt-2">
                 <p class="text-sm text-gray-500">
-                  Update the status of <strong>"{{ task.title }}"</strong>
+                  Update the status of <strong>"{{ task.title || 'this task' }}"</strong>
                 </p>
               </div>
 
@@ -47,8 +47,8 @@
                 <!-- Status change indicator -->
                 <div class="mt-2 text-sm text-gray-600">
                   <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium"
-                        :class="getStatusBadgeColor(task.status)">
-                    {{ task.status }}
+                        :class="getStatusBadgeColor(currentStatus)">
+                    {{ currentStatus }}
                   </span>
                   <svg class="inline-block mx-2 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"></path>
@@ -61,7 +61,7 @@
               </div>
 
               <!-- Warning for completion -->
-              <div v-if="!isSubtask && selectedStatus === 'Completed' && task.subtask_count > 0" 
+              <div v-if="!isSubtask && selectedStatus === 'Completed' && (task.subtask_count || 0) > 0" 
                    class="mt-4 bg-yellow-50 border border-yellow-200 rounded-md p-3">
                 <div class="flex">
                   <svg class="h-5 w-5 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
@@ -110,7 +110,7 @@
           <button 
             type="button"
             @click="confirmUpdate"
-            :disabled="updating || selectedStatus === task.status"
+            :disabled="updating || selectedStatus === currentStatus"
             class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-indigo-600 text-base font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:ml-3 sm:w-auto sm:text-sm disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <span v-if="updating" class="flex items-center">
@@ -137,7 +137,7 @@
 </template>
 
 <script setup>
-import { ref, watch } from 'vue'
+import { ref, watch, computed } from 'vue'
 
 const props = defineProps({
   show: {
@@ -146,7 +146,8 @@ const props = defineProps({
   },
   task: {
     type: Object,
-    required: true
+    required: true,
+    default: () => ({})
   },
   isSubtask: {
     type: Boolean,
@@ -156,19 +157,40 @@ const props = defineProps({
 
 const emit = defineEmits(['close', 'update-status'])
 
-const selectedStatus = ref(props.task.status)
+// Use computed for current status to handle initial null/undefined
+const currentStatus = computed(() => props.task?.status || 'Unassigned')
+
+const selectedStatus = ref(currentStatus.value)
 const comment = ref('')
 const updating = ref(false)
 const error = ref(null)
 
-// Watch for task changes to update selected status
-watch(() => props.task.status, (newStatus) => {
-  selectedStatus.value = newStatus
+// Watch for task status changes
+watch(() => props.task?.status, (newStatus) => {
+  if (newStatus) {
+    selectedStatus.value = newStatus
+  }
+}, { immediate: true })
+
+// Watch for modal show changes to reset state
+watch(() => props.show, (newVal) => {
+  if (newVal) {
+    // Modal is opening, reset to current status
+    selectedStatus.value = currentStatus.value
+    comment.value = ''
+    error.value = null
+    updating.value = false
+  } else {
+    // Modal is closing, reset state
+    updating.value = false
+    comment.value = ''
+    error.value = null
+  }
 })
 
 const closeModal = () => {
   if (!updating.value) {
-    selectedStatus.value = props.task.status
+    selectedStatus.value = currentStatus.value
     comment.value = ''
     error.value = null
     emit('close')
@@ -176,7 +198,7 @@ const closeModal = () => {
 }
 
 const confirmUpdate = async () => {
-  if (selectedStatus.value === props.task.status) {
+  if (selectedStatus.value === currentStatus.value) {
     return
   }
 
@@ -184,17 +206,16 @@ const confirmUpdate = async () => {
   error.value = null
 
   try {
-    await emit('update-status', {
+    // Emit the event to parent
+    emit('update-status', {
       newStatus: selectedStatus.value,
       comment: comment.value
     })
     
-    // Success - close modal
-    comment.value = ''
-    emit('close')
+    // Parent will handle closing the modal on success
+    
   } catch (err) {
     error.value = err.message || 'Failed to update status'
-  } finally {
     updating.value = false
   }
 }

@@ -353,6 +353,8 @@ const fetchTaskDetails = async () => {
 // Handle status update
 const handleStatusUpdate = async ({ newStatus, comment }) => {
   try {
+    console.log('Updating task status:', { newStatus, comment, taskId: task.value.id, userId: authStore.user.id })
+    
     const response = await fetch(`${KONG_API_URL}/tasks/${task.value.id}/status`, {
       method: 'PATCH',
       headers: {
@@ -361,25 +363,35 @@ const handleStatusUpdate = async ({ newStatus, comment }) => {
       body: JSON.stringify({
         user_id: authStore.user.id,
         status: newStatus,
-        comment: comment
+        comment: comment || ''
       })
     })
     
     const data = await response.json()
+    console.log('Response:', data)
     
     if (!response.ok) {
       throw new Error(data.error || 'Failed to update status')
     }
     
     // Update local task data
-    task.value.status = newStatus
+    if (data.task) {
+      task.value.status = data.task.status
+    }
     
-    // Refresh task details to get updated comments
+    // Refresh task details to get updated data
     await fetchTaskDetails()
     
-    console.log('Status updated successfully')
+    // Close modal
+    showStatusModal.value = false
+    
+    // Show success message
+    alert('Task status updated successfully!')
+    
   } catch (err) {
     console.error('Error updating status:', err)
+    alert('Failed to update status: ' + err.message)
+    // Re-throw so modal knows there was an error
     throw err
   }
 }
