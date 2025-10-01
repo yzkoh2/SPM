@@ -82,13 +82,13 @@
         </div>
 
         <!-- Debug Info -->
-        <div class="mt-4 p-2 bg-yellow-50 border border-yellow-200 rounded text-xs">
+        <!-- <div class="mt-4 p-2 bg-yellow-50 border border-yellow-200 rounded text-xs">
           <p><strong>Debug:</strong></p>
           <p>Show: {{ show }}</p>
           <p>Task ID: {{ task?.id }}</p>
           <p>Current: {{ currentStatus }}</p>
           <p>Selected: {{ selectedStatus }}</p>
-        </div>
+        </div> -->
 
       </div>
     </div>
