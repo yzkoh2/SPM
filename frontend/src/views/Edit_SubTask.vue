@@ -93,83 +93,68 @@
             />
           </div>
 
-          <!-- Status -->
+          <!-- Collaborators Section -->
           <div>
-            <label for="status" class="block text-sm font-medium text-gray-700">Status</label>
-            <select 
-              v-model="editedSubtask.status" 
-              id="status"
-              class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm px-3 py-2 border"
-              :disabled="originalSubtask.status === 'Completed'"
-            >
-              <option value="Unassigned">Unassigned</option>
-              <option value="Ongoing">Ongoing</option>
-              <option value="Under Review">Under Review</option>
-              <option value="Completed">Completed</option>
-            </select>
-            <p v-if="originalSubtask.status === 'Completed'" class="mt-1 text-sm text-red-600">
-              Completed subtasks cannot be edited
-            </p>
-          </div>
-
-          <!-- Attachments Section -->
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-2">Attachments</label>
+            <label class="block text-sm font-medium text-gray-700 mb-2">Collaborators</label>
+            <p class="text-xs text-gray-500 mb-3">Subtask collaborators are inherited from the parent task</p>
             <div class="space-y-2">
-              <!-- List existing attachments -->
-              <div v-for="attachment in editedSubtask.attachments" :key="attachment.id" 
+              <!-- List existing collaborators -->
+              <div v-for="collaborator in collaborators" :key="collaborator.user_id" 
                    class="flex items-center justify-between p-3 bg-gray-50 rounded-md">
-                <div class="flex items-center space-x-2">
-                  <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"></path>
-                  </svg>
-                  <span class="text-sm text-gray-900">{{ attachment.filename }}</span>
-                </div>
+                <span class="text-sm text-gray-900">User ID: {{ collaborator.user_id }}</span>
                 <button 
                   type="button"
-                  @click="removeAttachment(attachment.id)"
+                  @click="removeCollaborator(collaborator.user_id)"
                   class="text-red-600 hover:text-red-800 text-sm"
                 >
                   Remove
                 </button>
               </div>
               
-              <!-- Add new attachment -->
-              <div class="mt-3 p-3 border-2 border-dashed border-gray-300 rounded-md">
+              <!-- Add new collaborator -->
+              <div class="flex items-center space-x-2 mt-3">
                 <input 
-                  type="file" 
-                  @change="handleFileUpload"
-                  class="w-full text-sm text-gray-500"
+                  v-model="newCollaboratorId" 
+                  type="number" 
+                  placeholder="User ID"
+                  class="flex-1 border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm px-3 py-2 border"
                 />
+                <button 
+                  type="button"
+                  @click="addCollaborator"
+                  class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-md"
+                >
+                  Add Collaborator
+                </button>
               </div>
             </div>
           </div>
 
-          <!-- Assign Subtask (for Managers/Directors only) -->
+          <!-- Transfer Ownership (for Managers/Directors only) -->
           <div v-if="userRole === 'manager' || userRole === 'director'" class="border-t pt-6">
-            <h3 class="text-lg font-medium text-gray-900 mb-4">Assign Subtask</h3>
+            <h3 class="text-lg font-medium text-gray-900 mb-4">Transfer Subtask Ownership</h3>
+            <p class="text-sm text-gray-600 mb-4">
+              As a {{ userRole }}, you can assign this subtask to someone in your department with a lower role.
+            </p>
             <div class="flex items-center space-x-4">
               <select 
-                v-model="assignToUserId"
+                v-model="transferToUserId"
                 class="flex-1 border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm px-3 py-2 border"
               >
-                <option value="">Select user to assign</option>
+                <option value="">Select user to assign to</option>
                 <option v-for="user in availableUsers" :key="user.id" :value="user.id">
                   {{ user.name }} ({{ user.role }})
                 </option>
               </select>
               <button 
                 type="button"
-                @click="assignSubtask"
-                :disabled="!assignToUserId"
+                @click="transferOwnership"
+                :disabled="!transferToUserId"
                 class="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white text-sm font-medium rounded-md disabled:opacity-50"
               >
                 Assign Subtask
               </button>
             </div>
-            <p class="mt-2 text-sm text-gray-500">
-              You can only assign to users in your department with lower roles.
-            </p>
           </div>
 
           <!-- Form Actions -->
@@ -250,11 +235,13 @@ const subtask = ref(null)
 const originalSubtask = ref(null)
 const editedSubtask = ref({})
 const parentTask = ref(null)
+const collaborators = ref([])
 const loading = ref(true)
 const saving = ref(false)
 const error = ref(null)
 const showConfirmModal = ref(false)
-const assignToUserId = ref('')
+const newCollaboratorId = ref('')
+const transferToUserId = ref('')
 const availableUsers = ref([])
 
 // User role and permissions
@@ -283,11 +270,6 @@ const fetchSubtaskDetails = async () => {
       originalSubtask.value = JSON.parse(JSON.stringify(subtask.value))
       editedSubtask.value = JSON.parse(JSON.stringify(subtask.value))
       
-      // Initialize attachments array if not present
-      if (!editedSubtask.value.attachments) {
-        editedSubtask.value.attachments = []
-      }
-      
       // Convert deadline to datetime-local format
       if (editedSubtask.value.deadline) {
         const date = new Date(editedSubtask.value.deadline)
@@ -311,13 +293,17 @@ const fetchSubtaskDetails = async () => {
       // Check ownership
       if (parentTask.value.owner_id !== userId.value) {
         error.value = 'You are not authorized to edit this subtask'
-        router.push(`/tasks/${taskId.value}/subtasks/${subtaskId.value}`)
+        setTimeout(() => router.push(`/tasks/${taskId.value}/subtasks/${subtaskId.value}`), 2000)
+        return
       }
       
       // Check if completed
       if (subtask.value.status === 'Completed') {
         error.value = 'Completed subtasks cannot be edited'
       }
+      
+      // Fetch collaborators from parent task
+      await fetchCollaborators()
     }
     
   } catch (err) {
@@ -328,10 +314,26 @@ const fetchSubtaskDetails = async () => {
   }
 }
 
+// Fetch collaborators from parent task
+const fetchCollaborators = async () => {
+  try {
+    const response = await fetch(`${KONG_API_URL}/tasks/${taskId.value}/collaborators`, {
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    })
+    
+    if (response.ok) {
+      collaborators.value = await response.json()
+    }
+  } catch (err) {
+    console.error('Error fetching collaborators:', err)
+  }
+}
+
 // Fetch available users for assignment
 const fetchAvailableUsers = async () => {
-  // This would be an API call to get users in the same department with lower roles
-  // For now, using mock data
+  // Mock data - in production, fetch from user service
   if (userRole.value === 'director') {
     availableUsers.value = [
       { id: 2, name: 'John Manager', role: 'manager' },
@@ -357,9 +359,13 @@ const saveSubtask = async () => {
     showConfirmModal.value = false
     
     const updateData = {
-      ...editedSubtask.value,
+      title: editedSubtask.value.title,
+      description: editedSubtask.value.description,
+      deadline: editedSubtask.value.deadline || null,
       requesting_user_id: userId.value
     }
+    
+    console.log('Sending subtask update request:', updateData)
     
     const response = await fetch(`${KONG_API_URL}/tasks/${taskId.value}/subtasks/${subtaskId.value}`, {
       method: 'PUT',
@@ -369,49 +375,83 @@ const saveSubtask = async () => {
       body: JSON.stringify(updateData)
     })
     
+    const responseData = await response.json()
+    console.log('Response:', responseData)
+    
     if (response.ok) {
+      alert('Subtask updated successfully!')
       router.push(`/tasks/${taskId.value}/subtasks/${subtaskId.value}`)
     } else {
-      const errorData = await response.json()
-      error.value = errorData.error || 'Failed to update subtask'
+      error.value = responseData.error || 'Failed to update subtask'
     }
   } catch (err) {
     console.error('Error updating subtask:', err)
-    error.value = 'Failed to save changes'
+    error.value = 'Failed to save changes: ' + err.message
   } finally {
     saving.value = false
   }
 }
 
-// Handle file upload
-const handleFileUpload = (event) => {
-  const file = event.target.files[0]
-  if (file) {
-    // In production, you'd upload the file to a storage service
-    const newAttachment = {
-      id: Date.now(),
-      filename: file.name,
-      url: URL.createObjectURL(file)
-    }
+// Add collaborator (inherited from parent task)
+const addCollaborator = async () => {
+  if (!newCollaboratorId.value) return
+  
+  try {
+    const response = await fetch(`${KONG_API_URL}/tasks/${taskId.value}/collaborators`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        requesting_user_id: userId.value,
+        collaborator_id: parseInt(newCollaboratorId.value)
+      })
+    })
     
-    if (!editedSubtask.value.attachments) {
-      editedSubtask.value.attachments = []
+    if (response.ok) {
+      await fetchCollaborators()
+      newCollaboratorId.value = ''
+      alert('Collaborator added to parent task!')
+    } else {
+      const errorData = await response.json()
+      alert(errorData.error || 'Failed to add collaborator')
     }
-    editedSubtask.value.attachments.push(newAttachment)
+  } catch (err) {
+    console.error('Error adding collaborator:', err)
+    alert('Failed to add collaborator')
   }
 }
 
-// Remove attachment
-const removeAttachment = (attachmentId) => {
-  editedSubtask.value.attachments = editedSubtask.value.attachments.filter(a => a.id !== attachmentId)
+// Remove collaborator
+const removeCollaborator = async (collaboratorId) => {
+  try {
+    const response = await fetch(`${KONG_API_URL}/tasks/${taskId.value}/collaborators/${collaboratorId}?requesting_user_id=${userId.value}`, {
+      method: 'DELETE'
+    })
+    
+    if (response.ok) {
+      await fetchCollaborators()
+      alert('Collaborator removed from parent task!')
+    } else {
+      const errorData = await response.json()
+      alert(errorData.error || 'Failed to remove collaborator')
+    }
+  } catch (err) {
+    console.error('Error removing collaborator:', err)
+    alert('Failed to remove collaborator')
+  }
 }
 
-// Assign subtask
-const assignSubtask = async () => {
-  if (!assignToUserId.value) return
+// Transfer ownership (assign subtask)
+const transferOwnership = async () => {
+  if (!transferToUserId.value) return
+  
+  if (!confirm('Are you sure you want to assign this subtask? The assignee will be responsible for completing it.')) {
+    return
+  }
   
   try {
-    const selectedUser = availableUsers.value.find(u => u.id === parseInt(assignToUserId.value))
+    const selectedUser = availableUsers.value.find(u => u.id === parseInt(transferToUserId.value))
     
     const response = await fetch(`${KONG_API_URL}/tasks/${taskId.value}/subtasks/${subtaskId.value}/assign`, {
       method: 'POST',
@@ -422,7 +462,7 @@ const assignSubtask = async () => {
         requesting_user_id: userId.value,
         requesting_user_role: userRole.value,
         requesting_user_department: userDepartment.value,
-        new_owner_id: parseInt(assignToUserId.value),
+        new_owner_id: parseInt(transferToUserId.value),
         new_owner_role: selectedUser.role,
         new_owner_department: userDepartment.value
       })

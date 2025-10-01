@@ -517,6 +517,16 @@ def assign_subtask(task_id, subtask_id):
     except Exception as e:
         print(f"Error in assign_subtask: {e}")
         return jsonify({"error": str(e)}), 500
+    
+@task_bp.route("/tasks/<int:task_id>/collaborators", methods=["GET"])
+def get_collaborators(task_id):
+    """Get all collaborators for a task"""
+    try:
+        collaborators = service.get_task_collaborators(task_id)
+        return jsonify(collaborators), 200
+    except Exception as e:
+        print(f"Error in get_collaborators: {e}")
+        return jsonify({"error": str(e)}), 500
 
 # Health check endpoint
 @task_bp.route("/health", methods=["GET"])
