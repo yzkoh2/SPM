@@ -191,51 +191,56 @@
       </div>
     </div>
 
-    <!-- Confirmation Modal -->
-    <div v-if="showConfirmModal" class="fixed z-50 inset-0 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
-      <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-        <!-- Background overlay -->
-        <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" aria-hidden="true" @click="showConfirmModal = false"></div>
+      <!-- Confirmation Modal -->
+      <div
+        v-if="showConfirmModal"
+        class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50"
+        aria-labelledby="modal-title"
+        role="dialog"
+        aria-modal="true"
+        @click.self="showConfirmModal = false"
+      >
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-md p-6 relative">
+          <!-- Close (optional) -->
+          <button
+            @click="showConfirmModal = false"
+            class="absolute top-3 right-3 text-gray-400 hover:text-gray-600"
+          >
+            ✕
+          </button>
 
-        <!-- Center modal -->
-        <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
-
-        <div class="inline-block align-bottom bg-white rounded-lg px-4 pt-5 pb-4 text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full sm:p-6">
-          <div>
-            <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-indigo-100">
-              <svg class="h-6 w-6 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-              </svg>
-            </div>
-            <div class="mt-3 text-center sm:mt-5">
-              <h3 class="text-lg leading-6 font-medium text-gray-900" id="modal-title">Confirm Update</h3>
-              <div class="mt-2">
-                <p class="text-sm text-gray-500">
-                  Are you sure you want to update this subtask? 
-                  This will update the subtask for all collaborators in real-time.
-                </p>
-              </div>
-            </div>
+          <!-- Icon -->
+          <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-indigo-100 mb-4">
+            <svg class="h-6 w-6 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+            </svg>
           </div>
-          <div class="mt-5 sm:mt-6 sm:grid sm:grid-cols-2 sm:gap-3 sm:grid-flow-row-dense">
-            <button 
+
+          <!-- Title & Message -->
+          <h3 class="text-lg font-medium text-gray-900 text-center" id="modal-title">
+            Confirm Update
+          </h3>
+          <p class="text-sm text-gray-500 mt-2 text-center">
+            Are you sure you want to update this subtask? This will update it for all collaborators in real-time.
+          </p>
+
+          <!-- Buttons -->
+          <div class="mt-6 flex space-x-3">
+            <button
               @click="saveSubtask"
-              type="button"
-              class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-indigo-600 text-base font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:col-start-2 sm:text-sm"
+              class="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
             >
               Confirm
             </button>
-            <button 
+            <button
               @click="showConfirmModal = false"
-              type="button"
-              class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:col-start-1 sm:text-sm"
+              class="flex-1 px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300"
             >
               Cancel
             </button>
           </div>
         </div>
       </div>
-    </div>
   </div>
 </template>
 
