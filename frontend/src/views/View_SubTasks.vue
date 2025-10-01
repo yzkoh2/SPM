@@ -30,64 +30,52 @@
     
     <!-- Main Content -->
     <main class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-        <!-- Create Task Button -->
-    <div class="mb-6">
+      <!-- Create Task Button -->
+      <div class="mb-6">
         <button @click="showCreateForm = !showCreateForm" 
                 class="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-lg font-medium transition-colors flex items-center">
-        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
-        </svg>
-        {{ showCreateForm ? 'Cancel' : 'Create New Task' }}
+          </svg>
+          {{ showCreateForm ? 'Cancel' : 'Create New Subtask' }}
         </button>
-    </div>
+      </div>
 
-    <!-- Create Subtask Form -->
-    <div v-if="showCreateForm" class="bg-white rounded-lg shadow-md p-6 mb-8">
+      <!-- Create Subtask Form -->
+      <div v-if="showCreateForm" class="bg-white rounded-lg shadow-md p-6 mb-8">
         <h2 class="text-xl font-semibold text-gray-900 mb-4">Create New Subtask</h2>
         <form @submit.prevent="createSubtask" class="space-y-4">
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div class="grid grid-cols-1 gap-4">
             <div>
-            <label class="block text-sm font-medium text-gray-700 mb-2">Subtask Title</label>
-            <input v-model="newSubtask.title" type="text" required 
-                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+              <label class="block text-sm font-medium text-gray-700 mb-2">Subtask Title</label>
+              <input v-model="newSubtask.title" type="text" required 
+                     class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
             </div>
-            <div>
-            <label class="block text-sm font-medium text-gray-700 mb-2">Deadline</label>
-            <input v-model="newSubtask.deadline" type="datetime-local"
-                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
-            </div>
-        </div>
-        
-        <div>
-            <label class="block text-sm font-medium text-gray-700 mb-2">Description</label>
-            <textarea v-model="newSubtask.description" rows="3"
-                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                    placeholder="Describe the Subtask in detail..."></textarea>
-        </div>
-        
-        <div>
+          </div>
+          
+          <div>
             <label class="block text-sm font-medium text-gray-700 mb-2">Status</label>
             <select v-model="newSubtask.status" 
                     class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
-            <option value="Unassigned">Unassigned</option>
-            <option value="Ongoing">Ongoing</option>
-            <option value="Under Review">Under Review</option>
-            <option value="Completed">Completed</option>
+              <option value="Unassigned">Unassigned</option>
+              <option value="Ongoing">Ongoing</option>
+              <option value="Under Review">Under Review</option>
+              <option value="Completed">Completed</option>
             </select>
-        </div>
-        
-        <div class="flex justify-end space-x-3">
+          </div>
+          
+          <div class="flex justify-end space-x-3">
             <button type="button" @click="showCreateForm = false" 
                     class="px-4 py-2 text-gray-700 bg-gray-200 hover:bg-gray-300 rounded-md transition-colors">
-            Cancel
+              Cancel
             </button>
             <button type="submit" :disabled="isCreating"
                     class="px-6 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md transition-colors disabled:opacity-50">
-            {{ isCreating ? 'Creating...' : 'Create Subtask' }}
+              {{ isCreating ? 'Creating...' : 'Create Subtask' }}
             </button>
-        </div>
+          </div>
         </form>
-    </div>
+      </div>
     
       <div class="px-4 py-6 sm:px-0">
         <!-- Task Overview Card -->
@@ -149,7 +137,6 @@
           <div v-for="subtask in subtasks" :key="subtask.id" class="bg-white border rounded-lg p-4 hover:shadow-sm transition-shadow">
             <div class="flex items-center justify-between">
               <div class="flex items-center space-x-3 flex-1">
-                
                 <!-- Subtask content -->
                 <div class="flex-1">
                   <h4 class="text-sm font-medium text-gray-900"
@@ -172,13 +159,20 @@
                 <select 
                   :value="subtask.status"
                   @change="updateSubtaskStatus(subtask, $event.target.value)"
-                  class="text-xs border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
+                  :disabled="updatingSubtaskId === subtask.id"
+                  class="text-xs border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500 disabled:opacity-50"
                 >
                   <option value="Unassigned">Unassigned</option>
                   <option value="Ongoing">Ongoing</option>
+                  <option value="Under Review">Under Review</option>
                   <option value="Completed">Completed</option>
                   <option value="On Hold">On Hold</option>
                 </select>
+
+                <!-- Loading indicator -->
+                <div v-if="updatingSubtaskId === subtask.id" class="flex items-center">
+                  <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-indigo-600"></div>
+                </div>
 
                 <!-- View Individual Subtask Button -->
                 <router-link 
@@ -212,22 +206,24 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
+import { useAuthStore } from '@/stores/auth';
 
 const router = useRouter();
 const route = useRoute();
+const authStore = useAuthStore();
+
 const subtasks = ref([]);
 const parentTask = ref(null);
 const loading = ref(true);
 const error = ref(null);
-const showCreateForm = ref(false)
-const isCreating = ref(false)
+const showCreateForm = ref(false);
+const isCreating = ref(false);
+const updatingSubtaskId = ref(null);
 
 const newSubtask = ref({
-title: '',
-deadline: '',
-description: '',
-status: 'Unassigned'
-})
+  title: '',
+  status: 'Unassigned'
+});
 
 const KONG_API_URL = "http://localhost:8000";
 
@@ -244,15 +240,8 @@ const progressPercentage = computed(() => {
 // Function to fetch parent task details
 async function fetchParentTask() {
   try {
-    const token = localStorage.getItem('authToken');
-    if (!token) {
-      router.push('/login');
-      return;
-    }
-
     const response = await fetch(`${KONG_API_URL}/tasks/${route.params.id}`, {
       headers: {
-        'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json'
       }
     });
@@ -273,25 +262,13 @@ async function fetchSubtasks() {
   error.value = null;
   
   try {
-    const token = localStorage.getItem('authToken');
-    if (!token) {
-      router.push('/login');
-      return;
-    }
-
     const response = await fetch(`${KONG_API_URL}/tasks/${route.params.id}/subtasks`, {
       headers: {
-        'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json'
       }
     });
 
     if (!response.ok) {
-      if (response.status === 401) {
-        localStorage.removeItem('authToken');
-        router.push('/login');
-        return;
-      }
       if (response.status === 404) {
         throw new Error('Task not found');
       }
@@ -307,62 +284,103 @@ async function fetchSubtasks() {
   }
 }
 
-// Function to update subtask status
+// Function to create subtask
+async function createSubtask() {
+  try {
+    isCreating.value = true;
+    
+    const subtaskData = {
+      title: newSubtask.value.title,
+      status: newSubtask.value.status
+    };
+    
+    const response = await fetch(`${KONG_API_URL}/tasks/${route.params.id}/subtasks`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(subtaskData)
+    });
+    
+    if (response.ok) {
+      await fetchSubtasks();
+      
+      newSubtask.value = {
+        title: '',
+        status: 'Unassigned'
+      };
+      showCreateForm.value = false;
+    } else {
+      const errorData = await response.json();
+      throw new Error(errorData.error || `Failed to create subtask: ${response.status}`);
+    }
+  } catch (err) {
+    console.error('Error creating subtask:', err);
+    alert('Failed to create subtask: ' + err.message);
+  } finally {
+    isCreating.value = false;
+  }
+}
+
+// FIXED: Function to update subtask status with proper payload
 async function updateSubtaskStatus(subtask, newStatus) {
   try {
-    const token = localStorage.getItem('authToken');
-    if (!token) {
-      router.push('/login');
-      return;
-    }
+    updatingSubtaskId.value = subtask.id;
 
-    const response = await fetch(`${KONG_API_URL}/tasks/${route.params.id}/subtasks/${subtask.id}`, {
+    const response = await fetch(`${KONG_API_URL}/tasks/${route.params.id}/subtasks/${subtask.id}/status`, {
       method: 'PATCH',
       headers: {
-        'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        status: newStatus
+        user_id: authStore.user.id,  // FIXED: Added user_id
+        status: newStatus,
+        comment: `Status changed to ${newStatus}` // Optional comment
       })
     });
 
     if (!response.ok) {
-      throw new Error(`Failed to update subtask: ${response.status}`);
+      const errorData = await response.json();
+      throw new Error(errorData.error || `Failed to update subtask: ${response.status}`);
     }
 
-    // Update local state
+    const result = await response.json();
+    
+    // Update local state with the returned data
     const index = subtasks.value.findIndex(s => s.id === subtask.id);
     if (index !== -1) {
-      subtasks.value[index].status = newStatus;
+      subtasks.value[index].status = result.subtask.status;
     }
 
     console.log(`Subtask ${subtask.id} status updated to: ${newStatus}`);
   } catch (err) {
     console.error('Error updating subtask status:', err);
-    alert('Failed to update subtask status. Please try again.');
+    alert('Failed to update subtask status: ' + err.message);
+    // Revert the select dropdown by forcing a re-render
+    await fetchSubtasks();
+  } finally {
+    updatingSubtaskId.value = null;
   }
-}
-
-// Function to toggle subtask between completed and ongoing
-function toggleSubtaskStatus(subtask) {
-  const newStatus = subtask.status === 'Completed' ? 'Ongoing' : 'Completed';
-  updateSubtaskStatus(subtask, newStatus);
 }
 
 // Function to get status color
 function getStatusColor(status) {
   const colors = {
     'Unassigned': 'bg-gray-100 text-gray-800',
-    'Ongoing': 'bg-blue-100 text-blue-800',
+    'Ongoing': 'bg-yellow-100 text-yellow-800',
+    'Under Review': 'bg-orange-100 text-orange-800',
     'Completed': 'bg-green-100 text-green-800',
-    'On Hold': 'bg-yellow-100 text-yellow-800'
+    'On Hold': 'bg-red-100 text-red-800'
   };
   return colors[status] || 'bg-gray-100 text-gray-800';
 }
 
 // Initialize component
 onMounted(() => {
+  if (!authStore.isAuthenticated) {
+    router.push('/login');
+    return;
+  }
   fetchParentTask();
   fetchSubtasks();
 });
