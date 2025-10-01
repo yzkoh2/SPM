@@ -409,6 +409,115 @@ def remove_collaborator(task_id, collaborator_id):
         print(f"Error in remove_collaborator: {e}")
         return jsonify({"error": str(e)}), 500    
 
+@task_bp.route("/tasks/<int:task_id>/assign", methods=["POST"])
+def assign_task(task_id):
+    #Assign task to another user (transfer ownership)
+    try:
+        data = request.get_json()
+        print(f"Assigning task {task_id}")
+        
+        requesting_user_id = data.get('requesting_user_id')
+        requesting_user_role = data.get('requesting_user_role')  # 'director', 'manager', 'staff'
+        requesting_user_department = data.get('requesting_user_department')
+        
+        new_owner_id = data.get('new_owner_id')
+        new_owner_role = data.get('new_owner_role')
+        new_owner_department = data.get('new_owner_department')
+        
+        # Check if task exists
+        current_task = service.get_task_details(task_id)
+        if not current_task:
+            return jsonify({"error": "Task not found"}), 404
+        
+        # Check if user is the owner of the task
+        if current_task['owner_id'] != requesting_user_id:
+            return jsonify({"error": "Only task owner can assign the task"}), 403
+        
+        # Check role hierarchy for assignment
+        # Director > Manager > Staff
+        role_hierarchy = {'director': 3, 'manager': 2, 'staff': 1}
+        
+        # Only Manager/Director can assign tasks
+        if requesting_user_role not in ['manager', 'director']:
+            return jsonify({"error": "Only Managers and Directors can assign tasks"}), 403
+        
+        # Check if assigning to someone in the same department
+        if requesting_user_department != new_owner_department:
+            return jsonify({"error": "Can only assign tasks within the same department"}), 403
+        
+        # Check if assigning to someone of lower role
+        if role_hierarchy.get(new_owner_role, 0) >= role_hierarchy.get(requesting_user_role, 0):
+            return jsonify({"error": "Can only assign tasks to users with lower roles"}), 403
+        
+        # Update task ownership
+        updated_data = {'owner_id': new_owner_id}
+        updated_task = service.update_task(task_id, updated_data)
+        
+        if updated_task:
+            return jsonify({
+                "message": "Task assigned successfully",
+                "task": updated_task
+            }), 200
+        else:
+            return jsonify({"error": "Failed to assign task"}), 400
+            
+    except Exception as e:
+        print(f"Error in assign_task: {e}")
+        return jsonify({"error": str(e)}), 500
+
+@task_bp.route("/tasks/<int:task_id>/subtasks/<int:subtask_id>/assign", methods=["POST"])
+def assign_subtask(task_id, subtask_id):
+    #Assign subtask to another user (transfer ownership)
+    try:
+        data = request.get_json()
+        print(f"Assigning subtask {subtask_id} of task {task_id}")
+        
+        requesting_user_id = data.get('requesting_user_id')
+        requesting_user_role = data.get('requesting_user_role')
+        requesting_user_department = data.get('requesting_user_department')
+        
+        new_owner_id = data.get('new_owner_id')
+        new_owner_role = data.get('new_owner_role')
+        new_owner_department = data.get('new_owner_department')
+        
+        # Check if subtask exists
+        current_subtask = service.get_subtask_details(task_id, subtask_id)
+        if not current_subtask:
+            return jsonify({"error": "Subtask not found"}), 404
+        
+        # Check if user is the owner of the parent task
+        parent_task = service.get_task_details(task_id)
+        if parent_task['owner_id'] != requesting_user_id:
+            return jsonify({"error": "Only task owner can assign subtasks"}), 403
+        
+        # Apply same role hierarchy rules
+        role_hierarchy = {'director': 3, 'manager': 2, 'staff': 1}
+        
+        if requesting_user_role not in ['manager', 'director']:
+            return jsonify({"error": "Only Managers and Directors can assign subtasks"}), 403
+        
+        if requesting_user_department != new_owner_department:
+            return jsonify({"error": "Can only assign subtasks within the same department"}), 403
+        
+        if role_hierarchy.get(new_owner_role, 0) >= role_hierarchy.get(requesting_user_role, 0):
+            return jsonify({"error": "Can only assign subtasks to users with lower roles"}), 403
+        
+        # Update subtask ownership (you might need to add owner_id field to subtask model)
+        updated_data = {'assignee_id': new_owner_id}
+        updated_subtask = service.update_subtask(task_id, subtask_id, updated_data)
+        
+        if updated_subtask:
+            return jsonify({
+                "message": "Subtask assigned successfully",
+                "subtask": updated_subtask
+            }), 200
+        else:
+            return jsonify({"error": "Failed to assign subtask"}), 400
+            
+    except Exception as e:
+        print(f"Error in assign_subtask: {e}")
+        return jsonify({"error": str(e)}), 500
+
 # Health check endpoint
 @task_bp.route("/health", methods=["GET"])
 def health_check():
