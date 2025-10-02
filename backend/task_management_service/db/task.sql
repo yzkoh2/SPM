@@ -83,6 +83,11 @@ INSERT INTO task_collaborators (task_id, user_id, role) VALUES
 (1, 2, 'collaborator'),
 (1, 3, 'collaborator');
 
+-- Insert sample subtask collaborators
+INSERT INTO subtask_collaborators (subtask_id, user_id, role) VALUES
+(1, 1, 'collaborator'),  -- John is collaborator on subtask 1
+(2, 2, 'collaborator');  -- Jane is collaborator on subtask 2
+
 -- Task 2
 INSERT INTO tasks (title, description, deadline, status, owner_id)
 VALUES ('Backend API Setup', 'Setup Flask API for task management', '2025-10-20', 'Ongoing', 2);
