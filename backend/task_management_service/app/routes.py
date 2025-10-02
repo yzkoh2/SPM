@@ -1,4 +1,4 @@
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, jsonify, request, send_from_directory
 from . import service
 from werkzeug.utils import secure_filename
 from datetime import datetime
@@ -912,6 +912,7 @@ def serve_file(filepath):
     except Exception as e:
         print(f"Error serving file: {e}")
         return jsonify({"error": "File not found"}), 404
+
 # ============= HEALTH CHECK =============
 
 @task_bp.route("/health", methods=["GET"])
