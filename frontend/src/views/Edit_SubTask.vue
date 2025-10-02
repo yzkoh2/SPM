@@ -130,8 +130,7 @@
                   v-model="newCollaboratorId"
                   type="number"
                   placeholder="Enter user ID"
-                  class="flex-1 border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm px-3 py-2 border"
-                />
+                  class="flex-1 border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm px-3 py-2 border"/>
                 <button 
                   type="button"
                   @click="addCollaborator"
@@ -170,14 +169,15 @@
               </button>
             </div>
           </div>
+
           <!-- Attachments Section -->
-<div>
-  <label class="block text-sm font-medium text-gray-700 mb-2">Attachments</label>
-  <p class="text-xs text-gray-500 mb-3">Upload files (images, PDFs, documents, etc.)</p>
-  
-  <!-- Existing Attachments -->
-  <div v-if="task.attachments && task.attachments.length > 0" class="space-y-2 mb-4">
-    <div v-for="attachment in task.attachments" :key="attachment.id" 
+          <div class="border-t pt-6">
+            <label class="block text-sm font-medium text-gray-700 mb-2">Attachments</label>
+            <p class="text-xs text-gray-500 mb-3">Upload files (images, PDFs, documents, etc.)</p>
+            
+  <!-- Existing Attachments - Fixed to use subtask.attachments -->
+  <div v-if="subtask.attachments && subtask.attachments.length > 0" class="space-y-2 mb-4">
+    <div v-for="attachment in subtask.attachments" :key="attachment.id" 
          class="flex items-center justify-between p-3 bg-gray-50 rounded-md border border-gray-200">
       <div class="flex items-center space-x-3">
         <!-- File Icon based on type -->
@@ -216,137 +216,114 @@
       </div>
     </div>
   </div>
-  
-  <!-- File Upload Area -->
-  <div class="mt-4">
-    <div class="flex items-center justify-center w-full">
-      <label class="flex flex-col items-center justify-center w-full h-32 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100">
-        <div class="flex flex-col items-center justify-center pt-5 pb-6">
-          <svg class="w-8 h-8 mb-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
-          </svg>
-          <p class="mb-2 text-sm text-gray-500">
-            <span class="font-semibold">Click to upload</span> or drag and drop
-          </p>
-          <p class="text-xs text-gray-500">PNG, JPG, PDF, DOC (MAX. 16MB)</p>
-        </div>
-        <input 
-          type="file" 
-          ref="fileInput"
-          @change="handleFileSelect"
-          class="hidden" 
-          accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.zip,.rar"
-        />
-      </label>
-    </div>
-    
-    <!-- Selected File Preview -->
-    <div v-if="selectedFile" class="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-md flex items-center justify-between">
-      <div class="flex items-center space-x-3">
-        <svg class="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-        </svg>
-        <div>
-          <p class="text-sm font-medium text-blue-900">{{ selectedFile.name }}</p>
-          <p class="text-xs text-blue-700">{{ formatFileSize(selectedFile.size) }}</p>
-        </div>
-      </div>
-      <div class="flex items-center space-x-2">
-        <button 
-          type="button"
-          @click="uploadFile"
-          :disabled="uploading"
-          class="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-md disabled:opacity-50 flex items-center">
-          <svg v-if="!uploading" class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path>
-          </svg>
-          <div v-else class="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-1"></div>
-          {{ uploading ? 'Uploading...' : 'Upload' }}
-        </button>
-        <button 
-          type="button"
-          @click="clearSelectedFile"
-          class="text-gray-600 hover:text-gray-800">
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-          </svg>
-        </button>
-      </div>
-    </div>
-  </div>
-</div>
-          <!-- Form Actions -->
-          <div class="flex justify-end space-x-3 pt-6 border-t">
-            <router-link 
-              :to="`/tasks/${taskId}/subtasks/${subtaskId}`"
-              class="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+            
+            <!-- File Upload Area -->
+            <div class="mt-4">
+              <div class="flex items-center justify-center w-full">
+                <label class="flex flex-col items-center justify-center w-full h-32 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100">
+                  <div class="flex flex-col items-center justify-center pt-5 pb-6">
+                    <svg class="w-8 h-8 mb-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
+                    </svg>
+                    <p class="mb-2 text-sm text-gray-500">
+                      <span class="font-semibold">Click to upload</span> or drag and drop
+                    </p>
+                    <p class="text-xs text-gray-500">PNG, JPG, PDF, DOC (MAX. 16MB)</p>
+                  </div>
+                  <input 
+                    type="file" 
+                    ref="fileInput"
+                    @change="handleFileSelect"
+                    class="hidden" 
+                    accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.zip,.rar"
+                  />
+                </label>
+              </div>
+              
+              <!-- Selected File Preview -->
+              <div v-if="selectedFile" class="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-md flex items-center justify-between">
+                <div class="flex items-center space-x-3">
+                  <svg class="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                  </svg>
+                  <div>
+                    <p class="text-sm font-medium text-blue-900">{{ selectedFile.name }}</p>
+                    <p class="text-xs text-blue-700">{{ formatFileSize(selectedFile.size) }}</p>
+                  </div>
+                </div>
+                <div class="flex items-center space-x-2">
+                  <button 
+                    type="button"
+                    @click="uploadFile"
+                    :disabled="uploading"
+                    class="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-md disabled:opacity-50 flex items-center">
+                    <svg v-if="!uploading" class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path>
+                    </svg>
+                    <div v-else class="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-1"></div>
+                    {{ uploading ? 'Uploading...' : 'Upload' }}
+                  </button>
+                  <button 
+                    type="button"
+                    @click="clearSelectedFile"
+                    class="text-gray-600 hover:text-gray-800">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Form Action Buttons -->
+          <div class="flex justify-end space-x-4 pt-6 border-t">
+            <button 
+              type="button" 
+              @click="router.push(`/tasks/${taskId}/subtasks/${subtaskId}`)"
+              class="px-6 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 font-medium"
             >
               Cancel
-            </router-link>
+            </button>
             <button 
-              type="submit"
+              type="submit" 
               :disabled="saving"
-              class="px-6 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-md disabled:opacity-50"
+              class="px-6 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md disabled:opacity-50 font-medium flex items-center"
             >
-              {{ saving ? 'Saving...' : 'Update Subtask' }}
+              <div v-if="saving" class="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+              {{ saving ? 'Saving...' : 'Save Changes' }}
             </button>
           </div>
         </form>
       </div>
     </div>
 
-      <!-- Confirmation Modal -->
-      <div
-        v-if="showConfirmModal"
-        class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50"
-        aria-labelledby="modal-title"
-        role="dialog"
-        aria-modal="true"
-        @click.self="showConfirmModal = false"
-      >
-        <div class="bg-white rounded-lg shadow-xl w-full max-w-md p-6 relative">
-          <!-- Close (optional) -->
-          <button
-            @click="showConfirmModal = false"
-            class="absolute top-3 right-3 text-gray-400 hover:text-gray-600"
-          >
-            ✕
-          </button>
-
-          <!-- Icon -->
-          <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-indigo-100 mb-4">
-            <svg class="h-6 w-6 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-            </svg>
-          </div>
-
-          <!-- Title & Message -->
-          <h3 class="text-lg font-medium text-gray-900 text-center" id="modal-title">
-            Confirm Update
-          </h3>
-          <p class="text-sm text-gray-500 mt-2 text-center">
-            Are you sure you want to update this subtask? This will update it for all collaborators in real-time.
-          </p>
-
-          <!-- Buttons -->
-          <div class="mt-6 flex space-x-3">
-            <button
-              @click="saveSubtask"
-              class="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
-            >
-              Confirm
-            </button>
-            <button
+    <!-- Confirmation Modal -->
+    <div v-if="showConfirmModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 flex items-center justify-center">
+      <div class="relative bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
+        <div class="p-6">
+          <h3 class="text-lg font-semibold text-gray-900 mb-4">Confirm Update</h3>
+          <p class="text-sm text-gray-600 mb-6">Are you sure you want to save these changes to the subtask?</p>
+          <div class="flex justify-end space-x-3">
+            <button 
               @click="showConfirmModal = false"
-              class="flex-1 px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300"
+              class="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 font-medium"
             >
               Cancel
+            </button>
+            <button 
+              @click="saveSubtask"
+              class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md font-medium"
+            >
+              Confirm
             </button>
           </div>
         </div>
       </div>
+    </div>
   </div>
 </template>
+
 
 <script setup>
 import { ref, onMounted } from 'vue'
@@ -684,7 +661,15 @@ const uploadFile = async () => {
       const attachment = await response.json()
       console.log('File uploaded successfully:', attachment)
       
+      // Option A: Add the new attachment directly to the array
+      if (!subtask.value.attachments) {
+        subtask.value.attachments = []
+      }
+      subtask.value.attachments.push(attachment)
+      
+      // Option B: Or refresh from server
       await fetchSubtaskDetails()
+      
       clearSelectedFile()
       alert('File uploaded successfully!')
     } else {

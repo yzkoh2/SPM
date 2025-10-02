@@ -1,4 +1,4 @@
-from .models import db, Task, Subtask, Comment, Attachment, TaskCollaborator, SubtaskCollaborator
+from .models import db, Task, Subtask, Comment, Attachment, TaskCollaborator, SubtaskCollaborator, SubtaskAttachment
 from datetime import datetime
 
 def get_all_tasks(owner_id=None, status=None):
@@ -723,10 +723,11 @@ def add_subtask_attachment(subtask_id, filename, url):
         if not subtask:
             return None
         
-        new_attachment = Attachment(
-            filename=f"[Subtask-{subtask_id}] {filename}",
+        # Use SubtaskAttachment model instead of Attachment
+        new_attachment = SubtaskAttachment(
+            filename=filename,
             url=url,
-            task_id=subtask.task_id
+            subtask_id=subtask_id
         )
         
         db.session.add(new_attachment)
@@ -746,9 +747,13 @@ def add_subtask_attachment(subtask_id, filename, url):
 def delete_subtask_attachment(subtask_id, attachment_id):
     #Delete an attachment from a subtask
     try:
-        # Find attachment that belongs to this subtask
-        attachment = Attachment.query.filter_by(id=attachment_id).first()
-        if not attachment or f"[Subtask-{subtask_id}]" not in attachment.filename:
+        # Query SubtaskAttachment instead of Attachment
+        attachment = SubtaskAttachment.query.filter_by(
+            id=attachment_id, 
+            subtask_id=subtask_id
+        ).first()
+        
+        if not attachment:
             return False
         
         db.session.delete(attachment)
@@ -867,8 +872,7 @@ def get_task_attachment(attachment_id):
 def get_subtask_attachment(attachment_id):
     #Get a specific subtask attachment
     try:
-        from .models import SubtaskAttachment
-        
+        # Use SubtaskAttachment model
         attachment = SubtaskAttachment.query.filter_by(id=attachment_id).first()
         if not attachment:
             return None
