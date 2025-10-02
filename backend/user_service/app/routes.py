@@ -69,6 +69,7 @@ def login():
             
         return jsonify({'token': token, 'userID': id, 'name': name, 'role': role}), 200
     except Exception as e:
+        print(f"An error has occured: {e}")
         return jsonify({'error': 'An unexpected error has occured. Please try again later.'}), 500
 
 

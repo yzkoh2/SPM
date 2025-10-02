@@ -1,18 +1,18 @@
 # app/services.py
-from .models import db, User
+from .models import db, User, Team, RoleEnum
 from flask import current_app
 import jwt
 import datetime
-import bcrypt
+# import bcrypt
 
 # Password Hashing Functions
-def hash_password(plain_text_password):
-    """Hashes a password using bcrypt."""
-    return bcrypt.hashpw(plain_text_password.encode('utf-8'), bcrypt.gensalt())
+# def hash_password(plain_text_password):
+#     """Hashes a password using bcrypt."""
+#     return bcrypt.hashpw(plain_text_password.encode('utf-8'), bcrypt.gensalt())
 
-def check_password(plain_text_password, hashed_password):
-    """Checks a plain-text password against a hashed one."""
-    return bcrypt.checkpw(plain_text_password.encode('utf-8'), hashed_password.encode('utf-8'))
+# def check_password(plain_text_password, hashed_password):
+#     """Checks a plain-text password against a hashed one."""
+#     return bcrypt.checkpw(plain_text_password.encode('utf-8'), hashed_password.encode('utf-8'))
 #############################################################################################################
 
 
@@ -24,8 +24,8 @@ def login_user(data):
     """
     user = get_user_by_email(data.get('email'))
     password = data.get('password')
-    if user and check_password(password, user.password):
-        return generate_token(user.id), user.id, user.name, user.role
+    if user and user.check_password(password):
+        return generate_token(user.id), user.id, user.name, user.role.value
     return None, None, None, None
 
 def generate_token(user_id):
@@ -67,15 +67,25 @@ def create_user(data):
     if get_user_by_username(data['username']):
         return None, "Username already taken."
     
-    hashed_pw = hash_password(data['password'])
+    team = Team.query.get(data.get('team_id'))
+    if not team:
+        return None, f"Team with id {data['team_id']} not found."
 
+    role_str = data.get('role')
+    try:
+        role = RoleEnum(role_str.capitalize())
+    except ValueError:
+        return None, f"Invalid role: {role_str}. Must be one of {[role.value for role in RoleEnum]}."
     new_user = User(
         username=data['username'],
         name=data['name'],
-        password=hashed_pw.decode('utf-8'),
         email=data['email'],
-        role=data.get('role', 'staff')
+        role=role,
+        team_id=data['team_id']
     )
+
+    new_user.set_password(data['password'])
+
     db.session.add(new_user)
     db.session.commit()
 

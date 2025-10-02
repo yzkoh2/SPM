@@ -17,4 +17,3 @@ gunicorn
 # Password encryption
 PyJWT
 cryptography
-bcrypt
