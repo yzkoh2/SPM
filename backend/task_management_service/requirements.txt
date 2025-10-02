@@ -18,3 +18,6 @@ gunicorn
 PyJWT
 cryptography
 bcrypt
+
+# File upload handling
+Werkzeug

@@ -103,6 +103,8 @@ services:
     environment:
       DATABASE_URL: ${TASK_DATABASE_URL}
       SECRET_KEY: ${SECRET_KEY}
+    volumes:
+      - ./backend/task_management_service/uploads:/app/uploads
     depends_on:
       - task_db
 
