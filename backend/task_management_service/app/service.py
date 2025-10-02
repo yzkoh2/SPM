@@ -675,7 +675,7 @@ def update_task_status(task_id, new_status):
 # ============= ATTACHMENT OPERATIONS =============
 
 def add_task_attachment(task_id, filename, url):
-    """Add an attachment to a task"""
+    #Add an attachment to a task
     try:
         task = Task.query.filter_by(id=task_id).first()
         if not task:
@@ -702,7 +702,7 @@ def add_task_attachment(task_id, filename, url):
         raise e
 
 def delete_task_attachment(task_id, attachment_id):
-    """Delete an attachment from a task"""
+    #Delete an attachment from a task
     try:
         attachment = Attachment.query.filter_by(id=attachment_id, task_id=task_id).first()
         if not attachment:
@@ -716,22 +716,13 @@ def delete_task_attachment(task_id, attachment_id):
         db.session.rollback()
         raise e
 
-# For subtasks, we need to add attachments table reference to Subtask model first
-# Update the Subtask model in models.py to include:
-# attachments = db.relationship("SubtaskAttachment", backref="subtask", lazy=True)
-
 def add_subtask_attachment(subtask_id, filename, url):
-    """Add an attachment to a subtask"""
+    #Add an attachment to a subtask
     try:
         subtask = Subtask.query.filter_by(id=subtask_id).first()
         if not subtask:
             return None
         
-        # First, create SubtaskAttachment model if it doesn't exist
-        # For now, we'll store it in a simple way
-        # You may need to create a SubtaskAttachment model similar to Attachment
-        
-        # Temporary solution: Store in task attachments with subtask reference in filename
         new_attachment = Attachment(
             filename=f"[Subtask-{subtask_id}] {filename}",
             url=url,
@@ -753,7 +744,7 @@ def add_subtask_attachment(subtask_id, filename, url):
         raise e
 
 def delete_subtask_attachment(subtask_id, attachment_id):
-    """Delete an attachment from a subtask"""
+    #Delete an attachment from a subtask
     try:
         # Find attachment that belongs to this subtask
         attachment = Attachment.query.filter_by(id=attachment_id).first()
@@ -769,7 +760,7 @@ def delete_subtask_attachment(subtask_id, attachment_id):
         raise e
 
 def get_task_details(task_id):
-    """Get detailed task information including all relationships"""
+    #Get detailed task information including all relationships
     try:
         task = Task.query.filter_by(id=task_id).first()
         if not task:
@@ -814,7 +805,7 @@ def get_task_details(task_id):
         raise e
 
 def get_subtask_details(task_id, subtask_id):
-    """Get detailed subtask information"""
+    #Get detailed subtask information
     try:
         from .models import SubtaskAttachment
         
@@ -856,7 +847,7 @@ def get_subtask_details(task_id, subtask_id):
         raise e
     
 def get_task_attachment(attachment_id):
-    """Get a specific attachment"""
+    #Get a specific attachment
     try:
         attachment = Attachment.query.filter_by(id=attachment_id).first()
         if not attachment:
@@ -874,7 +865,7 @@ def get_task_attachment(attachment_id):
         raise e
 
 def get_subtask_attachment(attachment_id):
-    """Get a specific subtask attachment"""
+    #Get a specific subtask attachment
     try:
         from .models import SubtaskAttachment
         
