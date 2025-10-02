@@ -668,7 +668,7 @@ def add_subtask_comment(task_id, subtask_id):
 
 # Helper function for file uploads
 def allowed_file(filename):
-    """Check if file extension is allowed"""
+    #Check if file extension is allowed
     from flask import current_app
     ALLOWED_EXTENSIONS = current_app.config.get('ALLOWED_EXTENSIONS', {
         'png', 'jpg', 'jpeg', 'gif', 'pdf', 
@@ -678,7 +678,7 @@ def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 def get_file_url(filepath):
-    """Generate URL for uploaded file"""
+    #Generate URL for uploaded file
     # In production, this should return the full URL with domain
     return f"http://localhost:8000/uploads/{filepath}"
 
@@ -688,7 +688,7 @@ def get_file_url(filepath):
 
 @task_bp.route("/tasks/<int:task_id>/attachments", methods=["POST"])
 def add_task_attachment(task_id):
-    """Upload and add an attachment to a task"""
+    #Upload and add an attachment to a task
     try:
         from flask import current_app
         
@@ -745,7 +745,7 @@ def add_task_attachment(task_id):
 
 @task_bp.route("/tasks/<int:task_id>/attachments/<int:attachment_id>", methods=["DELETE"])
 def delete_task_attachment(task_id, attachment_id):
-    """Delete an attachment from a task"""
+    #Delete an attachment from a task
     try:
         from flask import current_app
         
@@ -794,7 +794,7 @@ def delete_task_attachment(task_id, attachment_id):
 
 @task_bp.route("/tasks/<int:task_id>/subtasks/<int:subtask_id>/attachments", methods=["POST"])
 def add_subtask_attachment(task_id, subtask_id):
-    """Upload and add an attachment to a subtask"""
+    #Upload and add an attachment to a subtask
     try:
         from flask import current_app
         
@@ -855,7 +855,7 @@ def add_subtask_attachment(task_id, subtask_id):
 
 @task_bp.route("/tasks/<int:task_id>/subtasks/<int:subtask_id>/attachments/<int:attachment_id>", methods=["DELETE"])
 def delete_subtask_attachment(task_id, subtask_id, attachment_id):
-    """Delete an attachment from a subtask"""
+    #Delete an attachment from a subtask
     try:
         from flask import current_app
         
@@ -904,7 +904,7 @@ def delete_subtask_attachment(task_id, subtask_id, attachment_id):
 
 @task_bp.route("/uploads/<path:filepath>", methods=["GET"])
 def serve_file(filepath):
-    """Serve uploaded files"""
+    #Serve uploaded files
     try:
         from flask import current_app
         upload_folder = current_app.config['UPLOAD_FOLDER']
