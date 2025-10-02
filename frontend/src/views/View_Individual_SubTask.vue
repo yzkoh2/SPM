@@ -1,44 +1,33 @@
 <template>
-  <div class="min-h-screen bg-gray-50">
-    <!-- Header with Back Navigation -->
-    <header class="bg-white shadow-sm border-b border-gray-200">
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div class="flex items-center py-6">
+  <div class="min-h-screen bg-gray-100">
+    <!-- Header -->
+    <header class="bg-white shadow-sm">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+        <div class="flex items-center space-x-3">
           <router-link 
             :to="`/tasks/${route.params.id}/subtasks`" 
-            class="flex items-center text-indigo-600 hover:text-indigo-500 mr-4 text-sm font-medium">
-            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+            class="text-gray-400 hover:text-gray-600"
+          >
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
             </svg>
-            Back to Subtasks
           </router-link>
-          <router-link 
-            :to="`/tasks/${route.params.id}`" 
-            class="flex items-center text-gray-600 hover:text-gray-500 mr-6 text-sm font-medium">
-            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2-2z"></path>
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m8 7 4-4 4 4"></path>
-            </svg>
-            Parent Task
-          </router-link>
-          <div class="flex-1">
-            <h1 class="text-2xl font-bold text-gray-900">Subtask Details</h1>
-          </div>
+          <h1 class="text-2xl font-bold text-gray-900">Subtask Details</h1>
         </div>
       </div>
     </header>
 
     <!-- Main Content -->
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <!-- Loading State -->
       <div v-if="loading" class="flex justify-center items-center py-12">
         <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
       </div>
       
       <!-- Error State -->
-      <div v-else-if="error" class="bg-red-50 border border-red-200 rounded-md p-6">
+      <div v-else-if="error" class="rounded-md bg-red-50 p-6">
         <div class="flex items-center">
-          <svg class="w-6 h-6 text-red-600 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg class="h-5 w-5 text-red-400 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
           </svg>
           <div>
@@ -99,7 +88,7 @@
           </div>
           
           <!-- Subtask Metadata -->
-          <div class="mt-6 grid grid-cols-1 md:grid-cols-3 gap-6 pt-6 border-t border-gray-200">
+          <div class="mt-6 grid grid-cols-1 md:grid-cols-2 gap-6 pt-6 border-t border-gray-200">
             <div>
               <h4 class="text-sm font-medium text-gray-500 uppercase tracking-wide">Deadline</h4>
               <p class="mt-1 text-lg" :class="getDeadlineColor(subtask.deadline)">
@@ -107,12 +96,41 @@
               </p>
             </div>
             <div>
-              <h4 class="text-sm font-medium text-gray-500 uppercase tracking-wide">Assignee</h4>
-              <p class="mt-1 text-lg text-gray-900">{{ subtask.assignee_id || 'Unassigned' }}</p>
-            </div>
-            <div>
               <h4 class="text-sm font-medium text-gray-500 uppercase tracking-wide">Created</h4>
               <p class="mt-1 text-lg text-gray-900">{{ formatDate(subtask.created_at) }}</p>
+            </div>
+          </div>
+
+          <!-- Collaborators Section -->
+          <div class="mt-6 pt-6 border-t border-gray-200">
+            <h4 class="text-sm font-medium text-gray-500 uppercase tracking-wide mb-3">Collaborators</h4>
+            
+            <!-- Loading State for Collaborators -->
+            <div v-if="collaboratorsLoading" class="flex items-center text-sm text-gray-500">
+              <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-indigo-600 mr-2"></div>
+              Loading collaborators...
+            </div>
+            
+            <!-- Collaborator Pills/Badges (Read-Only) -->
+            <div v-else-if="collaboratorDetails.length > 0" class="flex flex-wrap gap-2">
+              <div 
+                v-for="collab in collaboratorDetails" 
+                :key="collab.user_id"
+                class="inline-flex items-center px-3 py-2 rounded-lg text-sm font-medium bg-indigo-100 text-indigo-800 border border-indigo-200"
+              >
+                <svg class="w-4 h-4 mr-1.5" fill="currentColor" viewBox="0 0 20 20">
+                  <path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd"></path>
+                </svg>
+                {{ collab.name }} : {{ collab.user_id }}
+              </div>
+            </div>
+            
+            <!-- No Collaborators State -->
+            <div v-else class="inline-flex items-center px-3 py-2 rounded-lg text-sm font-medium bg-gray-100 text-gray-600">
+              <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+              </svg>
+              No collaborators assigned
             </div>
           </div>
         </div>
@@ -189,7 +207,7 @@
           </div>
         </div>
       </div>
-    </div>
+    </main>
   </div>
 </template>
 
@@ -203,12 +221,70 @@ const router = useRouter()
 // Reactive data
 const subtask = ref(null)
 const parentTask = ref(null)
+const collaborators = ref([])
+const collaboratorDetails = ref([])
 const loading = ref(true)
+const collaboratorsLoading = ref(false)
 const error = ref(null)
 const statusUpdateLoading = ref(false)
 
 // API configuration
 const KONG_API_URL = "http://localhost:8000"
+
+// Fetch user details for a given user ID
+const fetchUserDetails = async (userId) => {
+  try {
+    const response = await fetch(`${KONG_API_URL}/user/${userId}`)
+    
+    if (response.ok) {
+      return await response.json()
+    } else {
+      console.warn(`Failed to load user details for ID ${userId}`)
+      return null
+    }
+  } catch (err) {
+    console.error(`Error fetching user ${userId}:`, err)
+    return null
+  }
+}
+
+// Fetch all collaborators for THIS SUBTASK and their details
+const fetchCollaborators = async (taskId, subtaskId) => {
+  collaboratorsLoading.value = true
+  
+  try {
+    const response = await fetch(`${KONG_API_URL}/tasks/${taskId}/subtasks/${subtaskId}/collaborators`)
+    
+    if (response.ok) {
+      collaborators.value = await response.json()
+      console.log('Subtask collaborators loaded:', collaborators.value)
+      
+      // Fetch details for each collaborator
+      const detailsPromises = collaborators.value.map(collab => 
+        fetchUserDetails(collab.user_id)
+      )
+      
+      const details = await Promise.all(detailsPromises)
+      
+      // Combine collaborator info with user details
+      collaboratorDetails.value = collaborators.value.map((collab, index) => ({
+        user_id: collab.user_id,
+        name: details[index]?.name || `User ${collab.user_id}`,
+        role: details[index]?.role || 'Unknown'
+      }))
+      
+      console.log('Collaborator details loaded:', collaboratorDetails.value)
+    } else {
+      console.warn('Failed to load subtask collaborators')
+      collaboratorDetails.value = []
+    }
+  } catch (err) {
+    console.error('Error fetching subtask collaborators:', err)
+    collaboratorDetails.value = []
+  } finally {
+    collaboratorsLoading.value = false
+  }
+}
 
 // Fetch subtask details from API
 const fetchSubtaskDetails = async () => {
@@ -230,6 +306,9 @@ const fetchSubtaskDetails = async () => {
     if (subtaskResponse.ok) {
       subtask.value = await subtaskResponse.json()
       console.log('Subtask details loaded:', subtask.value)
+      
+      // Fetch collaborators for THIS SUBTASK (not parent task)
+      await fetchCollaborators(taskId, subtaskId)
     } else if (subtaskResponse.status === 404) {
       error.value = 'Subtask not found'
       return
