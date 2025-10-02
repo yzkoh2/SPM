@@ -1,5 +1,8 @@
 from flask import Blueprint, jsonify, request
 from . import service
+from werkzeug.utils import secure_filename
+from datetime import datetime
+import os  
 
 task_bp = Blueprint("task_bp", __name__)
 
@@ -663,6 +666,252 @@ def add_subtask_comment(task_id, subtask_id):
         print(f"Error in add_subtask_comment: {e}")
         return jsonify({"error": str(e)}), 500
 
+# Helper function for file uploads
+def allowed_file(filename):
+    """Check if file extension is allowed"""
+    from flask import current_app
+    ALLOWED_EXTENSIONS = current_app.config.get('ALLOWED_EXTENSIONS', {
+        'png', 'jpg', 'jpeg', 'gif', 'pdf', 
+        'doc', 'docx', 'xls', 'xlsx', 'txt',
+        'zip', 'rar', 'mp4', 'avi', 'mov'
+    })
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+def get_file_url(filepath):
+    """Generate URL for uploaded file"""
+    # In production, this should return the full URL with domain
+    return f"http://localhost:8000/uploads/{filepath}"
+
+# ... [Keep all existing routes] ...
+
+# ============= ATTACHMENT ROUTES =============
+
+@task_bp.route("/tasks/<int:task_id>/attachments", methods=["POST"])
+def add_task_attachment(task_id):
+    """Upload and add an attachment to a task"""
+    try:
+        from flask import current_app
+        
+        # Check if file is in request
+        if 'file' not in request.files:
+            return jsonify({"error": "No file provided"}), 400
+        
+        file = request.files['file']
+        requesting_user_id = request.form.get('requesting_user_id', type=int)
+        
+        if not requesting_user_id:
+            return jsonify({"error": "requesting_user_id is required"}), 400
+        
+        if file.filename == '':
+            return jsonify({"error": "No file selected"}), 400
+        
+        if not allowed_file(file.filename):
+            return jsonify({"error": "File type not allowed"}), 400
+        
+        # Check if user is the owner or collaborator
+        if not service.is_task_collaborator(task_id, requesting_user_id):
+            return jsonify({"error": "You must be the owner or collaborator to add attachments"}), 403
+        
+        # Create secure filename with timestamp
+        filename = secure_filename(file.filename)
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        unique_filename = f"{timestamp}_{filename}"
+        
+        # Create upload directory if it doesn't exist
+        upload_folder = os.path.join(current_app.config['UPLOAD_FOLDER'], 'tasks', str(task_id))
+        os.makedirs(upload_folder, exist_ok=True)
+        
+        # Save file
+        filepath = os.path.join(upload_folder, unique_filename)
+        file.save(filepath)
+        
+        # Generate file URL
+        file_url = get_file_url(f"tasks/{task_id}/{unique_filename}")
+        
+        # Save to database
+        result = service.add_task_attachment(task_id, filename, file_url)
+        
+        if result:
+            return jsonify(result), 201
+        else:
+            # Clean up file if database save failed
+            if os.path.exists(filepath):
+                os.remove(filepath)
+            return jsonify({"error": "Failed to add attachment"}), 400
+            
+    except Exception as e:
+        print(f"Error in add_task_attachment: {e}")
+        return jsonify({"error": str(e)}), 500
+
+@task_bp.route("/tasks/<int:task_id>/attachments/<int:attachment_id>", methods=["DELETE"])
+def delete_task_attachment(task_id, attachment_id):
+    """Delete an attachment from a task"""
+    try:
+        from flask import current_app
+        
+        requesting_user_id = request.args.get('requesting_user_id', type=int)
+        
+        if not requesting_user_id:
+            return jsonify({"error": "requesting_user_id is required"}), 400
+        
+        # Check if user is the owner or collaborator
+        if not service.is_task_collaborator(task_id, requesting_user_id):
+            return jsonify({"error": "You must be the owner or collaborator to delete attachments"}), 403
+        
+        # Get attachment details before deleting
+        attachment = service.get_task_attachment(attachment_id)
+        if not attachment:
+            return jsonify({"error": "Attachment not found"}), 404
+        
+        # Delete from database
+        result = service.delete_task_attachment(task_id, attachment_id)
+        
+        if result:
+            # Delete physical file
+            try:
+                # Extract filename from URL
+                filename = attachment['url'].split('/')[-1]
+                filepath = os.path.join(
+                    current_app.config['UPLOAD_FOLDER'], 
+                    'tasks', 
+                    str(task_id), 
+                    filename
+                )
+                if os.path.exists(filepath):
+                    os.remove(filepath)
+            except Exception as e:
+                print(f"Error deleting file: {e}")
+            
+            return jsonify({"message": "Attachment deleted successfully"}), 200
+        else:
+            return jsonify({"error": "Attachment not found"}), 404
+            
+    except Exception as e:
+        print(f"Error in delete_task_attachment: {e}")
+        return jsonify({"error": str(e)}), 500
+
+# ============= SUBTASK ATTACHMENT ROUTES =============
+
+@task_bp.route("/tasks/<int:task_id>/subtasks/<int:subtask_id>/attachments", methods=["POST"])
+def add_subtask_attachment(task_id, subtask_id):
+    """Upload and add an attachment to a subtask"""
+    try:
+        from flask import current_app
+        
+        # Check if file is in request
+        if 'file' not in request.files:
+            return jsonify({"error": "No file provided"}), 400
+        
+        file = request.files['file']
+        requesting_user_id = request.form.get('requesting_user_id', type=int)
+        
+        if not requesting_user_id:
+            return jsonify({"error": "requesting_user_id is required"}), 400
+        
+        if file.filename == '':
+            return jsonify({"error": "No file selected"}), 400
+        
+        if not allowed_file(file.filename):
+            return jsonify({"error": "File type not allowed"}), 400
+        
+        # Check if user is owner or collaborator of parent task
+        if not service.is_task_collaborator(task_id, requesting_user_id):
+            return jsonify({"error": "You must be the owner or collaborator to add attachments"}), 403
+        
+        # Create secure filename with timestamp
+        filename = secure_filename(file.filename)
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        unique_filename = f"{timestamp}_{filename}"
+        
+        # Create upload directory if it doesn't exist
+        upload_folder = os.path.join(
+            current_app.config['UPLOAD_FOLDER'], 
+            'subtasks', 
+            str(subtask_id)
+        )
+        os.makedirs(upload_folder, exist_ok=True)
+        
+        # Save file
+        filepath = os.path.join(upload_folder, unique_filename)
+        file.save(filepath)
+        
+        # Generate file URL
+        file_url = get_file_url(f"subtasks/{subtask_id}/{unique_filename}")
+        
+        # Save to database
+        result = service.add_subtask_attachment(subtask_id, filename, file_url)
+        
+        if result:
+            return jsonify(result), 201
+        else:
+            # Clean up file if database save failed
+            if os.path.exists(filepath):
+                os.remove(filepath)
+            return jsonify({"error": "Failed to add attachment"}), 400
+            
+    except Exception as e:
+        print(f"Error in add_subtask_attachment: {e}")
+        return jsonify({"error": str(e)}), 500
+
+@task_bp.route("/tasks/<int:task_id>/subtasks/<int:subtask_id>/attachments/<int:attachment_id>", methods=["DELETE"])
+def delete_subtask_attachment(task_id, subtask_id, attachment_id):
+    """Delete an attachment from a subtask"""
+    try:
+        from flask import current_app
+        
+        requesting_user_id = request.args.get('requesting_user_id', type=int)
+        
+        if not requesting_user_id:
+            return jsonify({"error": "requesting_user_id is required"}), 400
+        
+        # Check if user is owner or collaborator of parent task
+        if not service.is_task_collaborator(task_id, requesting_user_id):
+            return jsonify({"error": "You must be the owner or collaborator to delete attachments"}), 403
+        
+        # Get attachment details before deleting
+        attachment = service.get_subtask_attachment(attachment_id)
+        if not attachment:
+            return jsonify({"error": "Attachment not found"}), 404
+        
+        # Delete from database
+        result = service.delete_subtask_attachment(subtask_id, attachment_id)
+        
+        if result:
+            # Delete physical file
+            try:
+                # Extract filename from URL
+                filename = attachment['url'].split('/')[-1]
+                filepath = os.path.join(
+                    current_app.config['UPLOAD_FOLDER'], 
+                    'subtasks', 
+                    str(subtask_id), 
+                    filename
+                )
+                if os.path.exists(filepath):
+                    os.remove(filepath)
+            except Exception as e:
+                print(f"Error deleting file: {e}")
+            
+            return jsonify({"message": "Attachment deleted successfully"}), 200
+        else:
+            return jsonify({"error": "Attachment not found"}), 404
+            
+    except Exception as e:
+        print(f"Error in delete_subtask_attachment: {e}")
+        return jsonify({"error": str(e)}), 500
+
+# ============= FILE SERVING ROUTE =============
+
+@task_bp.route("/uploads/<path:filepath>", methods=["GET"])
+def serve_file(filepath):
+    """Serve uploaded files"""
+    try:
+        from flask import current_app
+        upload_folder = current_app.config['UPLOAD_FOLDER']
+        return send_from_directory(upload_folder, filepath)
+    except Exception as e:
+        print(f"Error serving file: {e}")
+        return jsonify({"error": "File not found"}), 404
 # ============= HEALTH CHECK =============
 
 @task_bp.route("/health", methods=["GET"])

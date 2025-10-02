@@ -154,7 +154,111 @@
               </button>
             </div>
           </div>
-
+          <!-- Attachments Section -->
+<div>
+  <label class="block text-sm font-medium text-gray-700 mb-2">Attachments</label>
+  <p class="text-xs text-gray-500 mb-3">Upload files (images, PDFs, documents, etc.)</p>
+  
+  <!-- Existing Attachments -->
+  <div v-if="task.attachments && task.attachments.length > 0" class="space-y-2 mb-4">
+    <div v-for="attachment in task.attachments" :key="attachment.id" 
+         class="flex items-center justify-between p-3 bg-gray-50 rounded-md border border-gray-200">
+      <div class="flex items-center space-x-3">
+        <!-- File Icon based on type -->
+        <svg v-if="isImageFile(attachment.filename)" class="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+        </svg>
+        <svg v-else-if="isPdfFile(attachment.filename)" class="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
+        </svg>
+        <svg v-else class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"></path>
+        </svg>
+        <div>
+          <span class="text-sm text-gray-900 font-medium">{{ attachment.filename }}</span>
+          <p class="text-xs text-gray-500">{{ getFileSize(attachment) }}</p>
+        </div>
+      </div>
+      <div class="flex items-center space-x-2">
+        <a :href="attachment.url" target="_blank" 
+           class="text-indigo-600 hover:text-indigo-500 text-sm font-medium flex items-center">
+          <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+          </svg>
+          Download
+        </a>
+        <button 
+          type="button"
+          @click="deleteAttachment(attachment.id)"
+          class="text-red-600 hover:text-red-500 text-sm font-medium flex items-center">
+          <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+          </svg>
+          Delete
+        </button>
+      </div>
+    </div>
+  </div>
+  
+        <!-- File Upload Area -->
+        <div class="mt-4">
+          <div class="flex items-center justify-center w-full">
+            <label class="flex flex-col items-center justify-center w-full h-32 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100">
+              <div class="flex flex-col items-center justify-center pt-5 pb-6">
+                <svg class="w-8 h-8 mb-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
+                </svg>
+                <p class="mb-2 text-sm text-gray-500">
+                  <span class="font-semibold">Click to upload</span> or drag and drop
+                </p>
+                <p class="text-xs text-gray-500">PNG, JPG, PDF, DOC (MAX. 16MB)</p>
+              </div>
+              <input 
+                type="file" 
+                ref="fileInput"
+                @change="handleFileSelect"
+                class="hidden" 
+                accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.zip,.rar"
+              />
+            </label>
+          </div>
+          
+          <!-- Selected File Preview -->
+          <div v-if="selectedFile" class="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-md flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+              <svg class="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+              </svg>
+              <div>
+                <p class="text-sm font-medium text-blue-900">{{ selectedFile.name }}</p>
+                <p class="text-xs text-blue-700">{{ formatFileSize(selectedFile.size) }}</p>
+              </div>
+            </div>
+            <div class="flex items-center space-x-2">
+              <button 
+                type="button"
+                @click="uploadFile"
+                :disabled="uploading"
+                class="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-md disabled:opacity-50 flex items-center">
+                <svg v-if="!uploading" class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path>
+                </svg>
+                <div v-else class="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-1"></div>
+                {{ uploading ? 'Uploading...' : 'Upload' }}
+              </button>
+              <button 
+                type="button"
+                @click="clearSelectedFile"
+                class="text-gray-600 hover:text-gray-800">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
           <!-- Form Actions -->
           <div class="flex justify-end space-x-3 pt-6 border-t">
             <router-link 
@@ -486,6 +590,124 @@ const transferOwnership = async () => {
   } catch (err) {
     console.error('Error transferring ownership:', err)
     alert('Failed to transfer ownership: ' + err.message)
+  }
+}
+
+
+// Add to reactive data
+const selectedFile = ref(null)
+const uploading = ref(false)
+const fileInput = ref(null)
+
+// Helper functions
+const isImageFile = (filename) => {
+  const ext = filename.split('.').pop().toLowerCase()
+  return ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp'].includes(ext)
+}
+
+const isPdfFile = (filename) => {
+  return filename.toLowerCase().endsWith('.pdf')
+}
+
+const getFileSize = (attachment) => {
+  // You can store file size in database if needed
+  return 'Unknown size'
+}
+
+const formatFileSize = (bytes) => {
+  if (bytes === 0) return '0 Bytes'
+  const k = 1024
+  const sizes = ['Bytes', 'KB', 'MB', 'GB']
+  const i = Math.floor(Math.log(bytes) / Math.log(k))
+  return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i]
+}
+const handleFileSelect = (event) => {
+  const file = event.target.files[0]
+  if (file) {
+    // Check file size (16MB limit)
+    if (file.size > 16 * 1024 * 1024) {
+      alert('File size exceeds 16MB limit')
+      return
+    }
+    selectedFile.value = file
+  }
+}
+
+const clearSelectedFile = () => {
+  selectedFile.value = null
+  if (fileInput.value) {
+    fileInput.value.value = ''
+  }
+}
+
+const uploadFile = async () => {
+  if (!selectedFile.value) {
+    alert('Please select a file first')
+    return
+  }
+
+  try {
+    uploading.value = true
+    
+    // Create FormData for file upload
+    const formData = new FormData()
+    formData.append('file', selectedFile.value)
+    formData.append('requesting_user_id', userId.value)
+
+    const response = await fetch(`${KONG_API_URL}/tasks/${taskId.value}/attachments`, {
+      method: 'POST',
+      body: formData
+      // Don't set Content-Type header - browser will set it with boundary for FormData
+    })
+
+    if (response.ok) {
+      const attachment = await response.json()
+      console.log('File uploaded successfully:', attachment)
+      
+      // Refresh task details to get updated attachments
+      await fetchTaskDetails()
+      
+      // Clear selected file
+      clearSelectedFile()
+      
+      alert('File uploaded successfully!')
+    } else {
+      const data = await response.json()
+      throw new Error(data.error || 'Failed to upload file')
+    }
+  } catch (err) {
+    console.error('Error uploading file:', err)
+    alert('Failed to upload file: ' + err.message)
+  } finally {
+    uploading.value = false
+  }
+}
+
+const deleteAttachment = async (attachmentId) => {
+  if (!confirm('Are you sure you want to delete this attachment?')) {
+    return
+  }
+
+  try {
+    const response = await fetch(
+      `${KONG_API_URL}/tasks/${taskId.value}/attachments/${attachmentId}?requesting_user_id=${userId.value}`,
+      {
+        method: 'DELETE'
+      }
+    )
+
+    if (response.ok) {
+      // Refresh task details to get updated attachments
+      await fetchTaskDetails()
+      console.log('Attachment deleted successfully')
+      alert('Attachment deleted successfully!')
+    } else {
+      const data = await response.json()
+      throw new Error(data.error || 'Failed to delete attachment')
+    }
+  } catch (err) {
+    console.error('Error deleting attachment:', err)
+    alert('Failed to delete attachment: ' + err.message)
   }
 }
 </script>

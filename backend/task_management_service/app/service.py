@@ -671,3 +671,224 @@ def update_task_status(task_id, new_status):
         print(f"Error in update_task_status: {e}")
         db.session.rollback()
         raise e
+
+# ============= ATTACHMENT OPERATIONS =============
+
+def add_task_attachment(task_id, filename, url):
+    """Add an attachment to a task"""
+    try:
+        task = Task.query.filter_by(id=task_id).first()
+        if not task:
+            return None
+        
+        new_attachment = Attachment(
+            filename=filename,
+            url=url,
+            task_id=task_id
+        )
+        
+        db.session.add(new_attachment)
+        db.session.commit()
+        
+        return {
+            "id": new_attachment.id,
+            "filename": new_attachment.filename,
+            "url": new_attachment.url,
+            "task_id": new_attachment.task_id
+        }
+    except Exception as e:
+        print(f"Error in add_task_attachment: {e}")
+        db.session.rollback()
+        raise e
+
+def delete_task_attachment(task_id, attachment_id):
+    """Delete an attachment from a task"""
+    try:
+        attachment = Attachment.query.filter_by(id=attachment_id, task_id=task_id).first()
+        if not attachment:
+            return False
+        
+        db.session.delete(attachment)
+        db.session.commit()
+        return True
+    except Exception as e:
+        print(f"Error in delete_task_attachment: {e}")
+        db.session.rollback()
+        raise e
+
+# For subtasks, we need to add attachments table reference to Subtask model first
+# Update the Subtask model in models.py to include:
+# attachments = db.relationship("SubtaskAttachment", backref="subtask", lazy=True)
+
+def add_subtask_attachment(subtask_id, filename, url):
+    """Add an attachment to a subtask"""
+    try:
+        subtask = Subtask.query.filter_by(id=subtask_id).first()
+        if not subtask:
+            return None
+        
+        # First, create SubtaskAttachment model if it doesn't exist
+        # For now, we'll store it in a simple way
+        # You may need to create a SubtaskAttachment model similar to Attachment
+        
+        # Temporary solution: Store in task attachments with subtask reference in filename
+        new_attachment = Attachment(
+            filename=f"[Subtask-{subtask_id}] {filename}",
+            url=url,
+            task_id=subtask.task_id
+        )
+        
+        db.session.add(new_attachment)
+        db.session.commit()
+        
+        return {
+            "id": new_attachment.id,
+            "filename": filename,
+            "url": new_attachment.url,
+            "subtask_id": subtask_id
+        }
+    except Exception as e:
+        print(f"Error in add_subtask_attachment: {e}")
+        db.session.rollback()
+        raise e
+
+def delete_subtask_attachment(subtask_id, attachment_id):
+    """Delete an attachment from a subtask"""
+    try:
+        # Find attachment that belongs to this subtask
+        attachment = Attachment.query.filter_by(id=attachment_id).first()
+        if not attachment or f"[Subtask-{subtask_id}]" not in attachment.filename:
+            return False
+        
+        db.session.delete(attachment)
+        db.session.commit()
+        return True
+    except Exception as e:
+        print(f"Error in delete_subtask_attachment: {e}")
+        db.session.rollback()
+        raise e
+
+def get_task_details(task_id):
+    """Get detailed task information including all relationships"""
+    try:
+        task = Task.query.filter_by(id=task_id).first()
+        if not task:
+            return None
+        
+        return {
+            "id": task.id,
+            "title": task.title,
+            "description": task.description,
+            "deadline": str(task.deadline) if task.deadline else None,
+            "status": task.status,
+            "owner_id": task.owner_id,
+            "created_at": str(task.created_at) if hasattr(task, 'created_at') else None,
+            "subtasks": [{
+                "id": subtask.id,
+                "title": subtask.title,
+                "description": subtask.description,
+                "status": subtask.status,
+                "deadline": str(subtask.deadline) if subtask.deadline else None,
+                "assignee_id": subtask.assignee_id
+            } for subtask in task.subtasks],
+            "comments": [{
+                "id": comment.id,
+                "body": comment.body,
+                "author_id": comment.author_id,
+                "created_at": str(comment.created_at) if hasattr(comment, 'created_at') else None
+            } for comment in task.comments],
+            "attachments": [{
+                "id": attachment.id,
+                "filename": attachment.filename,
+                "url": attachment.url
+            } for attachment in task.attachments],
+            "collaborators": [{
+                "user_id": collab.user_id,
+                "role": collab.role,
+                "added_at": str(collab.added_at) if collab.added_at else None
+            } for collab in task.collaborators]
+        }
+        
+    except Exception as e:
+        print(f"Error in get_task_details: {e}")
+        raise e
+
+def get_subtask_details(task_id, subtask_id):
+    """Get detailed subtask information"""
+    try:
+        from .models import SubtaskAttachment
+        
+        subtask = Subtask.query.filter_by(id=subtask_id, task_id=task_id).first()
+        if not subtask:
+            return None
+        
+        # Get parent task info
+        parent_task = Task.query.filter_by(id=task_id).first()
+        
+        return {
+            "id": subtask.id,
+            "title": subtask.title,
+            "description": subtask.description,
+            "deadline": str(subtask.deadline) if subtask.deadline else None,
+            "status": subtask.status,
+            "assignee_id": subtask.assignee_id,
+            "task_id": subtask.task_id,
+            "created_at": str(subtask.created_at) if hasattr(subtask, 'created_at') else None,
+            "parent_task": {
+                "id": parent_task.id,
+                "title": parent_task.title,
+                "owner_id": parent_task.owner_id
+            } if parent_task else None,
+            "attachments": [{
+                "id": attachment.id,
+                "filename": attachment.filename,
+                "url": attachment.url
+            } for attachment in subtask.attachments] if hasattr(subtask, 'attachments') else [],
+            "collaborators": [{
+                "user_id": collab.user_id,
+                "role": collab.role,
+                "added_at": str(collab.added_at) if collab.added_at else None
+            } for collab in subtask.collaborators]
+        }
+        
+    except Exception as e:
+        print(f"Error in get_subtask_details: {e}")
+        raise e
+    
+def get_task_attachment(attachment_id):
+    """Get a specific attachment"""
+    try:
+        attachment = Attachment.query.filter_by(id=attachment_id).first()
+        if not attachment:
+            return None
+        
+        return {
+            "id": attachment.id,
+            "filename": attachment.filename,
+            "url": attachment.url,
+            "file_size": getattr(attachment, 'file_size', None),
+            "task_id": attachment.task_id
+        }
+    except Exception as e:
+        print(f"Error in get_task_attachment: {e}")
+        raise e
+
+def get_subtask_attachment(attachment_id):
+    """Get a specific subtask attachment"""
+    try:
+        from .models import SubtaskAttachment
+        
+        attachment = SubtaskAttachment.query.filter_by(id=attachment_id).first()
+        if not attachment:
+            return None
+        
+        return {
+            "id": attachment.id,
+            "filename": attachment.filename,
+            "url": attachment.url,
+            "file_size": getattr(attachment, 'file_size', None),
+            "subtask_id": attachment.subtask_id
+        }
+    except Exception as e:
+        print(f"Error in get_subtask_attachment: {e}")
+        raise e

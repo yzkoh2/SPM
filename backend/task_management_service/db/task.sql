@@ -63,6 +63,15 @@ CREATE INDEX idx_subtask_collaborators_user_id ON subtask_collaborators(user_id)
 CREATE INDEX idx_subtasks_assignee_id ON subtasks(assignee_id);
 CREATE INDEX idx_tasks_owner_id ON tasks(owner_id);
 
+-- Create subtask_attachments table
+CREATE TABLE subtask_attachments (
+    id SERIAL PRIMARY KEY,
+    filename VARCHAR(255) NOT NULL,
+    url VARCHAR(500) NOT NULL,
+    subtask_id INT REFERENCES subtasks(id) ON DELETE CASCADE
+);
+
+CREATE INDEX idx_subtask_attachments_subtask_id ON subtask_attachments(subtask_id);
 -- Sample Data
 -- Task 1
 INSERT INTO tasks (title, description, deadline, status, owner_id)

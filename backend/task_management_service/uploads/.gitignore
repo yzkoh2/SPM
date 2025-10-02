@@ -1,0 +1,5 @@
+# Ignore all files in uploads folder except this gitignore
+*
+!.gitignore
+!tasks/.gitignore
+!subtasks/.gitignore

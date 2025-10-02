@@ -31,3 +31,11 @@ class Config:
         "http://localhost:8000",  # Kong gateway
         "http://frontend:5173"    # Docker frontend service
     ]
+    # File Upload Configuration
+    UPLOAD_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'uploads')
+    MAX_CONTENT_LENGTH = 16 * 1024 * 1024  # 16MB max file size
+    ALLOWED_EXTENSIONS = {
+        'png', 'jpg', 'jpeg', 'gif', 'pdf', 
+        'doc', 'docx', 'xls', 'xlsx', 'txt',
+        'zip', 'rar', 'mp4', 'avi', 'mov'
+    }
