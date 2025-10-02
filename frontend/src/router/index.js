@@ -18,12 +18,6 @@ const router = createRouter({
       component: Login
     },
     {
-      path: '/tasks',
-      name: 'tasks',
-      component: Dashboard,  // Same component as your dashboard
-      meta: { requiresAuth: true }
-    },
-    {
       path: '/tasks/:id',
       name: 'task-details',
       component: () => import('@/views/View_Individual_Task.vue'),

@@ -1,102 +1,5 @@
 <template>
   <div class="min-h-screen bg-gray-50">
-    <!-- Navigation Bar -->
-    <nav class="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-40">
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div class="flex justify-between items-center h-16">
-          <!-- Left side - Logo and Navigation Links -->
-          <div class="flex items-center space-x-8">
-            <div class="flex-shrink-0">
-              <h1 class="text-xl font-bold text-gray-900">TaskBoard</h1>
-            </div>
-            
-            <!-- Navigation Links -->
-            <div class="hidden md:block">
-              <div class="ml-10 flex items-baseline space-x-4">
-                <router-link to="/tasks" 
-                           class="px-3 py-2 rounded-md text-sm font-medium transition-colors"
-                           :class="isActiveRoute('/tasks') ? 'bg-indigo-100 text-indigo-700' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'">
-                  <div class="flex items-center">
-                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
-                    </svg>
-                    Tasks
-                  </div>
-                </router-link>
-                
-                <router-link to="/projects" 
-                           class="px-3 py-2 rounded-md text-sm font-medium transition-colors"
-                           :class="isActiveRoute('/projects') ? 'bg-indigo-100 text-indigo-700' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'">
-                  <div class="flex items-center">
-                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
-                    </svg>
-                    Projects
-                  </div>
-                </router-link>
-              </div>
-            </div>
-          </div>
-
-          <!-- Right side - User info and actions -->
-          <div class="flex items-center space-x-4">
-            <!-- User Badge -->
-            <div class="flex items-center space-x-3">
-              <div class="hidden sm:block text-right">
-                <p class="text-sm font-medium text-gray-900">{{ authStore.user?.name || 'User' }}</p>
-                <p class="text-xs text-gray-500 capitalize">{{ authStore.user?.role || 'staff' }}</p>
-              </div>
-              <div class="w-8 h-8 bg-indigo-100 rounded-full flex items-center justify-center">
-                <svg class="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
-                </svg>
-              </div>
-            </div>
-            
-            <!-- Logout Button -->
-            <button @click="authStore.logout()" 
-                    class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors">
-              Logout
-            </button>
-            
-            <!-- Mobile menu button -->
-            <button @click="mobileMenuOpen = !mobileMenuOpen" class="md:hidden p-2 rounded-md text-gray-500 hover:text-gray-700 hover:bg-gray-100">
-              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path v-if="!mobileMenuOpen" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
-                <path v-else stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-              </svg>
-            </button>
-          </div>
-        </div>
-        
-        <!-- Mobile Navigation Menu -->
-        <div v-if="mobileMenuOpen" class="md:hidden border-t border-gray-200 py-3">
-          <div class="space-y-1">
-            <router-link to="/tasks" @click="mobileMenuOpen = false"
-                       class="block px-3 py-2 rounded-md text-base font-medium transition-colors"
-                       :class="isActiveRoute('/tasks') ? 'bg-indigo-100 text-indigo-700' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'">
-              <div class="flex items-center">
-                <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
-                </svg>
-                Tasks
-              </div>
-            </router-link>
-            
-            <router-link to="/projects" @click="mobileMenuOpen = false"
-                       class="block px-3 py-2 rounded-md text-base font-medium transition-colors"
-                       :class="isActiveRoute('/projects') ? 'bg-indigo-100 text-indigo-700' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'">
-              <div class="flex items-center">
-                <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
-                </svg>
-                Projects
-              </div>
-            </router-link>
-          </div>
-        </div>
-      </div>
-    </nav>
 
     <!-- Page Content -->
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -296,81 +199,14 @@
       </div>
       
       <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        <div v-for="task in filteredTasks" :key="task.id" 
-             class="bg-white rounded-lg shadow-md hover:shadow-xl transition-all duration-200 border-l-4 cursor-pointer transform hover:-translate-y-1"
-             :class="getStatusBorderColor(task.status)"
-             @click="viewTaskDetails(task.id)">
-          
-          <div class="p-6">
-            <div class="flex items-start justify-between">
-              <div class="flex-1">
-                <h3 class="text-lg font-semibold text-gray-900 mb-2 hover:text-indigo-600 transition-colors">
-                  {{ task.title }}
-                </h3>
-                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
-                      :class="getStatusBadgeColor(task.status)">
-                  {{ task.status }}
-                </span>
-              </div>
-              
-              <div class="flex items-center space-x-2 ml-4">
-                <button @click.stop="editTask(task)" 
-                        class="text-gray-400 hover:text-indigo-600 transition-colors p-1 rounded hover:bg-gray-100"
-                        title="Edit Task">
-                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
-                  </svg>
-                </button>
-                <button @click.stop="deleteTask(task.id)" 
-                        class="text-gray-400 hover:text-red-600 transition-colors p-1 rounded hover:bg-red-50"
-                        title="Delete Task">
-                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
-                  </svg>
-                </button>
-              </div>
-            </div>
-            
-            <p class="text-sm text-gray-600 mt-3 line-clamp-2">
-              {{ task.description || 'No description available' }}
-            </p>
-            
-            <div v-if="task.deadline" class="flex items-center mt-4 text-sm">
-              <svg class="w-4 h-4 text-gray-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
-              </svg>
-              <span :class="getDeadlineColor(task.deadline)">
-                Due: {{ formatDeadline(task.deadline) }}
-              </span>
-            </div>
-            
-            <div class="mt-4 grid grid-cols-3 gap-2 text-xs text-gray-600">
-              <div class="flex items-center">
-                <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
-                </svg>
-                {{ task.subtask_count || 0 }} subtasks
-              </div>
-              <div class="flex items-center">
-                <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path>
-                </svg>
-                {{ task.comment_count || 0 }} comments
-              </div>
-              <div class="flex items-center">
-                <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"></path>
-                </svg>
-                {{ task.attachment_count || 0 }} files
-              </div>
-            </div>
-            
-            <div class="mt-4 pt-4 border-t border-gray-100 flex justify-between items-center">
-              <span class="text-xs text-gray-500">Owner ID: {{ task.owner_id }}</span>
-              <span class="text-xs text-indigo-500">Click to view details →</span>
-            </div>
-          </div>
-        </div>
+        <TaskCard
+          v-for="task in filteredTasks"
+          :key="task.id"
+          :task="task"
+          @view="viewTaskDetails"
+          @edit="editTask"
+          @delete="deleteTask"
+        />
       </div>
     </div>
   </div>
@@ -380,6 +216,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import TaskCard from '@/components/TaskCard.vue';
 
 const router = useRouter()
 const authStore = useAuthStore()
