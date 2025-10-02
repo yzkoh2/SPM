@@ -60,35 +60,29 @@
           <div class="flex justify-between items-start mb-4">
             <div class="flex-1">
               <h2 class="text-3xl font-bold text-gray-900 mb-2">{{ task.title }}</h2>
-              <div class="flex items-center space-x-3">
-                <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium"
-                      :class="getStatusBadgeColor(task.status)">
-                  {{ task.status }}
-                </span>
-                <!-- Permission indicator -->
-                <span v-if="canUpdateTask" class="text-xs text-gray-500 flex items-center">
-                  <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                  </svg>
-                  You can update this task
-                </span>
-              </div>
+              <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium"
+                    :class="getStatusBadgeColor(task.status)">
+                {{ task.status }}
+              </span>
             </div>
             <div class="flex items-center space-x-2 ml-4">
               <button 
                 v-if="canUpdateTask"
                 @click="showStatusModal = true" 
-                class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-md text-sm font-medium flex items-center">
-                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
-                </svg>
+                class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md text-sm font-medium">
                 Update Status
               </button>
-              <button @click="editTask" class="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-md text-sm font-medium">
+              <button 
+                v-if="canUpdateTask"
+                @click="editTask" 
+                class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-md text-sm font-medium">
                 Edit Task
               </button>
-              <button @click="deleteTask" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md text-sm font-medium">
-                Delete
+              <button 
+                v-if="canUpdateTask"
+                @click="deleteTask" 
+                class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md text-sm font-medium">
+                Delete Task
               </button>
             </div>
           </div>
@@ -110,10 +104,6 @@
               </p>
             </div>
             <div>
-              <h4 class="text-sm font-medium text-gray-500 uppercase tracking-wide">Owner</h4>
-              <p class="mt-1 text-lg text-gray-900">ID: {{ task.owner_id }}</p>
-            </div>
-            <div>
               <h4 class="text-sm font-medium text-gray-500 uppercase tracking-wide">Progress</h4>
               <div class="mt-1 flex items-center">
                 <div class="flex-1 bg-gray-200 rounded-full h-2 mr-2">
@@ -122,6 +112,49 @@
                 </div>
                 <span class="text-sm text-gray-600">{{ getTaskProgress() }}%</span>
               </div>
+            </div>
+            <div>
+              <h4 class="text-sm font-medium text-gray-500 uppercase tracking-wide">Created</h4>
+              <p class="mt-1 text-lg text-gray-900">{{ formatDate(task.created_at) }}</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Owner and Collaborators Section -->
+        <div class="bg-white rounded-lg shadow-md p-6">
+          <h3 class="text-xl font-semibold text-gray-900 mb-6">Task Team</h3>
+          
+          <!-- Owner Section -->
+          <div class="mb-6">
+            <h4 class="text-sm font-medium text-gray-500 uppercase tracking-wide mb-3">Owner</h4>
+            <div class="inline-flex items-center px-4 py-2 rounded-full bg-indigo-100 border border-indigo-200">
+              <svg class="w-4 h-4 mr-2 text-indigo-600" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd"></path>
+              </svg>
+              <span class="text-sm font-medium text-indigo-900">
+                {{ ownerName }} : {{ task.owner_id }}
+              </span>
+            </div>
+          </div>
+          
+          <!-- Collaborators Section -->
+          <div>
+            <h4 class="text-sm font-medium text-gray-500 uppercase tracking-wide mb-3">
+              Collaborators ({{ collaborators.length }})
+            </h4>
+            <div v-if="collaborators.length > 0" class="flex flex-wrap gap-2">
+              <div v-for="collaborator in collaborators" :key="collaborator.user_id" 
+                   class="inline-flex items-center px-4 py-2 rounded-full bg-gray-100 border border-gray-200">
+                <svg class="w-4 h-4 mr-2 text-gray-600" fill="currentColor" viewBox="0 0 20 20">
+                  <path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd"></path>
+                </svg>
+                <span class="text-sm font-medium text-gray-900">
+                  {{ collaborator.name }} : {{ collaborator.user_id }}
+                </span>
+              </div>
+            </div>
+            <div v-else class="text-center py-4 text-gray-500">
+              <p class="text-sm">No collaborators assigned</p>
             </div>
           </div>
         </div>
@@ -222,32 +255,23 @@
             <textarea 
               v-model="newComment"
               rows="3"
-              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-              placeholder="Share your progress or ask a question..."
-            ></textarea>
-            <div class="mt-2 flex justify-end">
-              <button 
-                @click="addComment"
-                :disabled="!newComment.trim() || addingComment"
-                class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-md text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed">
-                <span v-if="addingComment">Adding...</span>
-                <span v-else>Add Comment</span>
-              </button>
-            </div>
+              class="w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
+              placeholder="Write your comment here..."></textarea>
+            <button 
+              @click="addComment"
+              :disabled="!newComment.trim() || addingComment"
+              class="mt-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-md text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed">
+              {{ addingComment ? 'Adding...' : 'Add Comment' }}
+            </button>
           </div>
           
           <!-- Comments List -->
           <div v-if="comments.length > 0" class="space-y-4">
             <div v-for="comment in comments" :key="comment.id" 
-                 class="border-l-4 border-indigo-200 pl-4 py-3 bg-gray-50 rounded-r-md">
+                 class="border-l-4 border-indigo-200 pl-4 py-2">
               <p class="text-gray-700">{{ comment.body }}</p>
-              <div class="flex items-center mt-2 text-xs text-gray-500">
-                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
-                </svg>
-                <span class="mr-3">Author ID: {{ comment.author_id }}</span>
-                <span v-if="comment.created_at">{{ formatCommentDate(comment.created_at) }}</span>
-              </div>
+              <p class="text-xs text-gray-500 mt-1">Author ID: {{ comment.author_id }}</p>
+              <p class="text-xs text-gray-500">{{ getRelativeTime(comment.created_at) }}</p>
             </div>
           </div>
           
@@ -255,7 +279,8 @@
             <svg class="mx-auto h-12 w-12 text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path>
             </svg>
-            <p>No comments yet. Be the first to comment!</p>
+            <p>No comments yet</p>
+            <p class="text-sm mt-1">Be the first to comment!</p>
           </div>
         </div>
 
@@ -304,6 +329,8 @@ const authStore = useAuthStore()
 // Reactive data
 const task = ref(null)
 const comments = ref([])
+const collaborators = ref([])
+const ownerName = ref('Loading...')
 const loading = ref(true)
 const error = ref(null)
 const showStatusModal = ref(false)
@@ -318,6 +345,25 @@ const canUpdateTask = computed(() => {
   if (!task.value || !authStore.user) return false
   return task.value.owner_id === authStore.user.id
 })
+
+// Fetch user details by ID
+const fetchUserDetails = async (userId) => {
+  try {
+    const response = await fetch(`${KONG_API_URL}/user/${userId}`, {
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    })
+    
+    if (response.ok) {
+      const user = await response.json()
+      return user.name
+    }
+  } catch (err) {
+    console.error(`Error fetching user ${userId}:`, err)
+  }
+  return `User ${userId}` // Fallback
+}
 
 // Fetch task details from API
 const fetchTaskDetails = async () => {
@@ -336,64 +382,90 @@ const fetchTaskDetails = async () => {
     
     if (response.ok) {
       task.value = await response.json()
-      comments.value = task.value.comments || []
-      console.log('Task details loaded:', task.value)
+      console.log('Task loaded:', task.value)
+      
+      // Fetch comments
+      if (task.value.comments) {
+        comments.value = task.value.comments
+      }
+      
+      // Fetch owner name
+      ownerName.value = await fetchUserDetails(task.value.owner_id)
+      
+      // Fetch collaborators with names
+      await fetchCollaborators()
+      
     } else if (response.status === 404) {
       error.value = 'Task not found'
     } else {
       error.value = `Failed to load task: ${response.status}`
     }
   } catch (err) {
-    console.error('Error fetching task details:', err)
+    console.error('Error fetching task:', err)
     error.value = 'Failed to connect to server'
   } finally {
     loading.value = false
   }
 }
 
-// Handle status update
-const handleStatusUpdate = async ({ newStatus, comment }) => {
+// Fetch collaborators with user names
+const fetchCollaborators = async () => {
   try {
-    console.log('Updating task status:', { newStatus, comment, taskId: task.value.id, userId: authStore.user.id })
+    const taskId = route.params.id
+    const response = await fetch(`${KONG_API_URL}/tasks/${taskId}/collaborators`, {
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    })
     
+    if (response.ok) {
+      const collaboratorsData = await response.json()
+      console.log('Collaborators loaded:', collaboratorsData)
+      
+      // Fetch names for each collaborator
+      const collaboratorsWithNames = await Promise.all(
+        collaboratorsData.map(async (collab) => {
+          const name = await fetchUserDetails(collab.user_id)
+          return {
+            ...collab,
+            name: name
+          }
+        })
+      )
+      
+      collaborators.value = collaboratorsWithNames
+      console.log('Collaborators with names:', collaborators.value)
+    }
+  } catch (err) {
+    console.error('Error fetching collaborators:', err)
+  }
+}
+
+// Handle status update
+const handleStatusUpdate = async (newStatus) => {
+  try {
     const response = await fetch(`${KONG_API_URL}/tasks/${task.value.id}/status`, {
-      method: 'PATCH',
+      method: 'PUT',
       headers: {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        user_id: authStore.user.id,
         status: newStatus,
-        comment: comment || ''
+        requesting_user_id: authStore.user.id
       })
     })
     
-    const data = await response.json()
-    console.log('Response:', data)
-    
-    if (!response.ok) {
-      throw new Error(data.error || 'Failed to update status')
+    if (response.ok) {
+      const updatedTask = await response.json()
+      task.value.status = updatedTask.status
+      showStatusModal.value = false
+    } else {
+      const errorData = await response.json()
+      alert(errorData.error || 'Failed to update status')
     }
-    
-    // Update local task data
-    if (data.task) {
-      task.value.status = data.task.status
-    }
-    
-    // Refresh task details to get updated data
-    await fetchTaskDetails()
-    
-    // Close modal
-    showStatusModal.value = false
-    
-    // Show success message
-    alert('Task status updated successfully!')
-    
   } catch (err) {
     console.error('Error updating status:', err)
-    alert('Failed to update status: ' + err.message)
-    // Re-throw so modal knows there was an error
-    throw err
+    alert('Failed to update status')
   }
 }
 
@@ -419,23 +491,23 @@ const addComment = async () => {
       const comment = await response.json()
       comments.value.push(comment)
       newComment.value = ''
-      console.log('Comment added successfully')
     } else {
-      throw new Error('Failed to add comment')
+      alert('Failed to add comment')
     }
   } catch (err) {
     console.error('Error adding comment:', err)
-    alert('Failed to add comment: ' + err.message)
+    alert('Failed to add comment')
   } finally {
     addingComment.value = false
   }
 }
 
-// Action methods
+// Edit task
 const editTask = () => {
   router.push(`/tasks/${task.value.id}/edit`)
 }
 
+// Delete task
 const deleteTask = async () => {
   if (!confirm('Are you sure you want to delete this task? This action cannot be undone.')) {
     return
@@ -458,23 +530,14 @@ const deleteTask = async () => {
   }
 }
 
-// Calculate task progress based on subtasks
-const getTaskProgress = () => {
-  if (!task.value.subtasks || task.value.subtasks.length === 0) {
-    return task.value.status === 'Completed' ? 100 : 0
-  }
-  
-  const completedCount = task.value.subtasks.filter(s => s.status === 'Completed').length
-  return Math.round((completedCount / task.value.subtasks.length) * 100)
-}
-
-// Utility methods
+// Utility functions
 const getStatusBorderColor = (status) => {
   const colors = {
     'Unassigned': 'border-gray-400',
     'Ongoing': 'border-yellow-400',
     'Under Review': 'border-orange-400',
-    'Completed': 'border-green-400'
+    'Completed': 'border-green-400',
+    'On Hold': 'border-red-400'
   }
   return colors[status] || 'border-gray-400'
 }
@@ -484,7 +547,8 @@ const getStatusBadgeColor = (status) => {
     'Unassigned': 'bg-gray-100 text-gray-800',
     'Ongoing': 'bg-yellow-100 text-yellow-800',
     'Under Review': 'bg-orange-100 text-orange-800',
-    'Completed': 'bg-green-100 text-green-800'
+    'Completed': 'bg-green-100 text-green-800',
+    'On Hold': 'bg-red-100 text-red-800'
   }
   return colors[status] || 'bg-gray-100 text-gray-800'
 }
@@ -494,7 +558,8 @@ const getSubtaskStatusColor = (status) => {
     'Unassigned': 'bg-gray-400',
     'Ongoing': 'bg-yellow-400',
     'Under Review': 'bg-orange-400',
-    'Completed': 'bg-green-400'
+    'Completed': 'bg-green-400',
+    'On Hold': 'bg-red-400'
   }
   return colors[status] || 'bg-gray-400'
 }
@@ -521,16 +586,41 @@ const formatDeadline = (deadline) => {
   })
 }
 
-const formatCommentDate = (dateString) => {
+const formatDate = (dateString) => {
+  if (!dateString) return 'Not specified'
+  const date = new Date(dateString)
+  return date.toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric'
+  })
+}
+
+const getTaskProgress = () => {
+  if (!task.value || !task.value.subtasks || task.value.subtasks.length === 0) {
+    return 0
+  }
+  
+  const completedSubtasks = task.value.subtasks.filter(
+    subtask => subtask.status === 'Completed'
+  ).length
+  
+  return Math.round((completedSubtasks / task.value.subtasks.length) * 100)
+}
+
+const getRelativeTime = (dateString) => {
   if (!dateString) return ''
+  
   const date = new Date(dateString)
   const now = new Date()
   const diffMs = now - date
-  const diffMins = Math.floor(diffMs / 60000)
-  const diffHours = Math.floor(diffMs / 3600000)
-  const diffDays = Math.floor(diffMs / 86400000)
   
-  if (diffMins < 1) return 'Just now'
+  const diffSecs = Math.floor(diffMs / 1000)
+  const diffMins = Math.floor(diffSecs / 60)
+  const diffHours = Math.floor(diffMins / 60)
+  const diffDays = Math.floor(diffHours / 24)
+  
+  if (diffSecs < 60) return 'just now'
   if (diffMins < 60) return `${diffMins} minute${diffMins > 1 ? 's' : ''} ago`
   if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`
   if (diffDays < 7) return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`
