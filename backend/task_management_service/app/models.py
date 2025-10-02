@@ -18,6 +18,15 @@ class Task(db.Model):
     attachments = db.relationship("Attachment", backref="task", lazy=True)
     collaborators = db.relationship("TaskCollaborator", backref="task", lazy=True)
 
+class SubtaskAttachment(db.Model):
+    __tablename__ = "subtask_attachments"
+
+    id = db.Column(db.Integer, primary_key=True)
+    filename = db.Column(db.String(255), nullable=False)
+    url = db.Column(db.String(500), nullable=False)
+    subtask_id = db.Column(db.Integer, db.ForeignKey("subtasks.id"), nullable=False)
+
+# Update Subtask model to include:
 class Subtask(db.Model):
     __tablename__ = "subtasks"
 
@@ -31,6 +40,7 @@ class Subtask(db.Model):
 
     # Relationships
     collaborators = db.relationship("SubtaskCollaborator", backref="subtask", lazy=True)
+    attachments = db.relationship("SubtaskAttachment", backref="subtask", lazy=True, cascade="all, delete-orphan")
 
 
 class TaskCollaborator(db.Model):
