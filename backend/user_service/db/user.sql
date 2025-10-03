@@ -19,7 +19,7 @@ CREATE TABLE users (
     name VARCHAR(80) NOT NULL,
     password_hash VARCHAR(255) NOT NULL,
     email VARCHAR(120) UNIQUE NOT NULL,
-    role VARCHAR(50) NOT NULL DEFAULT 'staff',
+    role VARCHAR(50) NOT NULL DEFAULT 'Staff',
     team_id INTEGER REFERENCES teams(id)
 );
 

@@ -1,4 +1,4 @@
-from .models import db, Task, Subtask, Comment, Attachment
+from .models import db, project_collaborators, task_collaborators, Project, Task, Attachment, User
 from datetime import datetime
 
 def get_all_tasks(owner_id, status=None):

@@ -72,10 +72,14 @@ def create_user(data):
         return None, f"Team with id {data['team_id']} not found."
 
     role_str = data.get('role')
-    try:
-        role = RoleEnum(role_str.capitalize())
-    except ValueError:
-        return None, f"Invalid role: {role_str}. Must be one of {[role.value for role in RoleEnum]}."
+    if role_str:
+        try:
+            role = RoleEnum(role_str.capitalize())
+        except ValueError:
+            return None, f"Invalid role: {role_str}. Must be one of {[role.value for role in RoleEnum]}."
+    else:
+        role = RoleEnum.STAFF  # fallback to default
+
     new_user = User(
         username=data['username'],
         name=data['name'],
