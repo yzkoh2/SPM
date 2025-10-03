@@ -157,17 +157,7 @@ def get_task_details(task_id):
         if not task:
             return None
 
-        return {
-            "id": task.id,
-            "title": task.title,
-            "description": task.description,
-            "deadline": str(task.deadline) if task.deadline else None,
-            "status": task.status,
-            "owner_id": task.owner_id,
-            "subtasks": [{"id": s.id, "title": s.title, "status": s.status} for s in task.subtasks],
-            "comments": [{"id": c.id, "body": c.body, "author_id": c.author_id} for c in task.comments],
-            "attachments": [{"id": a.id, "filename": a.filename, "url": a.url} for a in task.attachments]
-        }
+        return task.to_json()
         
     except Exception as e:
         print(f"Error in get_task_details: {e}")
@@ -180,12 +170,7 @@ def get_task_subtasks(task_id):
         if not task:
             return None
         
-        return [{
-            "id": subtask.id,
-            "title": subtask.title,
-            "status": subtask.status,
-            "task_id": subtask.task_id
-        } for subtask in task.subtasks]
+        return [subtask.to_json() for subtask in task.subtasks]
         
     except Exception as e:
         print(f"Error in get_task_subtasks: {e}")

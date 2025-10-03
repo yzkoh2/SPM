@@ -3,6 +3,7 @@ from . import service
 
 task_bp = Blueprint("task_bp", __name__)
 
+# Settled
 @task_bp.route("/tasks", methods=["GET"])
 def get_all_tasks():
     """Get all tasks, optionally filtered by owner_id"""
@@ -24,6 +25,7 @@ def get_all_tasks():
         print(f"Error in get_all_tasks: {e}")
         return jsonify({"error": str(e)}), 500
 
+# Not Settled
 @task_bp.route("/tasks", methods=["POST"])
 def create_task():
     """Create a new task"""
