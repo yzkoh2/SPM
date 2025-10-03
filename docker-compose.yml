@@ -85,8 +85,8 @@ services:
     restart: always
     networks:
       - spm-net
-    # ports:
-    #   - "6000:6000"
+    env_file:
+      - .env
     environment:
       DATABASE_URL: ${DATABASE_URL}
       SECRET_KEY: ${SECRET_KEY}
@@ -94,17 +94,19 @@ services:
       - user_db
 
   task_service:
-    build: ./backend/task_management_service
+    build: ./backend/task_service
     image: spm/task_service:1.0
     container_name: spm_task_service
     restart: always
     networks:
       - spm-net
+    env_file:
+      - .env
     environment:
       DATABASE_URL: ${TASK_DATABASE_URL}
       SECRET_KEY: ${SECRET_KEY}
-    volumes:
-      - ./backend/task_management_service/uploads:/app/uploads
+    # volumes:
+    #   - ./backend/task_service/uploads:/app/uploads
     depends_on:
       - task_db
 

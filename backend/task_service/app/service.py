@@ -1,37 +1,37 @@
-from .models import db, project_collaborators, task_collaborators, Project, Task, Attachment, User
+from .models import db, Project, Task, Attachment, TaskStatusEnum, project_collaborators, task_collaborators
+from sqlalchemy import or_
+from sqlalchemy.orm import aliased
 from datetime import datetime
 
-def get_all_tasks(owner_id, status=None):
-    """Fetch all tasks with optional filtering"""
-    try:
-        query = Task.query
-        
-        if not owner_id:
-            return None
-        
-        query = query.filter_by(owner_id=owner_id)
-        
-        if status:
-            query = query.filter_by(status=status)
-        
-        tasks = query.all()
-        print(f"Found {len(tasks)} tasks")
-        
-        return [{
-            "id": task.id,
-            "title": task.title,
-            "description": task.description,
-            "deadline": str(task.deadline) if task.deadline else None,
-            "status": task.status,
-            "owner_id": task.owner_id,
-            "subtask_count": len(task.subtasks),
-            "comment_count": len(task.comments),
-            "attachment_count": len(task.attachments)
-        } for task in tasks]
-        
-    except Exception as e:
-        print(f"Error in get_all_tasks: {e}")
-        raise e
+def get_all_tasks(user_id):
+    if not user_id:
+        return []
+
+    # Alias for subtasks
+    SubTask = aliased(Task)
+
+    # Step 1: find parent_task_ids where user is a collaborator on a subtask
+    subtask_collab_query = db.session.query(SubTask.parent_task_id)\
+        .join(task_collaborators, task_collaborators.c.task_id == SubTask.id)\
+        .filter(task_collaborators.c.user_id == user_id)\
+        .filter(SubTask.parent_task_id.isnot(None))\
+        .distinct()
+
+    # Step 2: main query for parent tasks
+    tasks_query = db.session.query(Task)\
+        .filter(Task.parent_task_id.is_(None))\
+        .filter(
+            or_(
+                Task.owner_id == user_id,  # owner
+                db.session.query(task_collaborators)
+                  .filter(task_collaborators.c.task_id == Task.id)
+                  .filter(task_collaborators.c.user_id == user_id)
+                  .exists(),  # direct collaborator
+                Task.id.in_(subtask_collab_query)  # collaborator on subtasks
+            )
+        ).distinct()
+
+    return tasks_query.all()
 
 def create_task(task_data):
     """Create a new task"""
