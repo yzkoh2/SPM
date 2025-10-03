@@ -85,6 +85,7 @@ class Task(db.Model):
         'Task', backref=db.backref('parent_task', remote_side=[id]), cascade="all, delete-orphan"
     )
     attachments = db.relationship('Attachment', backref='task', cascade="all, delete-orphan")
+    comments = db.relationship('Comment', backref='task', cascade="all, delete-orphan")
 
     # Helper method to get collaborator IDs
     def collaborator_ids(self):
@@ -104,8 +105,10 @@ class Task(db.Model):
             'project_id': self.project_id,
             'parent_task_id': self.parent_task_id,
             'collaborator_ids': self.collaborator_ids(),
+            'subtask_count': len(self.subtasks),
+            'comment_count': len(self.comments),
+            'attachment_count': len(self.attachments)
         }
-
 
 class Attachment(db.Model):
     """Represents a file attachment linked to a task."""
@@ -115,3 +118,23 @@ class Attachment(db.Model):
     filename = db.Column(db.String(255), nullable=False)
     url = db.Column(db.String(500), nullable=False)
     task_id = db.Column(db.Integer, db.ForeignKey('tasks.id'), nullable=False)
+
+class Comment(db.Model):
+    """Represents a comment made on a task."""
+    __tablename__ = 'comments'
+
+    id = db.Column(db.Integer, primary_key=True)
+    body = db.Column(db.Text, nullable=False)
+    author_id = db.Column(db.Integer, nullable=False)
+    task_id = db.Column(db.Integer, db.ForeignKey('tasks.id'), nullable=False)
+    created_at = db.Column(db.DateTime, server_default=db.func.now())
+
+    def to_json(self):
+        """Serialize the object to a dictionary."""
+        return {
+            'id': self.id,
+            'body': self.body,
+            'author_id': self.author_id,
+            'task_id': self.task_id,
+            'created_at': self.created_at.isoformat()
+        }

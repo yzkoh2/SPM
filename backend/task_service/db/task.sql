@@ -3,8 +3,8 @@ DROP TABLE IF EXISTS task_collaborators;
 DROP TABLE IF EXISTS project_collaborators;
 DROP TABLE IF EXISTS tasks;
 DROP TABLE IF EXISTS projects;
+DROP TABLE IF EXISTS comments;
 
--- 1. Create Projects Table
 CREATE TABLE projects (
     id SERIAL PRIMARY KEY,
     title VARCHAR(200) NOT NULL,
@@ -14,7 +14,6 @@ CREATE TABLE projects (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- 2. Create Tasks Table (Handles both tasks and subtasks)
 CREATE TABLE tasks (
     id SERIAL PRIMARY KEY,
     title VARCHAR(200) NOT NULL,
@@ -26,7 +25,6 @@ CREATE TABLE tasks (
     parent_task_id INT REFERENCES tasks(id) ON DELETE CASCADE -- Self-referencing key for subtasks
 );
 
--- 3. Create Attachments Table
 CREATE TABLE attachments (
     id SERIAL PRIMARY KEY,
     filename VARCHAR(255) NOT NULL,
@@ -34,7 +32,14 @@ CREATE TABLE attachments (
     task_id INT NOT NULL REFERENCES tasks(id) ON DELETE CASCADE
 );
 
--- 4. Create Collaborator Junction Tables
+CREATE TABLE comments (
+    id SERIAL PRIMARY KEY,
+    body TEXT NOT NULL,
+    author_id INT NOT NULL,
+    task_id INT NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
 CREATE TABLE project_collaborators (
     project_id INT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
     user_id INT NOT NULL,
@@ -87,3 +92,16 @@ INSERT INTO project_collaborators (project_id, user_id) VALUES
 
 INSERT INTO task_collaborators (task_id, user_id) VALUES
 (1, 1), (1, 2), (2, 2), (2, 3);
+
+-- Comments for Task 1 ('Design Homepage')
+INSERT INTO comments (body, author_id, task_id) VALUES
+('I''ve uploaded a new mockup in the attachments. Let me know what you think!', 1, 1),
+('Looks great! I think the call-to-action button could be a bit more prominent.', 2, 1);
+
+-- Comment for Task 4 ('Backend API Setup')
+INSERT INTO comments (body, author_id, task_id) VALUES
+('I''ve defined the initial user and task endpoints in the attached markdown file.', 2, 4);
+
+-- Comment for a subtask (task_id 5: 'Define API endpoints')
+INSERT INTO comments (body, author_id, task_id) VALUES
+('Should we include a route for collaborators or handle that within the main task endpoint?', 3, 5);
