@@ -105,8 +105,11 @@ class Task(db.Model):
             'project_id': self.project_id,
             'parent_task_id': self.parent_task_id,
             'collaborator_ids': self.collaborator_ids(),
+            'subtasks': [subtask.to_json() for subtask in self.subtasks],
             'subtask_count': len(self.subtasks),
+            'comments': [comment.to_json() for comment in self.comments],
             'comment_count': len(self.comments),
+            'attachments': [attachment.to_json() for attachment in self.attachments],
             'attachment_count': len(self.attachments)
         }
 
@@ -118,6 +121,13 @@ class Attachment(db.Model):
     filename = db.Column(db.String(255), nullable=False)
     url = db.Column(db.String(500), nullable=False)
     task_id = db.Column(db.Integer, db.ForeignKey('tasks.id'), nullable=False)
+
+    def to_json(self):
+        return {
+            'id': self.id,
+            'filename': self.filename,
+            'url': self.url,
+        }
 
 class Comment(db.Model):
     """Represents a comment made on a task."""

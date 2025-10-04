@@ -3,6 +3,7 @@ from sqlalchemy import or_
 from sqlalchemy.orm import aliased
 from datetime import datetime
 
+# Settled
 def get_all_tasks(user_id):
     if not user_id:
         return []
@@ -55,13 +56,23 @@ def create_task(task_data):
                 print(f"Error parsing deadline: {e}")
                 deadline = None
         
+        status = TaskStatusEnum.UNASSIGNED
+        if task_data.get('status'):
+            try:
+                status_key = TaskStatusEnum(task_data['status'].replace(' ', '_').upper())
+                if hasattr(TaskStatusEnum, status_key):
+                    status = TaskStatusEnum[status_key]
+            except ValueError:
+                status = TaskStatusEnum.UNASSIGNED
         # Create new task
         new_task = Task(
             title=task_data['title'],
             description=task_data.get('description'),
             deadline=deadline,
-            status=task_data.get('status', 'Unassigned'),
-            owner_id=task_data['owner_id']
+            status=status,
+            owner_id=task_data['owner_id'],
+            project_id=task_data.get('project_id'),
+            parent_task_id=task_data.get('parent_task_id')
         )
         
         # Add to database
@@ -71,23 +82,14 @@ def create_task(task_data):
         print(f"Task created with ID: {new_task.id}")
         
         # Return the created task
-        return {
-            "id": new_task.id,
-            "title": new_task.title,
-            "description": new_task.description,
-            "deadline": str(new_task.deadline) if new_task.deadline else None,
-            "status": new_task.status,
-            "owner_id": new_task.owner_id,
-            "subtask_count": 0,
-            "comment_count": 0,
-            "attachment_count": 0
-        }
+        return new_task.to_json()
         
     except Exception as e:
         print(f"Error in create_task: {e}")
         db.session.rollback()
         raise e
 
+# Not Settled
 def update_task(task_id, task_data):
     """Update an existing task"""
     try:

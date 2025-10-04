@@ -25,7 +25,6 @@ def get_all_tasks():
         print(f"Error in get_all_tasks: {e}")
         return jsonify({"error": str(e)}), 500
 
-# Not Settled
 @task_bp.route("/tasks", methods=["POST"])
 def create_task():
     """Create a new task"""
@@ -63,6 +62,7 @@ def get_task(task_id):
         print(f"Error in get_task: {e}")
         return jsonify({"error": str(e)}), 500
 
+# Not Settled
 @task_bp.route("/tasks/<int:task_id>", methods=["PUT"])
 def update_task(task_id):
     """Update a task"""

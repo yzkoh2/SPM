@@ -102,7 +102,7 @@
                     class="px-4 py-2 text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors">
               Clear Filters
             </button>
-            <button @click="fetchTasks" 
+            <button @click="fetchTasks(authStore.user.id)" 
                     class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors">
               Refresh
             </button>
