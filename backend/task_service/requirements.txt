@@ -17,4 +17,6 @@ gunicorn
 # Password encryption
 PyJWT
 cryptography
-bcrypt
+
+# For handling dates and times
+python-dateutil

@@ -78,6 +78,13 @@ class Task(db.Model):
     owner_id = db.Column(db.Integer, nullable=False)
     project_id = db.Column(db.Integer, db.ForeignKey('projects.id'), nullable=True)
     parent_task_id = db.Column(db.Integer, db.ForeignKey('tasks.id'), nullable=True)
+    priority = db.Column(db.Integer, nullable=True)  
+
+    # Task Recurrance
+    is_recurring = db.Column(db.Boolean, default=False)
+    recurrence_interval = db.Column(db.String(50), nullable=True) 
+    recurrence_days = db.Column(db.Integer, nullable=True) #
+    recurrence_end_date = db.Column(db.DateTime, nullable=True)
 
     # Relationships
     project = db.relationship('Project', back_populates='tasks')
@@ -104,6 +111,11 @@ class Task(db.Model):
             'owner_id': self.owner_id,
             'project_id': self.project_id,
             'parent_task_id': self.parent_task_id,
+            'priority': self.priority,
+            'is_recurring': self.is_recurring,
+            'recurrence_interval': self.recurrence_interval,
+            'recurrence_days': self.recurrence_days,
+            'recurrence_end_date': self.recurrence_end_date.isoformat() if self.recurrence_end_date else None,
             'collaborator_ids': self.collaborator_ids(),
             'subtasks': [subtask.to_json() for subtask in self.subtasks],
             'subtask_count': len(self.subtasks),

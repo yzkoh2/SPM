@@ -62,22 +62,30 @@ def get_task(task_id):
         print(f"Error in get_task: {e}")
         return jsonify({"error": str(e)}), 500
 
-# Not Settled
 @task_bp.route("/tasks/<int:task_id>", methods=["PUT"])
 def update_task(task_id):
     """Update a task"""
     try:
         data = request.get_json()
         print(f"Updating task {task_id} with data: {data}")
+
+        user_id = data.pop('user_id', None)
         
-        updated_task = service.update_task(task_id, data)
-        if not updated_task:
-            return jsonify({"error": "Task not found"}), 404
+        updated_task, message = service.update_task(task_id, user_id, data)
+        if updated_task is None:
+            if "not found" in message:
+                return jsonify({"error": message}), 404
+            elif "Forbidden" in message:
+                return jsonify({"error": message}), 403
+            else:
+                return jsonify({"error": message}), 400 
         return jsonify(updated_task), 200
+    
     except Exception as e:
         print(f"Error in update_task: {e}")
         return jsonify({"error": str(e)}), 500
 
+# Not Settled
 @task_bp.route("/tasks/<int:task_id>", methods=["DELETE"])
 def delete_task(task_id):
     """Delete a task"""

@@ -1,7 +1,8 @@
 from .models import db, Project, Task, Attachment, TaskStatusEnum, project_collaborators, task_collaborators
 from sqlalchemy import or_
 from sqlalchemy.orm import aliased
-from datetime import datetime
+from datetime import datetime, timedelta
+from dateutil.relativedelta import relativedelta
 
 # Settled
 def get_all_tasks(user_id):
@@ -59,9 +60,8 @@ def create_task(task_data):
         status = TaskStatusEnum.UNASSIGNED
         if task_data.get('status'):
             try:
-                status_key = TaskStatusEnum(task_data['status'].replace(' ', '_').upper())
-                if hasattr(TaskStatusEnum, status_key):
-                    status = TaskStatusEnum[status_key]
+                # Directly find the enum member by its value (e.g., 'Under Review')
+                status = TaskStatusEnum(task_data['status'])
             except ValueError:
                 status = TaskStatusEnum.UNASSIGNED
         # Create new task
@@ -89,52 +89,142 @@ def create_task(task_data):
         db.session.rollback()
         raise e
 
-# Not Settled
-def update_task(task_id, task_data):
+def update_task(task_id, user_id, task_data):
     """Update an existing task"""
     try:
-        task = Task.query.filter_by(id=task_id).first()
+        task = Task.query.get(task_id)
         if not task:
-            return None
+            return None, "Task not found"
         
-        # Update fields if provided
-        if 'title' in task_data:
-            task.title = task_data['title']
-        if 'description' in task_data:
-            task.description = task_data['description']
-        if 'status' in task_data:
-            task.status = task_data['status']
-        if 'deadline' in task_data:
-            if task_data['deadline']:
+        # Check if taks belongs to user
+        is_owner = (task.owner_id == user_id)
+        is_collaborator = user_id in task.collaborator_ids()
+
+        if not is_owner:
+            if not is_collaborator:
+                return None, "Forbidden: You do not have permission to edit this task."
+            for field in task_data:
+                if field != 'status':
+                    return None, "Forbidden: Collaborators can only update the status of the task."
+        
+        for field, data in task_data.items():
+            if field == 'deadline' and data:
+                task.deadline = datetime.fromisoformat(data)
+            elif field == 'recurring_end_date' and data:
+                task.recurrence_end_date = datetime.fromisoformat(data)
+            elif field == 'status':
                 try:
-                    if isinstance(task_data['deadline'], str):
-                        task.deadline = datetime.fromisoformat(task_data['deadline'])
-                    else:
-                        task.deadline = task_data['deadline']
+                    # Directly find the enum member by its value (e.g., 'Under Review')
+                    task.status = TaskStatusEnum(task_data['status'])
                 except ValueError:
-                    task.deadline = None
+                    return None, "Invalid status value"
             else:
-                task.deadline = None
+                setattr(task, field, data)
         
+        db.session.flush()
+
+        # --- RECURRENCE LOGIC (remains the same) ---
+        if 'status' in task_data and task.status == TaskStatusEnum.COMPLETED:
+            if task.is_recurring:
+                _create_next_recurring_task(task)
+
         db.session.commit()
-        
-        return {
-            "id": task.id,
-            "title": task.title,
-            "description": task.description,
-            "deadline": str(task.deadline) if task.deadline else None,
-            "status": task.status,
-            "owner_id": task.owner_id,
-            "subtask_count": len(task.subtasks),
-            "comment_count": len(task.comments),
-            "attachment_count": len(task.attachments)
-        }
+        return task.to_json(), "Task updated successfully"
         
     except Exception as e:
         print(f"Error in update_task: {e}")
         db.session.rollback()
         raise e
 
+def _create_next_recurring_task(completed_task):
+    """
+    Creates the next instance of a recurring task.
+    """
+    if completed_task.recurrence_end_date and datetime.utcnow() >= completed_task.recurrence_end_date:
+        return
+
+    next_deadline = _calculate_next_due_date(
+        completed_task.deadline, 
+        completed_task.recurrence_interval, 
+        completed_task.recurrence_days
+    )
+
+    new_task = Task(
+        title=completed_task.title,
+        description=completed_task.description,
+        deadline=next_deadline,
+        status=TaskStatusEnum.UNASSIGNED,
+        owner_id=completed_task.owner_id,
+        project_id=completed_task.project_id,
+        parent_task_id=completed_task.parent_task_id,
+        priority=completed_task.priority,
+        is_recurring=True,
+        recurrence_interval=completed_task.recurrence_interval,
+        recurrence_days=completed_task.recurrence_days,
+        recurrence_end_date=completed_task.recurrence_end_date
+    )
+
+    # --- FIX: Add and flush the new task to get its ID ---
+    db.session.add(new_task)
+    db.session.flush() # This assigns an ID to new_task without committing
+
+    # --- Now this block will work correctly ---
+    collaborator_ids_to_copy = completed_task.collaborator_ids()
+    if collaborator_ids_to_copy: # Check if there are any collaborators
+        # You can build a list of dictionaries for a bulk insert
+        new_collaborators = [
+            {'task_id': new_task.id, 'user_id': user_id}
+            for user_id in collaborator_ids_to_copy
+        ]
+        db.session.execute(task_collaborators.insert(), new_collaborators)
+
+    # --- Subtask copying logic remains the same ---
+    for subtask_to_copy in completed_task.subtasks:
+        # (Consider implementing the relative deadline logic here)
+        new_subtask_deadline = subtask_to_copy.deadline # Or calculate a new one
+
+        new_subtask = Task(
+            title=subtask_to_copy.title,
+            description=subtask_to_copy.description,
+            deadline=new_subtask_deadline,
+            status=TaskStatusEnum.UNASSIGNED,
+            owner_id=subtask_to_copy.owner_id,
+            project_id=subtask_to_copy.project_id,
+            priority=subtask_to_copy.priority,
+            parent_task=new_task
+        )
+        
+        db.session.add(new_subtask)
+        db.session.flush() # Flush to get the subtask's ID
+
+        subtask_collaborator_ids = subtask_to_copy.collaborator_ids()
+        if subtask_collaborator_ids:
+            new_sub_collaborators = [
+                {'task_id': new_subtask.id, 'user_id': user_id}
+                for user_id in subtask_collaborator_ids
+            ]
+            db.session.execute(task_collaborators.insert(), new_sub_collaborators)
+    
+    # Mark the old task as no longer the active recurring one
+    completed_task.is_recurring = False
+
+def _calculate_next_due_date(current_deadline, interval, custom_days):
+    """Calculates the next due date based on the recurrence interval."""
+    if not current_deadline:
+        return None # Cannot calculate next date without a starting point
+
+    if interval == 'daily':
+        return current_deadline + timedelta(days=1)
+    elif interval == 'weekly':
+        return current_deadline + timedelta(weeks=1)
+    elif interval == 'monthly':
+        return current_deadline + relativedelta(months=1)
+    elif interval == 'custom' and custom_days:
+        return current_deadline + timedelta(days=custom_days)
+    
+    return None
+
+# Not Settled
 def delete_task(task_id):
     """Delete a task by ID"""
     try:

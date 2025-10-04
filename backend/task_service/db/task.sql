@@ -19,10 +19,15 @@ CREATE TABLE tasks (
     title VARCHAR(200) NOT NULL,
     description TEXT,
     deadline TIMESTAMP,
-    status VARCHAR(50) DEFAULT 'Unassigned',
+    status VARCHAR(50) DEFAULT 'UNASSIGNED',
     owner_id INT NOT NULL,
     project_id INT REFERENCES projects(id) ON DELETE CASCADE,
-    parent_task_id INT REFERENCES tasks(id) ON DELETE CASCADE -- Self-referencing key for subtasks
+    parent_task_id INT REFERENCES tasks(id) ON DELETE CASCADE, -- Self-referencing key for subtasks
+    priority INT DEFAULT 5,
+    is_recurring BOOLEAN DEFAULT FALSE,
+    recurrence_interval VARCHAR(50),
+    recurrence_days INT,
+    recurrence_end_date TIMESTAMP
 );
 
 CREATE TABLE attachments (
