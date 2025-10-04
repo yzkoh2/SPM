@@ -224,11 +224,10 @@ def _calculate_next_due_date(current_deadline, interval, custom_days):
     
     return None
 
-# Not Settled
 def delete_task(task_id):
     """Delete a task by ID"""
     try:
-        task = Task.query.filter_by(id=task_id).first()
+        task = Task.query.get(task_id)
         if not task:
             return False
             
@@ -255,6 +254,7 @@ def get_task_details(task_id):
         print(f"Error in get_task_details: {e}")
         raise e
 
+# Not Settled
 def get_task_subtasks(task_id):
     """Fetch all subtasks for a specific task"""
     try:

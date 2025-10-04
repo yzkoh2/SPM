@@ -85,7 +85,6 @@ def update_task(task_id):
         print(f"Error in update_task: {e}")
         return jsonify({"error": str(e)}), 500
 
-# Not Settled
 @task_bp.route("/tasks/<int:task_id>", methods=["DELETE"])
 def delete_task(task_id):
     """Delete a task"""
@@ -101,6 +100,7 @@ def delete_task(task_id):
         print(f"Error in delete_task: {e}")
         return jsonify({"error": str(e)}), 500
 
+# Not Settled
 @task_bp.route("/tasks/<int:task_id>/subtasks", methods=["GET"])
 def get_task_subtasks(task_id):
     """Get all subtasks for a specific task"""
