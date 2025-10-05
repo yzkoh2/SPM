@@ -144,8 +144,8 @@ services:
     networks:
       - spm-net
     environment:
-      POSTGRES_USER: task_user
-      POSTGRES_PASSWORD: task
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: user
       POSTGRES_DB: task_db
     ports:
       - "5435:5432"

@@ -297,7 +297,7 @@ const fetchTasks = async (userID) => {
     if (userID) {
       queryParam.append('owner_id', userID) 
     }
-    
+    console.log(`${KONG_API_URL}/tasks${queryParam.toString() ? `?${queryParam.toString()}` : ''}`)
     const response = await fetch(`${KONG_API_URL}/tasks${queryParam.toString() ? `?${queryParam.toString()}` : ''}`, {
       method: 'GET',
       headers: {
