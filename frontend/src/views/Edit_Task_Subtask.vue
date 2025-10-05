@@ -526,10 +526,10 @@ const saveItem = async () => {
     showConfirmModal.value = false
     
     const updateData = {
+      user_id: userId.value,
       title: editedItem.value.title,
       description: editedItem.value.description,
       deadline: editedItem.value.deadline || null,
-      requesting_user_id: userId.value
     }
     
     console.log('Sending update request:', updateData)
@@ -547,7 +547,7 @@ const saveItem = async () => {
     
     if (response.ok) {
       alert(`${isSubtask.value ? 'Subtask' : 'Task'} updated successfully!`)
-      router.push(isSubtask ? `/tasks/${taskId}/subtasks/${subtaskId}` : `/tasks/${taskId}`)
+      router.push(isSubtask.value ? `/tasks/${taskId.value}/subtasks/${subtaskId.value}` : `/tasks/${taskId.value}`)
     } else {
       error.value = responseData.error || `Failed to update ${isSubtask.value ? 'subtask' : 'task'}`
     }
