@@ -5,15 +5,15 @@
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="flex items-center py-6">
           <router-link 
-            :to="`/tasks/${taskId}/subtasks/${subtaskId}`" 
+            :to="backRoute" 
             class="flex items-center text-indigo-600 hover:text-indigo-500 mr-6 text-sm font-medium">
             <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
             </svg>
-            Back to Subtask Details
+            Back to {{ isSubtask ? 'Subtask' : 'Task' }} Details
           </router-link>
           <div class="flex-1">
-            <h1 class="text-2xl font-bold text-gray-900">Edit Subtask</h1>
+            <h1 class="text-2xl font-bold text-gray-900">Edit {{ isSubtask ? 'Subtask' : 'Task' }}</h1>
           </div>
         </div>
       </div>
@@ -39,8 +39,8 @@
         </div>
       </div>
 
-      <!-- Parent Task Info -->
-      <div v-if="parentTask" class="bg-blue-50 border border-blue-200 rounded-md p-4 mb-6">
+      <!-- Parent Task Info (only for subtasks) -->
+      <div v-if="isSubtask && parentTask" class="bg-blue-50 border border-blue-200 rounded-md p-4 mb-6">
         <div class="flex items-center justify-between">
           <div>
             <p class="text-sm font-medium text-blue-900">Parent Task:</p>
@@ -54,44 +54,44 @@
         </div>
       </div>
 
-      <!-- Completed Subtask Warning -->
-      <div v-if="subtask && subtask.status === 'Completed'" class="bg-yellow-50 border border-yellow-200 rounded-md p-6 mb-6">
+      <!-- Completed Warning -->
+      <div v-if="item && item.status === 'Completed'" class="bg-yellow-50 border border-yellow-200 rounded-md p-6 mb-6">
         <div class="flex items-center">
           <svg class="w-6 h-6 text-yellow-600 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
           </svg>
           <div>
-            <h3 class="text-sm font-medium text-yellow-800">Completed Subtask</h3>
-            <p class="text-sm text-yellow-700 mt-1">This subtask is marked as completed and cannot be edited.</p>
+            <h3 class="text-sm font-medium text-yellow-800">Completed {{ isSubtask ? 'Subtask' : 'Task' }}</h3>
+            <p class="text-sm text-yellow-700 mt-1">This {{ isSubtask ? 'subtask' : 'task' }} is marked as completed and cannot be edited.</p>
           </div>
         </div>
       </div>
 
       <!-- Edit Form -->
-      <div v-if="subtask && !loading && subtask.status !== 'Completed'" class="bg-white rounded-lg shadow-md p-6">
+      <div v-if="item && !loading && item.status !== 'Completed'" class="bg-white rounded-lg shadow-md p-6">
         <form @submit.prevent="confirmUpdate" class="space-y-6">
-          <!-- Subtask Title -->
+          <!-- Title -->
           <div>
-            <label for="title" class="block text-sm font-medium text-gray-700">Subtask Title *</label>
+            <label for="title" class="block text-sm font-medium text-gray-700">{{ isSubtask ? 'Subtask' : 'Task' }} Title *</label>
             <input 
-              v-model="editedSubtask.title" 
+              v-model="editedItem.title" 
               type="text" 
               id="title"
               required
               class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm px-3 py-2 border"
-              placeholder="Enter subtask title"
+              :placeholder="`Enter ${isSubtask ? 'subtask' : 'task'} title`"
             />
           </div>
 
-          <!-- Subtask Description -->
+          <!-- Description -->
           <div>
             <label for="description" class="block text-sm font-medium text-gray-700">Description</label>
             <textarea 
-              v-model="editedSubtask.description" 
+              v-model="editedItem.description" 
               id="description"
               rows="4"
               class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm px-3 py-2 border"
-              placeholder="Enter subtask description"
+              :placeholder="`Enter ${isSubtask ? 'subtask' : 'task'} description`"
             ></textarea>
           </div>
 
@@ -99,7 +99,7 @@
           <div>
             <label for="deadline" class="block text-sm font-medium text-gray-700">Deadline</label>
             <input 
-              v-model="editedSubtask.deadline" 
+              v-model="editedItem.deadline" 
               type="datetime-local" 
               id="deadline"
               class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm px-3 py-2 border"
@@ -109,7 +109,6 @@
           <!-- Collaborators Section -->
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-2">Collaborators</label>
-            <p class="text-xs text-gray-500 mb-3">Manage collaborators for this subtask</p>
             <div class="space-y-2">
               <!-- List existing collaborators -->
               <div v-for="collaborator in collaborators" :key="collaborator.user_id" 
@@ -130,7 +129,8 @@
                   v-model="newCollaboratorId"
                   type="number"
                   placeholder="Enter user ID"
-                  class="flex-1 border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm px-3 py-2 border"/>
+                  class="flex-1 border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm px-3 py-2 border"
+                />
                 <button 
                   type="button"
                   @click="addCollaborator"
@@ -145,16 +145,18 @@
 
           <!-- Transfer Ownership Section -->
           <div v-if="userRole === 'manager' || userRole === 'director'" class="border-t pt-6">
-            <label class="block text-sm font-medium text-gray-700 mb-2">Transfer Ownership (Assign Subtask)</label>
+            <label class="block text-sm font-medium text-gray-700 mb-2">
+              {{ isSubtask ? 'Transfer Ownership (Assign Subtask)' : 'Transfer Ownership' }}
+            </label>
             <p class="text-xs text-gray-500 mb-3">
-              Assign this subtask to another user in your department with a lower role.
+              {{ isSubtask ? 'Assign this subtask' : 'Transfer this task' }} to another user in your department with a lower role.
             </p>
             <div class="flex items-center space-x-4">
               <select 
                 v-model="transferToUserId"
                 class="flex-1 border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm px-3 py-2 border"
               >
-                <option value="">Select user to assign to</option>
+                <option value="">Select user to {{ isSubtask ? 'assign' : 'transfer' }} to</option>
                 <option v-for="user in availableUsers" :key="user.id" :value="user.id">
                   {{ user.name }} ({{ user.role }})
                 </option>
@@ -165,57 +167,57 @@
                 :disabled="!transferToUserId"
                 class="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white text-sm font-medium rounded-md disabled:opacity-50"
               >
-                Assign Subtask
+                {{ isSubtask ? 'Assign Subtask' : 'Transfer Task' }}
               </button>
             </div>
           </div>
 
           <!-- Attachments Section -->
-          <div class="border-t pt-6">
+          <div>
             <label class="block text-sm font-medium text-gray-700 mb-2">Attachments</label>
             <p class="text-xs text-gray-500 mb-3">Upload files (images, PDFs, documents, etc.)</p>
             
-  <!-- Existing Attachments - Fixed to use subtask.attachments -->
-  <div v-if="subtask.attachments && subtask.attachments.length > 0" class="space-y-2 mb-4">
-    <div v-for="attachment in subtask.attachments" :key="attachment.id" 
-         class="flex items-center justify-between p-3 bg-gray-50 rounded-md border border-gray-200">
-      <div class="flex items-center space-x-3">
-        <!-- File Icon based on type -->
-        <svg v-if="isImageFile(attachment.filename)" class="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
-        </svg>
-        <svg v-else-if="isPdfFile(attachment.filename)" class="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
-        </svg>
-        <svg v-else class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
-                d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"></path>
-        </svg>
-        <div>
-          <span class="text-sm text-gray-900 font-medium">{{ attachment.filename }}</span>
-          <p class="text-xs text-gray-500">{{ getFileSize(attachment) }}</p>
-        </div>
-      </div>
-      <div class="flex items-center space-x-2">
-        <a :href="attachment.url" target="_blank" 
-           class="text-indigo-600 hover:text-indigo-500 text-sm font-medium flex items-center">
-          <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
-          </svg>
-          Download
-        </a>
-        <button 
-          type="button"
-          @click="deleteAttachment(attachment.id)"
-          class="text-red-600 hover:text-red-500 text-sm font-medium flex items-center">
-          <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
-          </svg>
-          Delete
-        </button>
-      </div>
-    </div>
-  </div>
+            <!-- Existing Attachments -->
+            <div v-if="item.attachments && item.attachments.length > 0" class="space-y-2 mb-4">
+              <div v-for="attachment in item.attachments" :key="attachment.id" 
+                   class="flex items-center justify-between p-3 bg-gray-50 rounded-md border border-gray-200">
+                <div class="flex items-center space-x-3">
+                  <!-- File Icon based on type -->
+                  <svg v-if="isImageFile(attachment.filename)" class="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                  </svg>
+                  <svg v-else-if="isPdfFile(attachment.filename)" class="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
+                  </svg>
+                  <svg v-else class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                          d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"></path>
+                  </svg>
+                  <div>
+                    <span class="text-sm text-gray-900 font-medium">{{ attachment.filename }}</span>
+                    <p class="text-xs text-gray-500">{{ getFileSize(attachment) }}</p>
+                  </div>
+                </div>
+                <div class="flex items-center space-x-2">
+                  <a :href="attachment.url" target="_blank" 
+                     class="text-indigo-600 hover:text-indigo-500 text-sm font-medium flex items-center">
+                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                    </svg>
+                    Download
+                  </a>
+                  <button 
+                    type="button"
+                    @click="deleteAttachment(attachment.id)"
+                    class="text-red-600 hover:text-red-500 text-sm font-medium flex items-center">
+                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                    </svg>
+                    Delete
+                  </button>
+                </div>
+              </div>
+            </div>
             
             <!-- File Upload Area -->
             <div class="mt-4">
@@ -276,22 +278,21 @@
             </div>
           </div>
 
-          <!-- Form Action Buttons -->
-          <div class="flex justify-end space-x-4 pt-6 border-t">
-            <button 
-              type="button" 
-              @click="router.push(`/tasks/${taskId}/subtasks/${subtaskId}`)"
-              class="px-6 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 font-medium"
+          <!-- Form Actions -->
+          <div class="flex justify-end space-x-3 pt-6 border-t">
+            <router-link 
+              :to="backRoute"
+              class="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
             >
               Cancel
-            </button>
+            </router-link>
             <button 
-              type="submit" 
+              type="button"
               :disabled="saving"
-              class="px-6 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md disabled:opacity-50 font-medium flex items-center"
+              @click="confirmUpdate"
+              class="px-6 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-md disabled:opacity-50"
             >
-              <div v-if="saving" class="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-              {{ saving ? 'Saving...' : 'Save Changes' }}
+              {{ saving ? 'Saving...' : `Update ${isSubtask ? 'Subtask' : 'Task'}` }}
             </button>
           </div>
         </form>
@@ -299,34 +300,55 @@
     </div>
 
     <!-- Confirmation Modal -->
-    <div v-if="showConfirmModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 flex items-center justify-center">
-      <div class="relative bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
-        <div class="p-6">
-          <h3 class="text-lg font-semibold text-gray-900 mb-4">Confirm Update</h3>
-          <p class="text-sm text-gray-600 mb-6">Are you sure you want to save these changes to the subtask?</p>
-          <div class="flex justify-end space-x-3">
-            <button 
-              @click="showConfirmModal = false"
-              class="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 font-medium"
-            >
-              Cancel
-            </button>
-            <button 
-              @click="saveSubtask"
-              class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md font-medium"
-            >
-              Confirm
-            </button>
-          </div>
+    <div
+      v-if="showConfirmModal"
+      class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50"
+      aria-labelledby="modal-title"
+      role="dialog"
+      aria-modal="true"
+    >
+      <div class="bg-white rounded-lg shadow-xl w-full max-w-md p-6 relative">
+        <button
+          @click="showConfirmModal = false"
+          class="absolute top-3 right-3 text-gray-400 hover:text-gray-600"
+        >
+          ✕
+        </button>
+
+        <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-indigo-100 mb-4">
+          <svg class="h-6 w-6 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+          </svg>
+        </div>
+
+        <h3 class="text-lg font-medium text-gray-900 text-center" id="modal-title">
+          Confirm Update
+        </h3>
+        <p class="text-sm text-gray-500 mt-2 text-center">
+          Are you sure you want to update this {{ isSubtask ? 'subtask' : 'task' }}? This will update the {{ isSubtask ? 'subtask' : 'task' }} for all collaborators in real-time.
+        </p>
+
+        <div class="mt-6 flex space-x-3">
+          <button
+            @click="saveItem"
+            class="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
+          >
+            Confirm
+          </button>
+          <button
+            @click="showConfirmModal = false"
+            class="flex-1 px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300"
+          >
+            Cancel
+          </button>
         </div>
       </div>
     </div>
   </div>
 </template>
 
-
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 
@@ -337,11 +359,45 @@ const authStore = useAuthStore()
 // API configuration
 const KONG_API_URL = "http://localhost:8000"
 
-// Reactive data
+// Determine if this is a subtask or task based on route params
+const isSubtask = computed(() => !!route.params.subtaskId)
 const taskId = ref(route.params.id)
 const subtaskId = ref(route.params.subtaskId)
-const subtask = ref(null)
-const editedSubtask = ref({})
+
+// Computed routes
+const backRoute = computed(() => 
+  isSubtask.value 
+    ? `/tasks/${taskId.value}/subtasks/${subtaskId.value}`
+    : `/tasks/${taskId.value}`
+)
+
+const apiEndpoint = computed(() =>
+  isSubtask.value
+    ? `${KONG_API_URL}/tasks/${taskId.value}/subtasks/${subtaskId.value}`
+    : `${KONG_API_URL}/tasks/${taskId.value}`
+)
+
+const collaboratorsEndpoint = computed(() =>
+  isSubtask.value
+    ? `${KONG_API_URL}/tasks/${taskId.value}/subtasks/${subtaskId.value}/collaborators`
+    : `${KONG_API_URL}/tasks/${taskId.value}/collaborators`
+)
+
+const transferEndpoint = computed(() =>
+  isSubtask.value
+    ? `${KONG_API_URL}/tasks/${taskId.value}/subtasks/${subtaskId.value}/transfer`
+    : `${KONG_API_URL}/tasks/${taskId.value}/transfer`
+)
+
+const attachmentsEndpoint = computed(() =>
+  isSubtask.value
+    ? `${KONG_API_URL}/tasks/${taskId.value}/subtasks/${subtaskId.value}/attachments`
+    : `${KONG_API_URL}/tasks/${taskId.value}/attachments`
+)
+
+// Reactive data - using generic "item" for both task and subtask
+const item = ref(null)
+const editedItem = ref({})
 const parentTask = ref(null)
 const collaborators = ref([])
 const loading = ref(true)
@@ -352,55 +408,68 @@ const newCollaboratorId = ref('')
 const transferToUserId = ref('')
 const availableUsers = ref([])
 
+// File upload
+const selectedFile = ref(null)
+const uploading = ref(false)
+const fileInput = ref(null)
+
 // User role and permissions
 const userRole = ref(authStore.user?.role || 'staff')
 const userId = ref(authStore.user?.id)
 const userDepartment = ref(authStore.user?.department)
 
+// Watch for route changes
+watch(() => route.params, () => {
+  taskId.value = route.params.id
+  subtaskId.value = route.params.subtaskId
+  fetchDetails()
+  fetchCollaborators()
+}, { deep: true })
+
 // Lifecycle hooks
 onMounted(async () => {
-  await fetchSubtaskDetails()
+  await fetchDetails()
   await fetchCollaborators()
   if (userRole.value !== 'staff') {
     await fetchAvailableUsers()
   }
 })
 
-// Fetch subtask details
-const fetchSubtaskDetails = async () => {
+// Fetch details (task or subtask)
+const fetchDetails = async () => {
   try {
     loading.value = true
     error.value = null
     
-    const response = await fetch(`${KONG_API_URL}/tasks/${taskId.value}/subtasks/${subtaskId.value}`, {
+    const response = await fetch(apiEndpoint.value, {
       headers: {
         'Content-Type': 'application/json'
       }
     })
     
     if (response.ok) {
-      subtask.value = await response.json()
+      item.value = await response.json()
       
-      // Store parent task info
-      if (subtask.value.parent_task) {
-        parentTask.value = subtask.value.parent_task
+      // For subtasks, store parent task info
+      if (isSubtask.value && item.value.parent_task) {
+        parentTask.value = item.value.parent_task
       }
       
-      // Initialize editedSubtask with current values
-      editedSubtask.value = {
-        title: subtask.value.title,
-        description: subtask.value.description || '',
-        deadline: subtask.value.deadline ? formatDateForInput(subtask.value.deadline) : ''
+      // Initialize editedItem with current values
+      editedItem.value = {
+        title: item.value.title,
+        description: item.value.description || '',
+        deadline: item.value.deadline ? formatDateForInput(item.value.deadline) : ''
       }
       
-      console.log('Subtask loaded:', subtask.value)
+      console.log(`${isSubtask.value ? 'Subtask' : 'Task'} loaded:`, item.value)
     } else if (response.status === 404) {
-      error.value = 'Subtask not found'
+      error.value = `${isSubtask.value ? 'Subtask' : 'Task'} not found`
     } else {
-      error.value = `Failed to load subtask: ${response.status}`
+      error.value = `Failed to load ${isSubtask.value ? 'subtask' : 'task'}: ${response.status}`
     }
   } catch (err) {
-    console.error('Error fetching subtask:', err)
+    console.error(`Error fetching ${isSubtask.value ? 'subtask' : 'task'}:`, err)
     error.value = 'Failed to connect to server'
   } finally {
     loading.value = false
@@ -410,7 +479,7 @@ const fetchSubtaskDetails = async () => {
 // Fetch collaborators
 const fetchCollaborators = async () => {
   try {
-    const response = await fetch(`${KONG_API_URL}/tasks/${taskId.value}/subtasks/${subtaskId.value}/collaborators`, {
+    const response = await fetch(collaboratorsEndpoint.value, {
       headers: {
         'Content-Type': 'application/json'
       }
@@ -424,10 +493,8 @@ const fetchCollaborators = async () => {
   }
 }
 
-// Fetch available users for transfer (mock data - replace with actual API call)
+// Fetch available users for transfer
 const fetchAvailableUsers = async () => {
-  // In production, fetch from user service based on department and role
-  // For now, using mock data
   if (userRole.value === 'director') {
     availableUsers.value = [
       { id: 2, name: 'John Manager', role: 'manager', department: userDepartment.value },
@@ -458,22 +525,22 @@ const confirmUpdate = () => {
   showConfirmModal.value = true
 }
 
-// Save subtask
-const saveSubtask = async () => {
+// Save (task or subtask)
+const saveItem = async () => {
   try {
     saving.value = true
     showConfirmModal.value = false
     
     const updateData = {
-      title: editedSubtask.value.title,
-      description: editedSubtask.value.description,
-      deadline: editedSubtask.value.deadline || null,
+      title: editedItem.value.title,
+      description: editedItem.value.description,
+      deadline: editedItem.value.deadline || null,
       requesting_user_id: userId.value
     }
     
-    console.log('Sending subtask update request:', updateData)
+    console.log('Sending update request:', updateData)
     
-    const response = await fetch(`${KONG_API_URL}/tasks/${taskId.value}/subtasks/${subtaskId.value}`, {
+    const response = await fetch(apiEndpoint.value, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json'
@@ -485,13 +552,13 @@ const saveSubtask = async () => {
     console.log('Response:', responseData)
     
     if (response.ok) {
-      alert('Subtask updated successfully!')
-      router.push(`/tasks/${taskId.value}/subtasks/${subtaskId.value}`)
+      alert(`${isSubtask.value ? 'Subtask' : 'Task'} updated successfully!`)
+      router.push(backRoute.value)
     } else {
-      error.value = responseData.error || 'Failed to update subtask'
+      error.value = responseData.error || `Failed to update ${isSubtask.value ? 'subtask' : 'task'}`
     }
   } catch (err) {
-    console.error('Error updating subtask:', err)
+    console.error(`Error updating ${isSubtask.value ? 'subtask' : 'task'}:`, err)
     error.value = 'Failed to save changes: ' + err.message
   } finally {
     saving.value = false
@@ -503,7 +570,7 @@ const addCollaborator = async () => {
   if (!newCollaboratorId.value) return
   
   try {
-    const response = await fetch(`${KONG_API_URL}/tasks/${taskId.value}/subtasks/${subtaskId.value}/collaborators`, {
+    const response = await fetch(collaboratorsEndpoint.value, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
@@ -534,7 +601,7 @@ const removeCollaborator = async (collaboratorId) => {
   
   try {
     const response = await fetch(
-      `${KONG_API_URL}/tasks/${taskId.value}/subtasks/${subtaskId.value}/collaborators/${collaboratorId}?requesting_user_id=${userId.value}`,
+      `${collaboratorsEndpoint.value}/${collaboratorId}?requesting_user_id=${userId.value}`,
       { method: 'DELETE' }
     )
     
@@ -551,50 +618,70 @@ const removeCollaborator = async (collaboratorId) => {
   }
 }
 
-// Transfer ownership (assign subtask)
+// Transfer ownership
 const transferOwnership = async () => {
   if (!transferToUserId.value) return
   
   const selectedUser = availableUsers.value.find(u => u.id === parseInt(transferToUserId.value))
   if (!selectedUser) return
   
-  if (!confirm(`Assign subtask to ${selectedUser.name}?`)) return
+  const actionText = isSubtask.value ? 'Assign subtask to' : 'Transfer task ownership to'
+  if (!confirm(`${actionText} ${selectedUser.name}?`)) return
   
   try {
-    const response = await fetch(`${KONG_API_URL}/tasks/${taskId.value}/subtasks/${subtaskId.value}/transfer`, {
+    const requestBody = {
+      requesting_user_id: userId.value,
+      requesting_user_role: userRole.value,
+      requesting_user_department: userDepartment.value
+    }
+    
+    // Different field names for task vs subtask
+    if (isSubtask.value) {
+      requestBody.new_assignee_id = selectedUser.id
+      requestBody.new_assignee_role = selectedUser.role
+      requestBody.new_assignee_department = selectedUser.department
+    } else {
+      requestBody.new_owner_id = selectedUser.id
+      requestBody.new_owner_role = selectedUser.role
+      requestBody.new_owner_department = selectedUser.department
+    }
+    
+    const response = await fetch(transferEndpoint.value, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({
-        requesting_user_id: userId.value,
-        requesting_user_role: userRole.value,
-        requesting_user_department: userDepartment.value,
-        new_assignee_id: selectedUser.id,
-        new_assignee_role: selectedUser.role,
-        new_assignee_department: selectedUser.department
-      })
+      body: JSON.stringify(requestBody)
     })
     
     const data = await response.json()
     
     if (response.ok) {
-      alert('Subtask assigned successfully!')
-      await fetchSubtaskDetails()
-      transferToUserId.value = ''
+      const successMsg = isSubtask.value 
+        ? 'Subtask assigned successfully!' 
+        : 'Task ownership transferred successfully!'
+      alert(successMsg)
+      
+      if (isSubtask.value) {
+        await fetchDetails()
+        transferToUserId.value = ''
+      } else {
+        router.push('/tasks')
+      }
     } else {
-      alert('Failed to assign subtask: ' + (data.error || 'Unknown error'))
+      const errorMsg = isSubtask.value
+        ? 'Failed to assign subtask: '
+        : 'Failed to transfer ownership: '
+      alert(errorMsg + (data.error || 'Unknown error'))
     }
   } catch (err) {
-    console.error('Error assigning subtask:', err)
-    alert('Failed to assign subtask: ' + err.message)
+    console.error('Error transferring ownership:', err)
+    const errorMsg = isSubtask.value
+      ? 'Failed to assign subtask: '
+      : 'Failed to transfer ownership: '
+    alert(errorMsg + err.message)
   }
 }
-
-// Add to reactive data
-const selectedFile = ref(null)
-const uploading = ref(false)
-const fileInput = ref(null)
 
 // Helper functions
 const isImageFile = (filename) => {
@@ -649,28 +736,18 @@ const uploadFile = async () => {
     formData.append('file', selectedFile.value)
     formData.append('requesting_user_id', userId.value)
 
-    const response = await fetch(
-      `${KONG_API_URL}/tasks/${taskId.value}/subtasks/${subtaskId.value}/attachments`, 
-      {
-        method: 'POST',
-        body: formData
-      }
-    )
+    const response = await fetch(attachmentsEndpoint.value, {
+      method: 'POST',
+      body: formData
+    })
 
     if (response.ok) {
       const attachment = await response.json()
       console.log('File uploaded successfully:', attachment)
       
-      // Option A: Add the new attachment directly to the array
-      if (!subtask.value.attachments) {
-        subtask.value.attachments = []
-      }
-      subtask.value.attachments.push(attachment)
-      
-      // Option B: Or refresh from server
-      await fetchSubtaskDetails()
-      
+      await fetchDetails()
       clearSelectedFile()
+      
       alert('File uploaded successfully!')
     } else {
       const data = await response.json()
@@ -691,14 +768,14 @@ const deleteAttachment = async (attachmentId) => {
 
   try {
     const response = await fetch(
-      `${KONG_API_URL}/tasks/${taskId.value}/subtasks/${subtaskId.value}/attachments/${attachmentId}?requesting_user_id=${userId.value}`,
+      `${attachmentsEndpoint.value}/${attachmentId}?requesting_user_id=${userId.value}`,
       {
         method: 'DELETE'
       }
     )
 
     if (response.ok) {
-      await fetchSubtaskDetails()
+      await fetchDetails()
       console.log('Attachment deleted successfully')
       alert('Attachment deleted successfully!')
     } else {

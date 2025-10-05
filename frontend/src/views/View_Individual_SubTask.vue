@@ -297,7 +297,7 @@ const fetchSubtaskDetails = async () => {
     console.log('Fetching subtask details for Task ID:', taskId, 'Subtask ID:', subtaskId)
     
     // Fetch subtask details
-    const subtaskResponse = await fetch(`${KONG_API_URL}/tasks/${taskId}/subtasks/${subtaskId}`, {
+    const subtaskResponse = await fetch(`${KONG_API_URL}/tasks/${subtaskId}`, {
       headers: {
         'Content-Type': 'application/json'
       }

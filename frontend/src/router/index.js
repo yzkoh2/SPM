@@ -44,13 +44,13 @@ const router = createRouter({
     {
       path: '/tasks/:id/edit',
       name: 'task-edit',
-      component: () => import('@/views/Edit_Task.vue'),
+      component: () => import('@/views/Edit_Task_Subtask.vue'),
       meta: { requiresAuth: true }
     },
     {
       path: '/tasks/:id/subtasks/:subtaskId/edit',
       name: 'subtask-edit', 
-      component: () => import('@/views/Edit_SubTask.vue'),
+      component: () => import('@/views/Edit_Task_SubTask.vue'),
       meta: { requiresAuth: true }
     }    
     

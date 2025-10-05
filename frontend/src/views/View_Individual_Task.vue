@@ -301,6 +301,10 @@ const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
 
+const isSubtask = computed(() => !!route.params.subtaskId)
+const taskId = ref(route.params.id)
+const subtaskId = ref(route.params.subtaskId)
+
 // Reactive data
 const task = ref(null)
 const comments = ref([])
@@ -356,15 +360,15 @@ const handleStatusUpdate = async ({ newStatus, comment }) => {
   try {
     console.log('Updating task status:', { newStatus, comment, taskId: task.value.id, userId: authStore.user.id })
     
-    const response = await fetch(`${KONG_API_URL}/tasks/${task.value.id}/status`, {
-      method: 'PATCH',
+    const response = await fetch(`${KONG_API_URL}/tasks/${task.value.id}`, {
+      method: 'PUT',
       headers: {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
         user_id: authStore.user.id,
         status: newStatus,
-        comment: comment || ''
+        // comment: comment || ''
       })
     })
     
