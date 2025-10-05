@@ -5,7 +5,7 @@
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="flex items-center py-6">
           <router-link 
-            :to="backRoute" 
+            :to="isSubtask ? `/tasks/${taskId}/subtasks/${subtaskId}` : `/tasks/${taskId}`" 
             class="flex items-center text-indigo-600 hover:text-indigo-500 mr-6 text-sm font-medium">
             <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
@@ -281,7 +281,7 @@
           <!-- Form Actions -->
           <div class="flex justify-end space-x-3 pt-6 border-t">
             <router-link 
-              :to="backRoute"
+              :to="isSubtask ? `/tasks/${taskId}/subtasks/${subtaskId}` : `/tasks/${taskId}`"
               class="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
             >
               Cancel
@@ -365,15 +365,9 @@ const taskId = ref(route.params.id)
 const subtaskId = ref(route.params.subtaskId)
 
 // Computed routes
-const backRoute = computed(() => 
-  isSubtask.value 
-    ? `/tasks/${taskId.value}/subtasks/${subtaskId.value}`
-    : `/tasks/${taskId.value}`
-)
-
 const apiEndpoint = computed(() =>
   isSubtask.value
-    ? `${KONG_API_URL}/tasks/${taskId.value}/subtasks/${subtaskId.value}`
+    ? `${KONG_API_URL}/tasks/${subtaskId.value}`
     : `${KONG_API_URL}/tasks/${taskId.value}`
 )
 
@@ -553,7 +547,7 @@ const saveItem = async () => {
     
     if (response.ok) {
       alert(`${isSubtask.value ? 'Subtask' : 'Task'} updated successfully!`)
-      router.push(backRoute.value)
+      router.push(isSubtask ? `/tasks/${taskId}/subtasks/${subtaskId}` : `/tasks/${taskId}`)
     } else {
       error.value = responseData.error || `Failed to update ${isSubtask.value ? 'subtask' : 'task'}`
     }

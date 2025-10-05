@@ -101,6 +101,16 @@ def delete_task(task_id):
         return jsonify({"error": str(e)}), 500
 
 # Not Settled
+@task_bp.route("/tasks/<int:task_id>/collaborators", methods=["GET"])
+def get_task_subtask_collaborators(task_id):
+    #Get all collaborators for a task/subtask
+    try:
+        collaborators = service.get_task_collaborators(task_id)
+        return jsonify(collaborators), 200
+    except Exception as e:
+        print(f"Error in get_task_collaborators: {e}")
+        return jsonify({"error": str(e)}), 500
+    
 @task_bp.route("/tasks/<int:task_id>/subtasks", methods=["GET"])
 def get_task_subtasks(task_id):
     """Get all subtasks for a specific task"""

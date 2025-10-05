@@ -255,6 +255,22 @@ def get_task_details(task_id):
         raise e
 
 # Not Settled
+def get_task_collaborators(task_id):
+    """Get all collaborators for a task"""
+    try:
+        # Query the junction table directly using raw SQL
+        result = db.session.execute(
+            task_collaborators.select().where(task_collaborators.c.task_id == task_id)
+        )
+        
+        # Return list of user_ids with minimal structure
+        return [{'user_id': row.user_id} for row in result]
+        
+    except Exception as e:
+        print(f"Error in get_task_collaborators: {e}")
+        raise e
+
+
 def get_task_subtasks(task_id):
     """Fetch all subtasks for a specific task"""
     try:

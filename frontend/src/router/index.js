@@ -20,7 +20,7 @@ const router = createRouter({
     {
       path: '/tasks/:id',
       name: 'task-details',
-      component: () => import('@/views/View_Individual_Task.vue'),
+      component: () => import('@/views/View_Individual_Task_Subtask.vue'),
       meta: { requiresAuth: true }
     },
     {
@@ -32,7 +32,7 @@ const router = createRouter({
     {
       path: '/tasks/:id/subtasks/:subtaskId',
       name: 'task-subtasks-details',
-      component: () => import('@/views/View_Individual_SubTask.vue'),
+      component: () => import('@/views/View_Individual_Task_Subtask.vue'),
       meta: { requiresAuth: true }
     },
     {
@@ -50,7 +50,7 @@ const router = createRouter({
     {
       path: '/tasks/:id/subtasks/:subtaskId/edit',
       name: 'subtask-edit', 
-      component: () => import('@/views/Edit_Task_SubTask.vue'),
+      component: () => import('@/views/Edit_Task_Subtask.vue'),
       meta: { requiresAuth: true }
     }    
     
