@@ -1,35 +1,67 @@
 <template>
-  <div class="bg-white rounded-lg shadow-md p-6">
-    <h2 class="text-xl font-semibold text-gray-900 mb-4">{{ formTitle }}</h2>
+  <div class="bg-white rounded-lg shadow-md p-6 mb-8">
+    <h2 class="text-xl font-semibold text-gray-900 mb-4">{{ title }}</h2>
     <form @submit.prevent="handleSubmit" class="space-y-4">
-      <div>
-        <label class="block text-sm font-medium text-gray-700 mb-2">Title</label>
-        <input v-model="editableTask.title" type="text" required class="w-full form-input" />
+      <div class="grid grid-cols-1" :class="{ 'md:grid-cols-2 gap-4': showDeadline }">
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-2">
+            {{ isSubtask ? 'Subtask Title' : 'Task Title' }}
+          </label>
+          <input 
+            v-model="localData.title" 
+            type="text" 
+            required 
+            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+          >
+        </div>
+        
+        <div v-if="showDeadline">
+          <label class="block text-sm font-medium text-gray-700 mb-2">Deadline</label>
+          <input 
+            v-model="localData.deadline" 
+            type="datetime-local"
+            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+          >
+        </div>
       </div>
-      <div>
+      
+      <div v-if="showDescription">
         <label class="block text-sm font-medium text-gray-700 mb-2">Description</label>
-        <textarea v-model="editableTask.description" rows="3" class="w-full form-input"></textarea>
+        <textarea 
+          v-model="localData.description" 
+          rows="3"
+          class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+          placeholder="Describe the task in detail..."
+        ></textarea>
       </div>
-      <div>
-        <label class="block text-sm font-medium text-gray-700 mb-2">Deadline</label>
-        <input v-model="editableTask.deadline" type="datetime-local" class="w-full form-input" />
-      </div>
+      
       <div>
         <label class="block text-sm font-medium text-gray-700 mb-2">Status</label>
-        <select v-model="editableTask.status" class="w-full form-select">
+        <select 
+          v-model="localData.status" 
+          class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+        >
           <option value="Unassigned">Unassigned</option>
           <option value="Ongoing">Ongoing</option>
           <option value="Under Review">Under Review</option>
           <option value="Completed">Completed</option>
         </select>
       </div>
-
-      <div class="flex justify-end space-x-3 pt-2">
-        <button type="button" @click="emit('cancel')" class="px-4 py-2 text-gray-700 bg-gray-200 hover:bg-gray-300 rounded-md">
+      
+      <div class="flex justify-end space-x-3">
+        <button 
+          type="button" 
+          @click="$emit('cancel')" 
+          class="px-4 py-2 text-gray-700 bg-gray-200 hover:bg-gray-300 rounded-md transition-colors"
+        >
           Cancel
         </button>
-        <button type="submit" :disabled="isSubmitting" class="px-6 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md disabled:opacity-50">
-          {{ isSubmitting ? 'Saving...' : submitButtonText }}
+        <button 
+          type="submit" 
+          :disabled="isSubmitting"
+          class="px-6 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md transition-colors disabled:opacity-50"
+        >
+          {{ isSubmitting ? submitButtonLoadingText : submitButtonText }}
         </button>
       </div>
     </form>
@@ -37,49 +69,56 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted } from 'vue';
+import { ref, watch } from 'vue'
 
 const props = defineProps({
-  task: {
-    type: Object,
-    default: () => ({ title: '', description: '', deadline: '', status: 'Unassigned' })
-  },
-  mode: {
+  title: {
     type: String,
-    default: 'create' // 'create' or 'edit'
+    default: 'Create New Task'
+  },
+  isSubtask: {
+    type: Boolean,
+    default: false
+  },
+  showDeadline: {
+    type: Boolean,
+    default: true
+  },
+  showDescription: {
+    type: Boolean,
+    default: true
   },
   isSubmitting: {
     type: Boolean,
     default: false
+  },
+  submitButtonText: {
+    type: String,
+    default: 'Create Task'
+  },
+  submitButtonLoadingText: {
+    type: String,
+    default: 'Creating...'
   }
-});
+})
 
-const emit = defineEmits(['submit', 'cancel']);
+const emit = defineEmits(['submit', 'cancel'])
 
-const editableTask = ref({});
-
-// When the component is mounted or the task prop changes, update the local state
-const resetForm = () => {
-  // Format deadline for the datetime-local input
-  const deadline = props.task.deadline ? new Date(props.task.deadline).toISOString().slice(0, 16) : '';
-  editableTask.value = { ...props.task, deadline };
-};
-
-onMounted(resetForm);
-watch(() => props.task, resetForm, { deep: true });
-
-const formTitle = computed(() => props.mode === 'edit' ? 'Edit Task' : 'Create New Task');
-const submitButtonText = computed(() => props.mode === 'edit' ? 'Save Changes' : 'Create Task');
+const localData = ref({
+  title: '',
+  deadline: '',
+  description: '',
+  status: 'Unassigned'
+})
 
 const handleSubmit = () => {
-  // Convert deadline back to a standard format if it exists
-  const submissionData = { ...editableTask.value };
-  if (submissionData.deadline) {
-    submissionData.deadline = new Date(submissionData.deadline).toISOString();
+  emit('submit', { ...localData.value })
+  // Reset form after submission
+  localData.value = {
+    title: '',
+    deadline: '',
+    description: '',
+    status: 'Unassigned'
   }
-  emit('submit', submissionData);
-};
+}
 </script>
-
-<style scoped>
-</style>

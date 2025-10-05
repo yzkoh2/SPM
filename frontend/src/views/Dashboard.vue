@@ -21,52 +21,15 @@
       </div>
 
       <!-- Create Task Form -->
-      <div v-if="showCreateForm" class="bg-white rounded-lg shadow-md p-6 mb-8">
-        <h2 class="text-xl font-semibold text-gray-900 mb-4">Create New Task</h2>
-        <form @submit.prevent="createTask" class="space-y-4">
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-2">Task Title</label>
-              <input v-model="newTask.title" type="text" required 
-                     class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-2">Deadline</label>
-              <input v-model="newTask.deadline" type="datetime-local"
-                     class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
-            </div>
-          </div>
-          
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-2">Description</label>
-            <textarea v-model="newTask.description" rows="3"
-                      class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                      placeholder="Describe the task in detail..."></textarea>
-          </div>
-          
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-2">Status</label>
-            <select v-model="newTask.status" 
-                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
-              <option value="Unassigned">Unassigned</option>
-              <option value="Ongoing">Ongoing</option>
-              <option value="Under Review">Under Review</option>
-              <option value="Completed">Completed</option>
-            </select>
-          </div>
-          
-          <div class="flex justify-end space-x-3">
-            <button type="button" @click="showCreateForm = false" 
-                    class="px-4 py-2 text-gray-700 bg-gray-200 hover:bg-gray-300 rounded-md transition-colors">
-              Cancel
-            </button>
-            <button type="submit" :disabled="isCreating"
-                    class="px-6 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md transition-colors disabled:opacity-50">
-              {{ isCreating ? 'Creating...' : 'Create Task' }}
-            </button>
-          </div>
-        </form>
-      </div>
+      <TaskForm
+        v-if="showCreateForm"
+        title="Create New Task"
+        :is-submitting="isCreating"
+        submit-button-text="Create Task"
+        submit-button-loading-text="Creating..."
+        @submit="createTask"
+        @cancel="showCreateForm = false"
+      />
 
       <!-- Filters and Sorting -->
       <div class="bg-white rounded-lg shadow-md p-6 mb-6">
@@ -116,7 +79,7 @@
           <div class="flex items-center">
             <div class="p-2 bg-blue-100 rounded-lg">
               <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 0 012 2"></path>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
               </svg>
             </div>
             <div class="ml-4">
@@ -216,7 +179,8 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
-import TaskCard from '@/components/TaskCard.vue';
+import TaskCard from '@/components/TaskCard.vue'
+import TaskForm from '@/components/TaskForm.vue'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -228,15 +192,6 @@ const showCreateForm = ref(false)
 const isCreating = ref(false)
 const error = ref(null)
 const role = ref(null)
-const mobileMenuOpen = ref(false)
-
-// New task form data
-const newTask = ref({
-  title: '',
-  deadline: '',
-  description: '',
-  status: 'Unassigned'
-})
 
 // Filters
 const filters = ref({
@@ -281,12 +236,6 @@ const filteredTasks = computed(() => {
   return filtered
 })
 
-// Helper function for navigation
-const isActiveRoute = (routePath) => {
-  return router.currentRoute.value.path === routePath || 
-         router.currentRoute.value.path.startsWith(routePath + '/')
-}
-
 // Methods
 const fetchTasks = async (userID) => {
   try {
@@ -297,7 +246,7 @@ const fetchTasks = async (userID) => {
     if (userID) {
       queryParam.append('owner_id', userID) 
     }
-    console.log(`${KONG_API_URL}/tasks${queryParam.toString() ? `?${queryParam.toString()}` : ''}`)
+    
     const response = await fetch(`${KONG_API_URL}/tasks${queryParam.toString() ? `?${queryParam.toString()}` : ''}`, {
       method: 'GET',
       headers: {
@@ -321,16 +270,16 @@ const fetchTasks = async (userID) => {
   }
 }
 
-const createTask = async () => {
+const createTask = async (formData) => {
   try {
     isCreating.value = true
     error.value = null
     
     const taskData = {
-      title: newTask.value.title,
-      description: newTask.value.description || null,
-      deadline: newTask.value.deadline || null,
-      status: newTask.value.status,
+      title: formData.title,
+      description: formData.description || null,
+      deadline: formData.deadline || null,
+      status: formData.status,
       owner_id: authStore.currentUserId
     }
     
@@ -343,14 +292,7 @@ const createTask = async () => {
     })
     
     if (response.ok) {
-      await fetchTasks()
-      
-      newTask.value = {
-        title: '',
-        deadline: '',
-        description: '',
-        status: 'Unassigned'
-      }
+      await fetchTasks(authStore.user.id)
       showCreateForm.value = false
     } else {
       const errorText = await response.text()
@@ -377,7 +319,7 @@ const deleteTask = async (taskId) => {
     })
     
     if (response.ok || response.status === 404) {
-      await fetchTasks()
+      await fetchTasks(authStore.user.id)
     } else {
       throw new Error(`Failed to delete task: ${response.status}`)
     }
@@ -404,63 +346,12 @@ const getTaskCountByStatus = (status) => {
   return tasks.value.filter(task => task.status === status).length
 }
 
-const getStatusBorderColor = (status) => {
-  const colors = {
-    'Unassigned': 'border-gray-400',
-    'Ongoing': 'border-yellow-400',
-    'Under Review': 'border-orange-400',
-    'Completed': 'border-green-400'
-  }
-  return colors[status] || 'border-gray-400'
-}
-
-const getStatusBadgeColor = (status) => {
-  const colors = {
-    'Unassigned': 'bg-gray-100 text-gray-800',
-    'Ongoing': 'bg-yellow-100 text-yellow-800',
-    'Under Review': 'bg-orange-100 text-orange-800',
-    'Completed': 'bg-green-100 text-green-800'
-  }
-  return colors[status] || 'bg-gray-100 text-gray-800'
-}
-
-const getDeadlineColor = (deadline) => {
-  if (!deadline) return 'text-gray-600'
-  
-  const now = new Date()
-  const deadlineDate = new Date(deadline)
-  
-  if (deadlineDate < now) return 'text-red-600 font-medium'
-  if (deadlineDate.toDateString() === now.toDateString()) return 'text-orange-600 font-medium'
-  return 'text-gray-900'
-}
-
-const formatDeadline = (deadline) => {
-  if (!deadline) return 'No deadline set'
-  const date = new Date(deadline)
-  return date.toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric'
-  })
-}
-
 onMounted(() => {
   if (authStore.isAuthenticated) {
-    fetchTasks(authStore.user.id);
-    role.value = authStore.user.role;
-    console.log("User role:", role.value);
+    fetchTasks(authStore.user.id)
+    role.value = authStore.user.role
   } else {
-    authStore.logout();
+    authStore.logout()
   }
 })
 </script>
-
-<style scoped>
-.line-clamp-2 {
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-</style>
