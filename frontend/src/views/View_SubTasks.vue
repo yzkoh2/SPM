@@ -11,15 +11,15 @@
               <p class="text-sm text-gray-600">for "{{ parentTask.title }}"</p>
             </div>
           </div>
-          
+
           <!-- Actions -->
           <div class="flex items-center space-x-4">
-            <button
-              @click="fetchSubtasks"
-              class="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-            >
+            <button @click="fetchSubtasks"
+              class="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
               <svg class="-ml-1 mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15">
+                </path>
               </svg>
               Refresh
             </button>
@@ -27,13 +27,13 @@
         </div>
       </div>
     </nav>
-    
+
     <!-- Main Content -->
     <main class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
       <!-- Create Subtask Button -->
       <div class="mb-6 px-4 sm:px-0">
-        <button @click="showCreateForm = !showCreateForm" 
-                class="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-lg font-medium transition-colors flex items-center">
+        <button @click="showCreateForm = !showCreateForm"
+          class="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-lg font-medium transition-colors flex items-center">
           <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
           </svg>
@@ -43,20 +43,11 @@
 
       <!-- Create Subtask Form -->
       <div class="px-4 sm:px-0">
-        <TaskForm
-          v-if="showCreateForm"
-          title="Create New Subtask"
-          :is-subtask="true"
-          :show-deadline="false"
-          :show-description="false"
-          :is-submitting="isCreating"
-          submit-button-text="Create Subtask"
-          submit-button-loading-text="Creating..."
-          @submit="createSubtask"
-          @cancel="showCreateForm = false"
-        />
+        <TaskForm v-if="showCreateForm" title="Create New Subtask" :is-subtask="true" :is-submitting="isCreating"
+          submit-button-text="Create Subtask" submit-button-loading-text="Creating..." @submit="createSubtask"
+          @cancel="showCreateForm = false" />
       </div>
-    
+
       <div class="px-4 py-6 sm:px-0">
         <!-- Task Overview Card -->
         <div v-if="parentTask" class="bg-white overflow-hidden shadow rounded-lg mb-6">
@@ -68,13 +59,11 @@
               </div>
               <div class="flex items-center space-x-4">
                 <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
-                      :class="getStatusBadgeColor(parentTask.status)">
+                  :class="getStatusBadgeColor(parentTask.status)">
                   {{ parentTask.status }}
                 </span>
-                <router-link 
-                  :to="`/tasks/${parentTask.id}`"
-                  class="text-indigo-600 hover:text-indigo-500 text-sm font-medium"
-                >
+                <router-link :to="`/tasks/${parentTask.id}`"
+                  class="text-indigo-600 hover:text-indigo-500 text-sm font-medium">
                   View Full Task →
                 </router-link>
               </div>
@@ -87,7 +76,7 @@
           <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
           <p class="mt-2 text-gray-600">Loading subtasks...</p>
         </div>
-        
+
         <!-- Error State -->
         <div v-else-if="error" class="rounded-md bg-red-50 p-4">
           <div class="flex">
@@ -99,7 +88,7 @@
             </div>
           </div>
         </div>
-        
+
         <!-- Subtasks List -->
         <div v-else-if="subtasks.length > 0" class="space-y-3">
           <div class="flex justify-between items-center">
@@ -117,42 +106,23 @@
           <!-- Subtasks Grid using TaskCard -->
           <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             <div v-for="subtask in subtasks" :key="subtask.id" class="relative">
-              <TaskCard
-                :task="subtask"
-                @view="viewSubtaskDetails"
-                @edit="editSubtask"
-                @delete="deleteSubtask"
-              />
-              
-              <!-- Status Dropdown Overlay -->
-              <div class="absolute top-4 right-4 z-10" @click.stop>
-                <select 
-                  :value="subtask.status"
-                  @change="updateSubtaskStatus(subtask, $event.target.value)"
-                  :disabled="updatingSubtaskId === subtask.id"
-                  class="text-xs border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500 disabled:opacity-50 bg-white shadow-sm"
-                >
-                  <option value="Unassigned">Unassigned</option>
-                  <option value="Ongoing">Ongoing</option>
-                  <option value="Under Review">Under Review</option>
-                  <option value="Completed">Completed</option>
-                  <option value="On Hold">On Hold</option>
-                </select>
-              </div>
-              
+              <TaskCard :task="subtask" @view="viewSubtaskDetails" @edit="editSubtask" @delete="deleteSubtask" />
+
               <!-- Loading indicator overlay -->
-              <div v-if="updatingSubtaskId === subtask.id" 
-                   class="absolute inset-0 bg-white bg-opacity-50 flex items-center justify-center rounded-lg">
+              <div v-if="updatingSubtaskId === subtask.id"
+                class="absolute inset-0 bg-white bg-opacity-50 flex items-center justify-center rounded-lg">
                 <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
               </div>
             </div>
           </div>
         </div>
-        
+
         <!-- Empty State -->
         <div v-else class="text-center py-12">
           <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path>
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4">
+            </path>
           </svg>
           <h3 class="mt-2 text-sm font-medium text-gray-900">No subtasks found</h3>
           <p class="mt-1 text-sm text-gray-500">This task doesn't have any subtasks yet.</p>
@@ -216,7 +186,7 @@ async function fetchParentTask() {
 async function fetchSubtasks() {
   loading.value = true
   error.value = null
-  
+
   try {
     const response = await fetch(`${KONG_API_URL}/tasks/${route.params.id}/subtasks`, {
       headers: {
@@ -244,12 +214,12 @@ async function fetchSubtasks() {
 async function createSubtask(formData) {
   try {
     isCreating.value = true
-    
+
     const subtaskData = {
       title: formData.title,
       status: formData.status
     }
-    
+
     const response = await fetch(`${KONG_API_URL}/tasks/${route.params.id}/subtasks`, {
       method: 'POST',
       headers: {
@@ -257,7 +227,7 @@ async function createSubtask(formData) {
       },
       body: JSON.stringify(subtaskData)
     })
-    
+
     if (response.ok) {
       await fetchSubtasks()
       showCreateForm.value = false
@@ -270,46 +240,6 @@ async function createSubtask(formData) {
     alert('Failed to create subtask: ' + err.message)
   } finally {
     isCreating.value = false
-  }
-}
-
-// Function to update subtask status
-async function updateSubtaskStatus(subtask, newStatus) {
-  try {
-    updatingSubtaskId.value = subtask.id
-
-    const response = await fetch(`${KONG_API_URL}/tasks/${route.params.id}/subtasks/${subtask.id}/status`, {
-      method: 'PATCH',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        user_id: authStore.user.id, 
-        status: newStatus,
-        comment: `Status changed to ${newStatus}`
-      })
-    })
-
-    if (!response.ok) {
-      const errorData = await response.json()
-      throw new Error(errorData.error || `Failed to update subtask: ${response.status}`)
-    }
-
-    const result = await response.json()
-    
-    // Update local state
-    const index = subtasks.value.findIndex(s => s.id === subtask.id)
-    if (index !== -1) {
-      subtasks.value[index].status = result.subtask.status
-    }
-
-    console.log(`Subtask ${subtask.id} status updated to: ${newStatus}`)
-  } catch (err) {
-    console.error('Error updating subtask status:', err)
-    alert('Failed to update subtask status: ' + err.message)
-    await fetchSubtasks()
-  } finally {
-    updatingSubtaskId.value = null
   }
 }
 
@@ -326,12 +256,12 @@ function editSubtask(subtask) {
 // Function to delete subtask
 async function deleteSubtask(subtaskId) {
   if (!confirm('Are you sure you want to delete this subtask?')) return
-  
+
   try {
     const response = await fetch(`${KONG_API_URL}/tasks/${route.params.id}/subtasks/${subtaskId}`, {
       method: 'DELETE'
     })
-    
+
     if (response.ok || response.status === 404) {
       await fetchSubtasks()
     } else {
