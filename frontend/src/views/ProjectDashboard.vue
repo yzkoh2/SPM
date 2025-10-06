@@ -1,25 +1,23 @@
 <template>
   <div class="min-h-screen bg-gray-50">
-    <!-- Header with Back Navigation -->
-    <header class="bg-white shadow-sm border-b border-gray-200">
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div class="flex items-center justify-between py-6">
-          <div class="flex items-center">
-            <router-link to="/projects"
-              class="flex items-center text-indigo-600 hover:text-indigo-500 mr-6 text-sm font-medium">
-              <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
-              </svg>
-              Back to Projects
-            </router-link>
-            <div v-if="!loading && project">
-              <h1 class="text-2xl font-bold text-gray-900">{{ project.title }}</h1>
-              <p class="text-sm text-gray-500 mt-1">{{ project.description }}</p>
-            </div>
+    <!-- Page Header -->
+    <div class="bg-white shadow-sm border-b border-gray-200">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <div class="flex items-center">
+          <router-link to="/projects"
+            class="flex items-center text-indigo-600 hover:text-indigo-500 mr-6 text-sm font-medium">
+            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+            </svg>
+            Back to Projects
+          </router-link>
+          <div v-if="!loading && project">
+            <h1 class="text-2xl font-bold text-gray-900">{{ project.title }}</h1>
+            <p class="text-sm text-gray-500 mt-1">{{ project.description }}</p>
           </div>
         </div>
       </div>
-    </header>
+    </div>
 
     <!-- Main Content -->
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">

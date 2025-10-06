@@ -11,7 +11,7 @@
             <div class="ml-10 flex items-baseline space-x-4">
               <router-link to="/" 
                          class="px-3 py-2 rounded-md text-sm font-medium transition-colors"
-                         :class="isActiveRoute('/') ? 'bg-indigo-100 text-indigo-700' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'">
+                         :class="isActiveRoute('/') && !isActiveRoute('/projects') ? 'bg-indigo-100 text-indigo-700' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'">
                 <div class="flex items-center">
                   <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path></svg>
                   Tasks
@@ -57,9 +57,9 @@
       
       <div v-if="mobileMenuOpen" class="md:hidden border-t border-gray-200 py-3">
         <div class="space-y-1">
-          <router-link to="/tasks" @click="mobileMenuOpen = false"
+          <router-link to="/" @click="mobileMenuOpen = false"
                      class="block px-3 py-2 rounded-md text-base font-medium transition-colors"
-                     :class="isActiveRoute('/tasks') ? 'bg-indigo-100 text-indigo-700' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'">
+                     :class="isActiveRoute('/') && !isActiveRoute('/projects') ? 'bg-indigo-100 text-indigo-700' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'">
             <div class="flex items-center">
                 <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path></svg>
               Tasks
