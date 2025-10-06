@@ -1,4 +1,4 @@
-from .models import db, Project, Task, Attachment, TaskStatusEnum, project_collaborators, task_collaborators
+from .models import db, Project, Task, Attachment, TaskStatusEnum, project_collaborators, task_collaborators, Comment
 from sqlalchemy import or_
 from sqlalchemy.orm import aliased
 from datetime import datetime, timedelta
@@ -255,6 +255,51 @@ def get_task_details(task_id):
         raise e
 
 # Not Settled
+def add_comment(task_id, data):
+    """Add a comment to a task"""
+    try:
+        task = Task.query.filter_by(id=task_id).first()
+        if not task:
+            return None, "Task not found"
+        
+        author_id = data.get('author_id')
+        collab_ids = task.collaborator_ids()
+        if task.owner_id != author_id and author_id not in collab_ids:
+            return None, "Forbidden: You do not have permission to comment on this task."
+
+        new_comment = Comment(
+            body=data['body'],
+            author_id=data['author_id'],
+            task_id=task_id
+        )
+        
+        db.session.add(new_comment)
+        db.session.commit()
+        
+        return new_comment.to_json(), "Comment added successfully"
+        
+    except Exception as e:
+        print(f"Error in add_comments: {e}")
+        db.session.rollback()
+        raise e
+
+def delete_comment(comment_id):
+    """Delete a comment by ID"""
+    try:
+        comment = Comment.query.get(comment_id)
+        if not comment:
+            return False
+            
+        print(f"Deleting comment ID: {comment.id}")
+        db.session.delete(comment)
+        db.session.commit()
+        return True
+        
+    except Exception as e:
+        print(f"Error in delete_comment: {e}")
+        db.session.rollback()
+        raise e
+
 def get_task_collaborators(task_id):
     """Get all collaborators for a task"""
     try:

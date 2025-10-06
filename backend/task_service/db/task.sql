@@ -1,9 +1,13 @@
 DROP TABLE IF EXISTS attachments;
 DROP TABLE IF EXISTS task_collaborators;
 DROP TABLE IF EXISTS project_collaborators;
+DROP TABLE IF EXISTS comment_mentions;
 DROP TABLE IF EXISTS tasks;
 DROP TABLE IF EXISTS projects;
 DROP TABLE IF EXISTS comments;
+
+
+ALTER DATABASE task_db SET timezone TO 'UTC';
 
 CREATE TABLE projects (
     id SERIAL PRIMARY KEY,
@@ -42,7 +46,8 @@ CREATE TABLE comments (
     body TEXT NOT NULL,
     author_id INT NOT NULL,
     task_id INT NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    parent_comment_id INT REFERENCES comments(id) ON DELETE CASCADE
 );
 
 CREATE TABLE project_collaborators (
@@ -55,6 +60,12 @@ CREATE TABLE task_collaborators (
     task_id INT NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
     user_id INT NOT NULL,
     PRIMARY KEY (task_id, user_id)
+);
+
+CREATE TABLE comment_mentions (
+    comment_id INT NOT NULL REFERENCES comments(id) ON DELETE CASCADE,
+    user_id INT NOT NULL,
+    PRIMARY KEY (comment_id, user_id)
 );
 
 ------------------------------------------------------------------
@@ -102,6 +113,19 @@ INSERT INTO task_collaborators (task_id, user_id) VALUES
 INSERT INTO comments (body, author_id, task_id) VALUES
 ('I''ve uploaded a new mockup in the attachments. Let me know what you think!', 1, 1),
 ('Looks great! I think the call-to-action button could be a bit more prominent.', 2, 1);
+
+-- Reply comment
+INSERT INTO comments (body, author_id, task_id, parent_comment_id) VALUES
+('Good point, I''ll make that adjustment.', 1, 1, 2);
+
+INSERT INTO comments (body, author_id, task_id) VALUES
+('Great work everyone. @user1 can you check the final design and @user3 can you approve?', 2, 1);
+
+
+-- The corresponding mention records for the comment above (id = 4)
+INSERT INTO comment_mentions (comment_id, user_id) VALUES
+(4, 1), -- Mentions user_id 1
+(4, 3); -- Mentions user_id 3
 
 -- Comment for Task 4 ('Backend API Setup')
 INSERT INTO comments (body, author_id, task_id) VALUES
