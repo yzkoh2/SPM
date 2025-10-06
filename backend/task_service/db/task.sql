@@ -119,13 +119,13 @@ INSERT INTO comments (body, author_id, task_id, parent_comment_id) VALUES
 ('Good point, I''ll make that adjustment.', 1, 1, 2);
 
 INSERT INTO comments (body, author_id, task_id) VALUES
-('Great work everyone. @user1 can you check the final design and @user3 can you approve?', 2, 1);
+('Great work everyone. @john_staff can you check the final design and @jane_manager I will approve?', 2, 1);
 
 
 -- The corresponding mention records for the comment above (id = 4)
 INSERT INTO comment_mentions (comment_id, user_id) VALUES
 (4, 1), -- Mentions user_id 1
-(4, 3); -- Mentions user_id 3
+(4, 2); -- Mentions user_id 3
 
 -- Comment for Task 4 ('Backend API Setup')
 INSERT INTO comments (body, author_id, task_id) VALUES
