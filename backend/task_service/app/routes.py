@@ -118,7 +118,7 @@ def add_comment(task_id):
         print(f"Error in add_comment: {e}")
         return jsonify({"error": str(e)}), 500
 
-@task_bp.route("/comments/<int:comment_id>", methods=["DELETE"])
+@task_bp.route("/tasks/deletecomment/<int:comment_id>", methods=["DELETE"])
 def delete_comment(comment_id):
     """Delete a comment"""
     try:
