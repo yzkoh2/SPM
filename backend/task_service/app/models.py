@@ -27,6 +27,11 @@ task_collaborators = db.Table(
     db.Column('user_id', db.Integer, primary_key=True)  # just store user IDs
 )
 
+comment_mentions = db.Table(
+    'comment_mentions',
+    db.Column('comment_id', db.Integer, db.ForeignKey('comments.id'), primary_key=True),
+    db.Column('user_id', db.Integer, primary_key=True)  # just store user IDs
+)
 
 # --- MAIN MODELS ---
 
@@ -150,6 +155,26 @@ class Comment(db.Model):
     author_id = db.Column(db.Integer, nullable=False)
     task_id = db.Column(db.Integer, db.ForeignKey('tasks.id'), nullable=False)
     created_at = db.Column(db.DateTime, server_default=db.func.now())
+    parent_comment_id = db.Column(db.Integer, db.ForeignKey('comments.id'), nullable=True)
+
+    replies = db.relationship(
+        "Comment",
+        back_populates="parent",
+        cascade="all, delete-orphan" # Ensures replies are deleted with the parent
+    )
+
+    # This creates a 'parent' attribute, linking a reply back to its parent comment.
+    parent = db.relationship(
+        "Comment",
+        back_populates="replies",
+        remote_side=[id]
+    )
+
+    def get_mentions(self):
+        result = db.session.execute(
+            comment_mentions.select().where(comment_mentions.c.comment_id == self.id)
+        )
+        return [row.user_id for row in result]
 
     def to_json(self):
         """Serialize the object to a dictionary."""
@@ -158,5 +183,9 @@ class Comment(db.Model):
             'body': self.body,
             'author_id': self.author_id,
             'task_id': self.task_id,
-            'created_at': self.created_at.isoformat()
+            'created_at': self.created_at.isoformat(),
+            'parent_comment_id': self.parent_comment_id,
+            'replies': [reply.to_json() for reply in self.replies],
+            'reply_count': len(self.replies),
+            'mentions': self.get_mentions()
         }

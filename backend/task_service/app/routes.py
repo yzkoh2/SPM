@@ -100,6 +100,39 @@ def delete_task(task_id):
         print(f"Error in delete_task: {e}")
         return jsonify({"error": str(e)}), 500
 
+@task_bp.route("/tasks/<int:task_id>/comments", methods=["POST"])
+def add_comment(task_id):
+    """Add a comment to a task"""
+    try:
+        data = request.get_json()
+        print(f"Adding comment to task {task_id} with data: {data}")
+        
+        if not data or not data.get('body') or not data.get('author_id'):
+            return jsonify({"error": "Comment body and author_id are required"}), 400
+            
+        new_comment = service.add_comment(task_id, data)
+        if not new_comment:
+            return jsonify({"error": "Task not found"}), 404
+        return jsonify(new_comment), 201
+    except Exception as e:
+        print(f"Error in add_comment: {e}")
+        return jsonify({"error": str(e)}), 500
+
+@task_bp.route("/comments/<int:comment_id>", methods=["DELETE"])
+def delete_comment(comment_id):
+    """Delete a comment"""
+    try:
+        print(f"Deleting comment with id={comment_id}")
+        
+        success = service.delete_comment(comment_id)
+        if success:
+            return jsonify({"message": "Comment deleted successfully"}), 200
+        else:
+            return jsonify({"error": "Comment not found"}), 404
+    except Exception as e:
+        print(f"Error in delete_comment: {e}")
+        return jsonify({"error": str(e)}), 500
+
 # Not Settled
 @task_bp.route("/tasks/<int:task_id>/collaborators", methods=["GET"])
 def get_task_subtask_collaborators(task_id):
