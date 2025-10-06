@@ -315,6 +315,63 @@ def get_task_collaborators(task_id):
         print(f"Error in get_task_collaborators: {e}")
         raise e
 
+def add_task_collaborator(task_id, collaborator_id, user_id):
+    """Add a collaborator to a task"""
+    task = Task.query.get(task_id)
+    if not task:
+        raise Exception("Task not found")
+    is_owner = (task.owner_id == user_id)
+    if not is_owner:
+        raise Exception("Forbidden: You do not have permission to edit this task.")
+    parent_task_id = task.parent_task_id
+    if parent_task_id:
+        result = db.session.execute(
+            task_collaborators.select().with_only_columns([task_collaborators.c.user_id])
+            .where(task_collaborators.c.task_id == parent_task_id)
+        )
+        parent_collab_ids = [row.user_id for row in result]
+        
+        if collaborator_id not in parent_collab_ids:
+            raise Exception("Collaborator must already be a collaborator of parent task.")
+    try:
+        db.session.execute(
+            task_collaborators.insert().values(
+                task_id=task_id,
+                user_id=collaborator_id  
+            )
+        )
+        db.session.commit()
+        return {"message": "Collaborator added successfully"}
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error in add_task_collaborator: {e}")
+        raise e
+
+def remove_task_collaborator(task_id, collaborator_id, user_id):
+    """Remove a collaborator from a task"""
+    task = Task.query.get(task_id)
+    if not task:
+        raise Exception("Task not found")
+    is_owner = (task.owner_id == user_id)
+    if not is_owner:
+        raise Exception("Forbidden: You do not have permission to edit this task.")
+    task_ids = [task_id]
+    children = Task.query.filter_by(parent_task_id=task_id).all()
+    if children:
+        task_ids.extend([child.id for child in children])
+    try:
+        db.session.execute(
+            task_collaborators.delete().where(
+                task_collaborators.c.task_id.in_(task_ids) &
+                (task_collaborators.c.user_id == collaborator_id)
+            )
+        )
+        db.session.commit()
+        return {"message": "Collaborator removed successfully"}
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error in remove_task_collaborator: {e}")
+        raise e
 
 def get_task_subtasks(task_id):
     """Fetch all subtasks for a specific task"""
