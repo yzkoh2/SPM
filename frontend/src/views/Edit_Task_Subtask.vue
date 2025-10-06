@@ -570,7 +570,7 @@ const addCollaborator = async () => {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        requesting_user_id: userId.value,
+        requested_by: userId.value,
         collaborator_id: parseInt(newCollaboratorId.value)
       })
     })
@@ -594,10 +594,16 @@ const removeCollaborator = async (collaboratorId) => {
   if (!confirm('Are you sure you want to remove this collaborator?')) return
   
   try {
-    const response = await fetch(
-      `${collaboratorsEndpoint.value}/${collaboratorId}?requesting_user_id=${userId.value}`,
-      { method: 'DELETE' }
-    )
+    const response = await fetch(collaboratorsEndpoint.value, {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        requested_by: userId.value,
+        collaborator_id: parseInt(collaboratorId)
+      })
+    })
     
     if (response.ok) {
       await fetchCollaborators()
