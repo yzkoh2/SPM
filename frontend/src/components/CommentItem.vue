@@ -5,7 +5,7 @@
       <div class="flex-shrink-0">
         <div class="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center">
           <span class="text-indigo-600 font-medium text-sm">
-            {{ getAuthorInitials(comment.author_id) }}
+            {{ getAuthorInitials(authorName) }}
           </span>
         </div>
       </div>
@@ -17,7 +17,7 @@
           <div class="flex items-center justify-between mb-2">
             <div class="flex items-center space-x-2">
               <span class="text-sm font-medium text-gray-900">
-                User {{ comment.author_id }}
+                {{ authorName}}
               </span>
               <span class="text-xs text-gray-500">
                 {{ formatTime(comment.created_at) }}
@@ -58,14 +58,36 @@
         <!-- Reply Form -->
         <div v-if="showReplyForm" class="mt-3 ml-4">
           <div class="bg-white border border-gray-200 rounded-lg p-3">
+            <Mentionable
+              :keys="['@']"
+              :items="collaboratorDetails.map(c => ({ value: c.username, label: c.name, user_id: c.user_id, role: c.role }))"
+              offset="6"
+              insert-space
+            >
             <textarea
               v-model="replyText"
               placeholder="Write a reply..."
-              rows="2"
+              rows="3"
               class="w-full text-sm border-0 focus:ring-0 resize-none"
               @keydown.meta.enter="submitReply"
               @keydown.ctrl.enter="submitReply">
             </textarea>
+              <template #item-@="{ item, isSelected }">
+                <div 
+                  :class="['flex items-center p-2 space-x-3 cursor-pointer rounded-md transition-colors duration-150 ease-in-out', isSelected ? 'bg-indigo-100' : 'hover:bg-gray-50']"
+                >
+                  <svg class="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
+                  <div class="flex-1">
+                    <div class="font-medium text-gray-800">{{ item.label }}</div>
+                    <div class="text-sm text-gray-500">{{ item.role }}</div>
+                  </div>
+                </div>
+              </template>
+
+              <template #no-result>
+                <div class="text-gray-400 p-2">No users found</div>
+              </template>
+            </Mentionable>
             <div class="flex justify-end space-x-2 mt-2">
               <button
                 @click="showReplyForm = false"
@@ -89,6 +111,7 @@
             :key="reply.id"
             :comment="reply"
             :current-user-id="currentUserId"
+            :collaborator-details="collaboratorDetails"
             @reply="$emit('reply', $event)"
             @delete="$emit('delete', $event)" />
         </div>
@@ -99,6 +122,8 @@
 
 <script setup>
 import { ref, computed } from 'vue'
+import { Mentionable } from 'vue-mention'
+import 'floating-vue/dist/style.css'
 
 const props = defineProps({
   comment: {
@@ -108,6 +133,10 @@ const props = defineProps({
   currentUserId: {
     type: Number,
     default: null
+  },
+  collaboratorDetails: {
+    type: Array,
+    default: () => []
   }
 })
 
@@ -117,12 +146,19 @@ const showReplyForm = ref(false)
 const replyText = ref('')
 const submittingReply = ref(false)
 
+const author = computed(() => {
+  return props.collaboratorDetails.find(c => c.user_id === props.comment.author_id)
+})
+const authorName = computed(() => {
+  return author.value ? author.value.name : `${props.comment.author_id}`
+})
+
 const canDelete = computed(() => {
   return props.currentUserId === props.comment.author_id
 })
 
 const getAuthorInitials = (authorId) => {
-  return `U${authorId}`
+  return `${authorId.charAt(0).toUpperCase()}${authorId.charAt(1) ? authorId.charAt(1).toUpperCase() : ''}`
 }
 
 const formatTime = (timestamp) => {

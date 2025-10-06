@@ -287,7 +287,7 @@
             </Mentionable>
 
             <div class="mt-2 flex justify-end">
-              <button @click="addComment" :disabled="!newComment.trim() || addingComment"
+              <button @click="addComment({ body: newComment})" :disabled="!newComment.trim() || addingComment"
                 class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-md text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed">
                 <span v-if="addingComment">Adding...</span>
                 <span v-else>Add Comment</span>
@@ -302,7 +302,8 @@
               :key="comment.id"
               :comment="comment"
               :current-user-id="authStore.user?.id"
-              @reply="handleReply"
+              :collaborator-details="collaboratorDetails"
+              @reply="addComment"
               @delete="handleDeleteComment" />
           </div>
 
@@ -558,14 +559,14 @@ const handleStatusUpdate = async ({ newStatus, comment }) => {
 }
 
 // Add comment (top-level)
-const addComment = async () => {
-  if (!newComment.value.trim()) return
+const addComment = async ({body, parentCommentId = null}) => {
+  if (!body.trim()) return
 
   try {
     addingComment.value = true
     
     const mentionRegex = /@(\w+)/g;
-    const matches = [...newComment.value.matchAll(mentionRegex)];
+    const matches = [...body.matchAll(mentionRegex)];
     const mentionedUsernames = matches.map(match => match[1]);
     const uniqueUsernames = [...new Set(mentionedUsernames)];
     const mention_ids = uniqueUsernames.map(username => {
@@ -579,8 +580,9 @@ const addComment = async () => {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        body: newComment.value,
+        body: body,
         author_id: authStore.user.id,
+        parent_comment_id: parentCommentId,
         mention_ids: mention_ids
       })
     })
@@ -588,7 +590,9 @@ const addComment = async () => {
     if (response.ok) {
       // Refresh task details to get updated comments with nested structure
       await fetchTaskDetails()
-      newComment.value = ''
+      if (!parentCommentId) {
+          newComment.value = ''
+      }
       console.log('Comment added successfully')
     } else {
       const errorData = await response.json()
@@ -599,35 +603,6 @@ const addComment = async () => {
     alert('Failed to add comment: ' + err.message)
   } finally {
     addingComment.value = false
-  }
-}
-
-// Handle reply to a comment
-const handleReply = async ({ parentCommentId, body }) => {
-  try {
-    const response = await fetch(`${KONG_API_URL}/tasks/${task.value.id}/comments`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        body: body,
-        author_id: authStore.user.id,
-        parent_comment_id: parentCommentId
-      })
-    })
-
-    if (response.ok) {
-      // Refresh task details to get updated comments with nested structure
-      await fetchTaskDetails()
-      console.log('Reply added successfully')
-    } else {
-      const errorData = await response.json()
-      throw new Error(errorData.error || 'Failed to add reply')
-    }
-  } catch (err) {
-    console.error('Error adding reply:', err)
-    alert('Failed to add reply: ' + err.message)
   }
 }
 
