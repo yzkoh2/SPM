@@ -1,4 +1,4 @@
-from .models import db, Project, Task, Attachment, TaskStatusEnum, project_collaborators, task_collaborators, Comment
+from .models import db, Project, Task, Attachment, TaskStatusEnum, project_collaborators, task_collaborators, Comment, comment_mentions
 from sqlalchemy import or_
 from sqlalchemy.orm import aliased
 from datetime import datetime, timedelta
@@ -254,7 +254,6 @@ def get_task_details(task_id):
         print(f"Error in get_task_details: {e}")
         raise e
 
-# Not Settled
 def add_comment(task_id, data):
     """Add a comment to a task"""
     try:
@@ -270,10 +269,21 @@ def add_comment(task_id, data):
         new_comment = Comment(
             body=data['body'],
             author_id=data['author_id'],
-            task_id=task_id
+            task_id=task_id,
+            parent_comment_id=data.get('parent_comment_id')
         )
         
         db.session.add(new_comment)
+        db.session.flush()
+
+        mention_ids = data.get('mention_ids', [])
+        if mention_ids:
+            mention_entries = [
+                {'comment_id': new_comment.id, 'user_id': user_id}
+                for user_id in set(mention_ids)
+            ]
+            db.session.execute(comment_mentions.insert(), mention_entries)
+
         db.session.commit()
         
         return new_comment.to_json(), "Comment added successfully"
@@ -300,6 +310,7 @@ def delete_comment(comment_id):
         db.session.rollback()
         raise e
 
+# Not Settled
 def get_task_collaborators(task_id):
     """Get all collaborators for a task"""
     try:
