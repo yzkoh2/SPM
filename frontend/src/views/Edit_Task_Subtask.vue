@@ -373,7 +373,7 @@ const apiEndpoint = computed(() =>
 
 const collaboratorsEndpoint = computed(() =>
   isSubtask.value
-    ? `${KONG_API_URL}/tasks/${taskId.value}/subtasks/${subtaskId.value}/collaborators`
+    ? `${KONG_API_URL}/tasks/${subtaskId.value}/collaborators`
     : `${KONG_API_URL}/tasks/${taskId.value}/collaborators`
 )
 

@@ -153,7 +153,6 @@ const closeModal = () => {
 }
 
 const confirmUpdate = async () => {
-  console.log('Confirm update called')
   console.log('Selected status:', selectedStatus.value)
   console.log('Current status:', currentStatus.value)
   

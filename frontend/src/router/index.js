@@ -1,6 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import Login from '@/views/Login.vue'
-import Dashboard from '@/views/Dashboard.vue'
+import PersonalTaskboard from '@/views/PersonalTaskboard.vue';
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -8,7 +8,7 @@ const router = createRouter({
     {
       path: '/',
       name: 'dashboard',
-      component: Dashboard,
+      component: PersonalTaskboard,
       // Add meta field to mark this as a protected route
       meta: { requiresAuth: true } 
     },
