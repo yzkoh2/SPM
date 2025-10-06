@@ -107,6 +107,9 @@ class Task(db.Model):
         return [row.user_id for row in result]
 
     def to_json(self):
+        # Filter comments to only include top-level (no parent_comment_id)
+        top_level_comments = [c for c in self.comments if c.parent_comment_id is None]
+        
         return {
             'id': self.id,
             'title': self.title,
@@ -124,8 +127,8 @@ class Task(db.Model):
             'collaborator_ids': self.collaborator_ids(),
             'subtasks': [subtask.to_json() for subtask in self.subtasks],
             'subtask_count': len(self.subtasks),
-            'comments': [comment.to_json() for comment in self.comments],
-            'comment_count': len(self.comments),
+            'comments': [comment.to_json() for comment in top_level_comments],  # Only top-level
+            'comment_count': len(self.comments),  # Still count all comments
             'attachments': [attachment.to_json() for attachment in self.attachments],
             'attachment_count': len(self.attachments)
         }

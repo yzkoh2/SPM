@@ -47,12 +47,13 @@
           </button>
         </div>
       </div>
+
       <!-- Parent Task Reference -->
-      <div v-if="isSubtask" class="bg-blue-50 border border-blue-200 rounded-md p-4">
+      <div v-if="isSubtask && parentTask" class="bg-blue-50 border border-blue-200 rounded-md p-4 mb-6">
         <div class="flex items-center justify-between">
           <div>
             <p class="text-sm font-medium text-blue-900">Part of:</p>
-            <h3 class="text-lg font-semibold text-blue-800">{{ parentTask?.title }}</h3>
+            <h3 class="text-lg font-semibold text-blue-800">{{ parentTask.title }}</h3>
           </div>
           <router-link :to="`/tasks/${parentTaskId}`" class="text-blue-600 hover:text-blue-500 text-sm font-medium">
             View Parent Task →
@@ -72,7 +73,6 @@
                   :class="getStatusBadgeColor(task.status)">
                   {{ task.status }}
                 </span>
-                <!-- Permission indicator -->
                 <span v-if="canUpdateTask" class="text-xs text-gray-500 flex items-center">
                   <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -133,36 +133,25 @@
                 <span class="text-sm text-gray-600">{{ getTaskProgress() }}%</span>
               </div>
             </div>
-            <div v-else></div>
-            <!-- Collaborators Section -->
-            <div class="mt-6 pt-6 border-t border-gray-200">
-              <h4 class="text-sm font-medium text-gray-500 uppercase tracking-wide mb-3">Collaborators</h4>
-              <!-- Collaborator Pills/Badges (Read-Only) -->
-              <div v-if="collaboratorDetails.length > 0" class="flex flex-wrap gap-2">
-                <div v-for="collab in collaboratorDetails" :key="collab.user_id"
-                  class="inline-flex items-center px-3 py-2 rounded-lg text-sm font-medium bg-indigo-100 text-indigo-800 border border-indigo-200">
-                  <svg class="w-4 h-4 mr-1.5" fill="currentColor" viewBox="0 0 20 20">
-                    <path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z"
-                      clip-rule="evenodd"></path>
-                  </svg>
-                  {{ collab.name }} : {{ collab.user_id }}
-                </div>
-              </div>
+          </div>
 
-              <!-- No Collaborators State -->
-              <div v-else
-                class="inline-flex items-center px-3 py-2 rounded-lg text-sm font-medium bg-gray-100 text-gray-600">
-                <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <!-- Collaborators Section -->
+          <div v-if="collaboratorDetails.length > 0" class="mt-6 pt-6 border-t border-gray-200">
+            <h4 class="text-sm font-medium text-gray-500 uppercase tracking-wide mb-3">Collaborators</h4>
+            <div class="flex flex-wrap gap-2">
+              <div v-for="collab in collaboratorDetails" :key="collab.user_id"
+                class="inline-flex items-center px-3 py-2 rounded-full text-sm bg-indigo-50 text-indigo-700">
+                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                     d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
                 </svg>
-                No collaborators assigned
+                {{ collab.name }}
               </div>
             </div>
           </div>
         </div>
 
-        <!-- Quick Stats -->
+        <!-- Stats Cards -->
         <div class="grid grid-cols-1 gap-6" :class="isSubtask ? 'md:grid-cols-2' : 'md:grid-cols-3'">
           <div v-if="!isSubtask" class="bg-white rounded-lg shadow-md p-6">
             <div class="flex items-center">
@@ -191,7 +180,7 @@
               </div>
               <div class="ml-4">
                 <p class="text-sm font-medium text-gray-600">Comments</p>
-                <p class="text-2xl font-semibold text-gray-900">{{ comments.length }}</p>
+                <p class="text-2xl font-semibold text-gray-900">{{ totalCommentCount }}</p>
               </div>
             </div>
           </div>
@@ -256,14 +245,18 @@
 
         <!-- Comments Section -->
         <div class="bg-white rounded-lg shadow-md p-6">
-          <h3 class="text-xl font-semibold text-gray-900 mb-6">Comments ({{ comments.length }})</h3>
+          <h3 class="text-xl font-semibold text-gray-900 mb-6">
+            Comments ({{ totalCommentCount }})
+          </h3>
 
           <!-- Add Comment Form -->
           <div class="mb-6 border-b border-gray-200 pb-6">
             <label class="block text-sm font-medium text-gray-700 mb-2">Add a Comment</label>
             <textarea v-model="newComment" rows="3"
               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-              placeholder="Share your progress or ask a question..."></textarea>
+              placeholder="Share your progress or ask a question..."
+              @keydown.meta.enter="addComment"
+              @keydown.ctrl.enter="addComment"></textarea>
             <div class="mt-2 flex justify-end">
               <button @click="addComment" :disabled="!newComment.trim() || addingComment"
                 class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-md text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed">
@@ -273,20 +266,15 @@
             </div>
           </div>
 
-          <!-- Comments List -->
-          <div v-if="comments.length > 0" class="space-y-4">
-            <div v-for="comment in comments" :key="comment.id"
-              class="border-l-4 border-indigo-200 pl-4 py-3 bg-gray-50 rounded-r-md">
-              <p class="text-gray-700">{{ comment.body }}</p>
-              <div class="flex items-center mt-2 text-xs text-gray-500">
-                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                    d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
-                </svg>
-                <span class="mr-3">Author ID: {{ comment.author_id }}</span>
-                <span v-if="comment.created_at">{{ formatCommentDate(comment.created_at) }}</span>
-              </div>
-            </div>
+          <!-- Comments List (Nested) -->
+          <div v-if="topLevelComments.length > 0" class="space-y-6">
+            <CommentItem
+              v-for="comment in topLevelComments"
+              :key="comment.id"
+              :comment="comment"
+              :current-user-id="authStore.user?.id"
+              @reply="handleReply"
+              @delete="handleDeleteComment" />
           </div>
 
           <div v-else class="text-center py-8 text-gray-500">
@@ -340,6 +328,7 @@ import { ref, onMounted, computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import StatusUpdateModal from '@/components/StatusUpdateModal.vue'
+import CommentItem from '@/components/CommentItem.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -377,6 +366,21 @@ const KONG_API_URL = "http://localhost:8000"
 const canUpdateTask = computed(() => {
   if (!task.value || !authStore.user) return false
   return task.value.owner_id === authStore.user.id
+})
+
+// Filter to show only top-level comments (no parent)
+const topLevelComments = computed(() => {
+  return comments.value.filter(comment => !comment.parent_comment_id)
+})
+
+// Calculate total comment count including all replies
+const totalCommentCount = computed(() => {
+  const countComments = (commentsList) => {
+    return commentsList.reduce((total, comment) => {
+      return total + 1 + (comment.replies ? countComments(comment.replies) : 0)
+    }, 0)
+  }
+  return countComments(comments.value)
 })
 
 // Fetch task details from API
@@ -435,7 +439,7 @@ const fetchCollaborators = async (taskId) => {
 
     if (response.ok) {
       collaborators.value = await response.json()
-      console.log('Subtask collaborators loaded:', collaborators.value)
+      console.log('Task collaborators loaded:', collaborators.value)
 
       // Fetch details for each collaborator
       const detailsPromises = collaborators.value.map(collab =>
@@ -459,7 +463,6 @@ const fetchCollaborators = async (taskId) => {
   } catch (err) {
     console.error('Error fetching collaborators:', err)
     collaboratorDetails.value = []
-  } finally {
   }
 }
 
@@ -491,8 +494,7 @@ const handleStatusUpdate = async ({ newStatus, comment }) => {
       },
       body: JSON.stringify({
         user_id: authStore.user.id,
-        status: newStatus,
-        // comment: comment || ''
+        status: newStatus
       })
     })
 
@@ -516,16 +518,14 @@ const handleStatusUpdate = async ({ newStatus, comment }) => {
 
     // Show success message
     alert('Task status updated successfully!')
-
   } catch (err) {
     console.error('Error updating status:', err)
     alert('Failed to update status: ' + err.message)
-    // Re-throw so modal knows there was an error
     throw err
   }
 }
 
-// Add comment
+// Add comment (top-level)
 const addComment = async () => {
   if (!newComment.value.trim()) return
 
@@ -544,12 +544,13 @@ const addComment = async () => {
     })
 
     if (response.ok) {
-      const comment = await response.json()
-      comments.value.push(comment)
+      // Refresh task details to get updated comments with nested structure
+      await fetchTaskDetails()
       newComment.value = ''
       console.log('Comment added successfully')
     } else {
-      throw new Error('Failed to add comment')
+      const errorData = await response.json()
+      throw new Error(errorData.error || 'Failed to add comment')
     }
   } catch (err) {
     console.error('Error adding comment:', err)
@@ -559,9 +560,69 @@ const addComment = async () => {
   }
 }
 
+// Handle reply to a comment
+const handleReply = async ({ parentCommentId, body }) => {
+  try {
+    const response = await fetch(`${KONG_API_URL}/tasks/${task.value.id}/comments`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        body: body,
+        author_id: authStore.user.id,
+        parent_comment_id: parentCommentId
+      })
+    })
+
+    if (response.ok) {
+      // Refresh task details to get updated comments with nested structure
+      await fetchTaskDetails()
+      console.log('Reply added successfully')
+    } else {
+      const errorData = await response.json()
+      throw new Error(errorData.error || 'Failed to add reply')
+    }
+  } catch (err) {
+    console.error('Error adding reply:', err)
+    alert('Failed to add reply: ' + err.message)
+  }
+}
+
+// Handle delete comment
+const handleDeleteComment = async (commentId) => {
+  if (!confirm('Are you sure you want to delete this comment?')) {
+    return
+  }
+
+  try {
+    const response = await fetch(`${KONG_API_URL}/tasks/deletecomment/${commentId}`, {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    })
+
+    if (response.ok) {
+      // Refresh task details to get updated comments
+      await fetchTaskDetails()
+      console.log('Comment deleted successfully')
+    } else {
+      const errorData = await response.json()
+      throw new Error(errorData.error || 'Failed to delete comment')
+    }
+  } catch (err) {
+    console.error('Error deleting comment:', err)
+    alert('Failed to delete comment: ' + err.message)
+  }
+}
+
 // Action methods
 const editTask = () => {
-  router.push(`/tasks/${task.value.id}/edit`)
+  const editRoute = isSubtask.value 
+    ? `/tasks/${parentTaskId.value}/subtasks/${taskId.value}/edit`
+    : `/tasks/${taskId.value}/edit`
+  router.push(editRoute)
 }
 
 const deleteTask = async () => {
@@ -576,7 +637,11 @@ const deleteTask = async () => {
 
     if (response.ok || response.status === 404) {
       alert('Task deleted successfully!')
-      router.push('/tasks')
+      if (isSubtask.value) {
+        router.push(`/tasks/${parentTaskId.value}/subtasks`)
+      } else {
+        router.push('/')
+      }
     } else {
       throw new Error(`Failed to delete: ${response.status}`)
     }
@@ -649,27 +714,6 @@ const formatDeadline = (deadline) => {
   })
 }
 
-const formatCommentDate = (dateString) => {
-  if (!dateString) return ''
-  const date = new Date(dateString)
-  const now = new Date()
-  const diffMs = now - date
-  const diffMins = Math.floor(diffMs / 60000)
-  const diffHours = Math.floor(diffMs / 3600000)
-  const diffDays = Math.floor(diffMs / 86400000)
-
-  if (diffMins < 1) return 'Just now'
-  if (diffMins < 60) return `${diffMins} minute${diffMins > 1 ? 's' : ''} ago`
-  if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`
-  if (diffDays < 7) return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`
-
-  return date.toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric'
-  })
-}
-
 watch(
   () => [route.params.id, route.params.subtaskId],
   ([newTaskId, newSubtaskId]) => {
@@ -680,7 +724,7 @@ watch(
       taskId.value = newTaskId
     }
     fetchTaskDetails()
-  },
+  }
 )
 
 // Load task details when component mounts
