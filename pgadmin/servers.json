@@ -15,7 +15,7 @@
             "Host": "task_db",
             "Port": 5432,
             "MaintenanceDB": "task_db",
-            "Username": "task_user",
+            "Username": "user",
             "SSLMode": "prefer"
         },
         "3": {

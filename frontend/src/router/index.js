@@ -45,13 +45,53 @@ const router = createRouter({
       path: '/tasks/:id/edit',
       name: 'task-edit',
       component: () => import('@/views/Edit_Task_Subtask.vue'),
-      meta: { requiresAuth: true }
+      meta: { requiresAuth: true },
+      beforeEnter: async (to, from, next) => {
+        const userId = parseInt(localStorage.getItem('userID'))
+        
+        try {
+          // Fetch the task to check ownership
+          const response = await fetch(`http://localhost:8000/tasks/${to.params.id}`)
+          const task = await response.json()
+          
+          // Check if user is the owner or a collaborator
+          if (task.owner_id === userId) {
+            next() // Allow access
+          } else {
+            alert('You do not have permission to edit this task')
+            next(`/tasks/${to.params.id}`) // Redirect to task details
+          }
+        } catch (error) {
+          console.error('Error checking task ownership:', error)
+          next('/tasks') // Redirect to tasks list on error
+        }
+      }
     },
     {
       path: '/tasks/:id/subtasks/:subtaskId/edit',
       name: 'subtask-edit', 
       component: () => import('@/views/Edit_Task_Subtask.vue'),
-      meta: { requiresAuth: true }
+      meta: { requiresAuth: true },
+      beforeEnter: async (to, from, next) => {
+        const userId = parseInt(localStorage.getItem('userID'))
+        
+        try {
+          // Fetch the task to check ownership
+          const response = await fetch(`http://localhost:8000/tasks/${to.params.subtaskId}`)
+          const task = await response.json()
+          
+          // Check if user is the owner or a collaborator
+          if (task.owner_id === userId) {
+            next() // Allow access
+          } else {
+            alert('You do not have permission to edit this subtask')
+            next(`/tasks/${to.params.id}/subtasks/${to.params.subtaskId}`) // Redirect to task details
+          }
+        } catch (error) {
+          console.error('Error checking task ownership:', error)
+          next('/tasks') // Redirect to tasks list on error
+        }
+      }
     }    
     
   ],
