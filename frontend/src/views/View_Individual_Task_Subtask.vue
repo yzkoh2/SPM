@@ -252,11 +252,40 @@
           <!-- Add Comment Form -->
           <div class="mb-6 border-b border-gray-200 pb-6">
             <label class="block text-sm font-medium text-gray-700 mb-2">Add a Comment</label>
-            <textarea v-model="newComment" rows="3"
-              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-              placeholder="Share your progress or ask a question..."
-              @keydown.meta.enter="addComment"
-              @keydown.ctrl.enter="addComment"></textarea>
+
+            <Mentionable
+              :keys="['@']"
+              :items="collaboratorDetails.map(c => ({ value: c.username, label: c.name, user_id: c.user_id, role: c.role }))"
+              offset="6"
+              insert-space
+            >
+              <textarea
+                v-model="newComment"
+                rows="3"
+                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                placeholder="Write a comment... Use @ to mention collaborators"
+                @keydown.meta.enter="addComment"
+                @keydown.ctrl.enter="addComment"
+              ></textarea>
+
+              <!-- Custom rendering for @ mentions -->
+              <template #item-@="{ item, isSelected }">
+                <div 
+                  :class="['flex items-center p-2 space-x-3 cursor-pointer rounded-md transition-colors duration-150 ease-in-out', isSelected ? 'bg-indigo-100' : 'hover:bg-gray-50']"
+                >
+                  <svg class="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
+                  <div class="flex-1">
+                    <div class="font-medium text-gray-800">{{ item.label }}</div>
+                    <div class="text-sm text-gray-500">{{ item.role }}</div>
+                  </div>
+                </div>
+              </template>
+
+              <template #no-result>
+                <div class="text-gray-400 p-2">No users found</div>
+              </template>
+            </Mentionable>
+
             <div class="mt-2 flex justify-end">
               <button @click="addComment" :disabled="!newComment.trim() || addingComment"
                 class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-md text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed">
@@ -327,6 +356,8 @@
 import { ref, onMounted, computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { Mentionable } from 'vue-mention'
+import 'floating-vue/dist/style.css'
 import StatusUpdateModal from '@/components/StatusUpdateModal.vue'
 import CommentItem from '@/components/CommentItem.vue'
 
@@ -452,7 +483,8 @@ const fetchCollaborators = async (taskId) => {
       collaboratorDetails.value = collaborators.value.map((collab, index) => ({
         user_id: collab.user_id,
         name: details[index]?.name || `User ${collab.user_id}`,
-        role: details[index]?.role || 'Unknown'
+        role: details[index]?.role || 'Unknown',
+        username: details[index]?.username
       }))
 
       console.log('Collaborator details loaded:', collaboratorDetails.value)
@@ -531,6 +563,15 @@ const addComment = async () => {
 
   try {
     addingComment.value = true
+    
+    const mentionRegex = /@(\w+)/g;
+    const matches = [...newComment.value.matchAll(mentionRegex)];
+    const mentionedUsernames = matches.map(match => match[1]);
+    const uniqueUsernames = [...new Set(mentionedUsernames)];
+    const mention_ids = uniqueUsernames.map(username => {
+      const collaborator = collaboratorDetails.value.find(c => c.username === username);
+      return collaborator ? collaborator.user_id : null;
+    }).filter(id => id !== null);
 
     const response = await fetch(`${KONG_API_URL}/tasks/${task.value.id}/comments`, {
       method: 'POST',
@@ -539,7 +580,8 @@ const addComment = async () => {
       },
       body: JSON.stringify({
         body: newComment.value,
-        author_id: authStore.user.id
+        author_id: authStore.user.id,
+        mention_ids: mention_ids
       })
     })
 
