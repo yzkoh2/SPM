@@ -449,3 +449,383 @@ def get_subtask_details(task_id, subtask_id):
     except Exception as e:
         print(f"Error in get_subtask_details: {e}")
         raise e
+    
+# Add these functions to your existing task_service/app/service.py file
+
+# ==================== PROJECT FUNCTIONS ====================
+
+def create_project(project_data):
+    """Create a new project"""
+    try:
+        print(f"Creating project with data: {project_data}")
+        
+        # Parse deadline if provided
+        deadline = None
+        if project_data.get('deadline'):
+            try:
+                if isinstance(project_data['deadline'], str) and project_data['deadline'].strip():
+                    deadline_str = project_data['deadline']
+                    if 'T' in deadline_str:
+                        deadline = datetime.fromisoformat(deadline_str)
+                    else:
+                        deadline = datetime.strptime(deadline_str, '%Y-%m-%d %H:%M:%S')
+                elif isinstance(project_data['deadline'], datetime):
+                    deadline = project_data['deadline']
+            except ValueError as e:
+                print(f"Error parsing deadline: {e}")
+                deadline = None
+        
+        # Create project
+        new_project = Project(
+            title=project_data['title'],
+            description=project_data.get('description'),
+            deadline=deadline,
+            owner_id=project_data['owner_id']
+        )
+        
+        db.session.add(new_project)
+        db.session.commit()
+        
+        return new_project.to_json()
+    except Exception as e:
+        print(f"Error creating project: {e}")
+        db.session.rollback()
+        raise
+
+
+def get_project_by_id(project_id, user_id):
+    """Get a project by ID with authorization check"""
+    try:
+        project = Project.query.get(project_id)
+        
+        if not project:
+            return None, "Project not found"
+        
+        # Check if user has access (owner or collaborator)
+        collaborator_ids = project.collaborator_ids()
+        if user_id != project.owner_id and user_id not in collaborator_ids:
+            return None, "Forbidden: You don't have access to this project"
+        
+        return project, None
+    except Exception as e:
+        print(f"Error getting project: {e}")
+        raise
+
+
+def get_project_dashboard(project_id, user_id, status_filter=None, sort_by='deadline', 
+                          collaborator_filter=None, owner_filter=None):
+    """
+    Get project dashboard with tasks, collaborators, and filtering/sorting
+    
+    Args:
+        project_id: ID of the project
+        user_id: ID of the requesting user
+        status_filter: Filter tasks by status (comma-separated string)
+        sort_by: Sort tasks by field (deadline, title, status)
+        collaborator_filter: If 'me', show only tasks where user is a collaborator
+        owner_filter: If 'me', show only tasks where user is the owner
+    """
+    try:
+        # Get project with authorization
+        project, error = get_project_by_id(project_id, user_id)
+        if error:
+            return None, error
+        
+        # Start with all tasks in this project (excluding subtasks)
+        tasks_query = Task.query.filter(
+            Task.project_id == project_id,
+            Task.parent_task_id.is_(None)
+        )
+        
+        # Apply status filter
+        if status_filter:
+            status_list = [s.strip() for s in status_filter.split(',')]
+            # Convert status strings to enum values
+            status_enums = []
+            for status_str in status_list:
+                try:
+                    status_enums.append(TaskStatusEnum(status_str))
+                except ValueError:
+                    print(f"Invalid status: {status_str}")
+            
+            if status_enums:
+                tasks_query = tasks_query.filter(Task.status.in_(status_enums))
+        
+        # Apply collaborator filter
+        if collaborator_filter == 'me':
+            # Only show tasks where the user is a collaborator
+            tasks_query = tasks_query.join(
+                task_collaborators,
+                task_collaborators.c.task_id == Task.id
+            ).filter(task_collaborators.c.user_id == user_id)
+        
+        # Apply owner filter
+        if owner_filter == 'me':
+            tasks_query = tasks_query.filter(Task.owner_id == user_id)
+        
+        # Apply sorting
+        if sort_by == 'deadline':
+            # Sort by deadline, with null values last
+            tasks_query = tasks_query.order_by(Task.deadline.asc().nullslast())
+        elif sort_by == 'title':
+            tasks_query = tasks_query.order_by(Task.title.asc())
+        elif sort_by == 'status':
+            tasks_query = tasks_query.order_by(Task.status.asc())
+        elif sort_by == 'priority':
+            tasks_query = tasks_query.order_by(Task.priority.desc().nullslast())
+        
+        tasks = tasks_query.all()
+        
+        # Get project collaborators
+        collaborator_ids = project.collaborator_ids()
+        
+        # Build response
+        dashboard_data = {
+            'project': project.to_json(),
+            'tasks': [task.to_json() for task in tasks],
+            'collaborators': collaborator_ids,
+            'task_count': len(tasks)
+        }
+        
+        return dashboard_data, None
+        
+    except Exception as e:
+        print(f"Error getting project dashboard: {e}")
+        raise
+
+
+def get_user_projects(user_id, role_filter=None):
+    """
+    Get all projects for a user (as owner or collaborator)
+    
+    Args:
+        user_id: ID of the user
+        role_filter: 'owner', 'collaborator', or None for all
+    """
+    try:
+        projects_data = []
+        
+        if role_filter == 'owner':
+            # Get only projects owned by user
+            owned_projects = Project.query.filter_by(owner_id=user_id).all()
+            for project in owned_projects:
+                project_dict = project.to_json()
+                project_dict['user_role'] = 'owner'
+                
+                # Add task count
+                task_count = Task.query.filter(
+                    Task.project_id == project.id,
+                    Task.parent_task_id.is_(None)
+                ).count()
+                project_dict['task_count'] = task_count
+                
+                projects_data.append(project_dict)
+        
+        elif role_filter == 'collaborator':
+            # Get only projects where user is a collaborator
+            result = db.session.execute(
+                project_collaborators.select().where(
+                    project_collaborators.c.user_id == user_id
+                )
+            )
+            collab_project_ids = [row.project_id for row in result]
+            
+            for project_id in collab_project_ids:
+                project = Project.query.get(project_id)
+                if project:
+                    project_dict = project.to_json()
+                    project_dict['user_role'] = 'collaborator'
+                    
+                    # Add task count
+                    task_count = Task.query.filter(
+                        Task.project_id == project.id,
+                        Task.parent_task_id.is_(None)
+                    ).count()
+                    project_dict['task_count'] = task_count
+                    
+                    projects_data.append(project_dict)
+        
+        else:
+            # Get all projects (owned + collaborating)
+            # First, get owned projects
+            owned_projects = Project.query.filter_by(owner_id=user_id).all()
+            for project in owned_projects:
+                project_dict = project.to_json()
+                project_dict['user_role'] = 'owner'
+                
+                # Add task count
+                task_count = Task.query.filter(
+                    Task.project_id == project.id,
+                    Task.parent_task_id.is_(None)
+                ).count()
+                project_dict['task_count'] = task_count
+                
+                projects_data.append(project_dict)
+            
+            # Then, get projects where user is a collaborator
+            result = db.session.execute(
+                project_collaborators.select().where(
+                    project_collaborators.c.user_id == user_id
+                )
+            )
+            collab_project_ids = [row.project_id for row in result]
+            
+            for project_id in collab_project_ids:
+                # Skip if already added as owner
+                if any(p['id'] == project_id for p in projects_data):
+                    continue
+                
+                project = Project.query.get(project_id)
+                if project:
+                    project_dict = project.to_json()
+                    project_dict['user_role'] = 'collaborator'
+                    
+                    # Add task count
+                    task_count = Task.query.filter(
+                        Task.project_id == project.id,
+                        Task.parent_task_id.is_(None)
+                    ).count()
+                    project_dict['task_count'] = task_count
+                    
+                    projects_data.append(project_dict)
+        
+        return projects_data
+        
+    except Exception as e:
+        print(f"Error getting user projects: {e}")
+        raise
+
+
+def update_project(project_id, user_id, project_data):
+    """Update a project (only owner can update)"""
+    try:
+        project = Project.query.get(project_id)
+        
+        if not project:
+            return None, "Project not found"
+        
+        # Check if user is the owner
+        if project.owner_id != user_id:
+            return None, "Forbidden: Only the project owner can update the project"
+        
+        # Update fields
+        if 'title' in project_data:
+            project.title = project_data['title']
+        
+        if 'description' in project_data:
+            project.description = project_data['description']
+        
+        if 'deadline' in project_data:
+            deadline = None
+            if project_data['deadline']:
+                try:
+                    if isinstance(project_data['deadline'], str):
+                        deadline_str = project_data['deadline']
+                        if 'T' in deadline_str:
+                            deadline = datetime.fromisoformat(deadline_str)
+                        else:
+                            deadline = datetime.strptime(deadline_str, '%Y-%m-%d %H:%M:%S')
+                    elif isinstance(project_data['deadline'], datetime):
+                        deadline = project_data['deadline']
+                except ValueError as e:
+                    print(f"Error parsing deadline: {e}")
+            project.deadline = deadline
+        
+        db.session.commit()
+        return project.to_json(), None
+        
+    except Exception as e:
+        print(f"Error updating project: {e}")
+        db.session.rollback()
+        raise
+
+
+def delete_project(project_id, user_id):
+    """Delete a project (only owner can delete)"""
+    try:
+        project = Project.query.get(project_id)
+        
+        if not project:
+            return False, "Project not found"
+        
+        # Check if user is the owner
+        if project.owner_id != user_id:
+            return False, "Forbidden: Only the project owner can delete the project"
+        
+        db.session.delete(project)
+        db.session.commit()
+        return True, None
+        
+    except Exception as e:
+        print(f"Error deleting project: {e}")
+        db.session.rollback()
+        raise
+
+
+def add_project_collaborator(project_id, user_id, collaborator_user_id):
+    """Add a collaborator to a project (only owner can add)"""
+    try:
+        project = Project.query.get(project_id)
+        
+        if not project:
+            return None, "Project not found"
+        
+        # Check if user is the owner
+        if project.owner_id != user_id:
+            return None, "Forbidden: Only the project owner can add collaborators"
+        
+        # Check if already a collaborator
+        existing = db.session.execute(
+            project_collaborators.select().where(
+                project_collaborators.c.project_id == project_id,
+                project_collaborators.c.user_id == collaborator_user_id
+            )
+        ).first()
+        
+        if existing:
+            return None, "User is already a collaborator on this project"
+        
+        # Add collaborator
+        db.session.execute(
+            project_collaborators.insert().values(
+                project_id=project_id,
+                user_id=collaborator_user_id
+            )
+        )
+        db.session.commit()
+        
+        return {"message": "Collaborator added successfully"}, None
+        
+    except Exception as e:
+        print(f"Error adding collaborator: {e}")
+        db.session.rollback()
+        raise
+
+
+def remove_project_collaborator(project_id, user_id, collaborator_user_id):
+    """Remove a collaborator from a project (only owner can remove)"""
+    try:
+        project = Project.query.get(project_id)
+        
+        if not project:
+            return None, "Project not found"
+        
+        # Check if user is the owner
+        if project.owner_id != user_id:
+            return None, "Forbidden: Only the project owner can remove collaborators"
+        
+        # Remove collaborator
+        db.session.execute(
+            project_collaborators.delete().where(
+                project_collaborators.c.project_id == project_id,
+                project_collaborators.c.user_id == collaborator_user_id
+            )
+        )
+        db.session.commit()
+        
+        return {"message": "Collaborator removed successfully"}, None
+        
+    except Exception as e:
+        print(f"Error removing collaborator: {e}")
+        db.session.rollback()
+        raise

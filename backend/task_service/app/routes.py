@@ -225,3 +225,233 @@ def get_subtask(task_id, subtask_id):
 def health_check():
     """Health check endpoint"""
     return jsonify({"status": "healthy", "service": "task_management"}), 200
+
+# ==================== PROJECT ROUTES ====================
+
+@task_bp.route("/projects", methods=["POST"])
+def create_project():
+    """Create a new project"""
+    try:
+        data = request.get_json()
+        print(f"Creating project with data: {data}")
+        
+        # Validate required fields
+        if not data or not data.get('title'):
+            return jsonify({"error": "Title is required"}), 400
+            
+        if not data.get('owner_id'):
+            return jsonify({"error": "Owner ID is required"}), 400
+            
+        new_project = service.create_project(data)
+        return jsonify(new_project), 201
+        
+    except Exception as e:
+        print(f"Error in create_project: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+@task_bp.route("/projects/<int:project_id>", methods=["GET"])
+def get_project(project_id):
+    """Get a specific project"""
+    try:
+        user_id = request.args.get('user_id', type=int)
+        
+        if not user_id:
+            return jsonify({"error": "User ID is required"}), 400
+        
+        project, error = service.get_project_by_id(project_id, user_id)
+        
+        if error:
+            if "not found" in error:
+                return jsonify({"error": error}), 404
+            else:
+                return jsonify({"error": error}), 403
+        
+        return jsonify(project.to_json()), 200
+        
+    except Exception as e:
+        print(f"Error in get_project: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+@task_bp.route("/projects/<int:project_id>/dashboard", methods=["GET"])
+def get_project_dashboard(project_id):
+    """
+    Get project dashboard with tasks, collaborators, and filtering/sorting
+    
+    Query parameters:
+    - user_id (required): ID of the requesting user
+    - status: Filter tasks by status (comma-separated, e.g., "Ongoing,Under Review")
+    - sort_by: Sort tasks by field (deadline, title, status, priority). Default: deadline
+    - collaborator: If 'me', show only tasks where user is a collaborator
+    - owner: If 'me', show only tasks where user is the owner
+    
+    Example: /projects/1/dashboard?user_id=2&status=Ongoing,Under Review&sort_by=deadline&owner=me
+    """
+    try:
+        user_id = request.args.get('user_id', type=int)
+        
+        if not user_id:
+            return jsonify({"error": "User ID is required"}), 400
+        
+        # Get filter and sort parameters
+        status_filter = request.args.get('status')
+        sort_by = request.args.get('sort_by', 'deadline')
+        collaborator_filter = request.args.get('collaborator')
+        owner_filter = request.args.get('owner')
+        
+        dashboard_data, error = service.get_project_dashboard(
+            project_id=project_id,
+            user_id=user_id,
+            status_filter=status_filter,
+            sort_by=sort_by,
+            collaborator_filter=collaborator_filter,
+            owner_filter=owner_filter
+        )
+        
+        if error:
+            if "not found" in error:
+                return jsonify({"error": error}), 404
+            else:
+                return jsonify({"error": error}), 403
+        
+        return jsonify(dashboard_data), 200
+        
+    except Exception as e:
+        print(f"Error in get_project_dashboard: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+@task_bp.route("/projects/user/<int:user_id>", methods=["GET"])
+def get_user_projects(user_id):
+    """
+    Get all projects for a user
+    
+    Query parameters:
+    - role: Filter by role ('owner', 'collaborator', or omit for all)
+    
+    Example: /projects/user/2?role=owner
+    """
+    try:
+        role_filter = request.args.get('role')
+        
+        projects = service.get_user_projects(user_id, role_filter)
+        return jsonify(projects), 200
+        
+    except Exception as e:
+        print(f"Error in get_user_projects: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+@task_bp.route("/projects/<int:project_id>", methods=["PUT"])
+def update_project(project_id):
+    """Update a project (only owner can update)"""
+    try:
+        data = request.get_json()
+        print(f"Updating project {project_id} with data: {data}")
+        
+        user_id = data.get('user_id')
+        
+        if not user_id:
+            return jsonify({"error": "User ID is required"}), 400
+        
+        updated_project, error = service.update_project(project_id, user_id, data)
+        
+        if error:
+            if "not found" in error:
+                return jsonify({"error": error}), 404
+            else:
+                return jsonify({"error": error}), 403
+        
+        return jsonify(updated_project), 200
+        
+    except Exception as e:
+        print(f"Error in update_project: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+@task_bp.route("/projects/<int:project_id>", methods=["DELETE"])
+def delete_project(project_id):
+    """Delete a project (only owner can delete)"""
+    try:
+        data = request.get_json()
+        user_id = data.get('user_id')
+        
+        if not user_id:
+            return jsonify({"error": "User ID is required"}), 400
+        
+        success, error = service.delete_project(project_id, user_id)
+        
+        if error:
+            if "not found" in error:
+                return jsonify({"error": error}), 404
+            else:
+                return jsonify({"error": error}), 403
+        
+        return jsonify({"message": "Project deleted successfully"}), 200
+        
+    except Exception as e:
+        print(f"Error in delete_project: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+@task_bp.route("/projects/<int:project_id>/collaborators", methods=["POST"])
+def add_project_collaborator(project_id):
+    """Add a collaborator to a project"""
+    try:
+        data = request.get_json()
+        print(f"Adding collaborator to project {project_id} with data: {data}")
+        
+        user_id = data.get('user_id')  # The user making the request (must be owner)
+        collaborator_user_id = data.get('collaborator_user_id')  # The user to add
+        
+        if not user_id:
+            return jsonify({"error": "User ID is required"}), 400
+        
+        if not collaborator_user_id:
+            return jsonify({"error": "Collaborator user ID is required"}), 400
+        
+        result, error = service.add_project_collaborator(
+            project_id, user_id, collaborator_user_id
+        )
+        
+        if error:
+            if "not found" in error:
+                return jsonify({"error": error}), 404
+            elif "already" in error:
+                return jsonify({"error": error}), 409
+            else:
+                return jsonify({"error": error}), 403
+        
+        return jsonify(result), 201
+        
+    except Exception as e:
+        print(f"Error in add_project_collaborator: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+@task_bp.route("/projects/<int:project_id>/collaborators/<int:collaborator_user_id>", methods=["DELETE"])
+def remove_project_collaborator(project_id, collaborator_user_id):
+    """Remove a collaborator from a project"""
+    try:
+        data = request.get_json()
+        user_id = data.get('user_id')  # The user making the request (must be owner)
+        
+        if not user_id:
+            return jsonify({"error": "User ID is required"}), 400
+        
+        result, error = service.remove_project_collaborator(
+            project_id, user_id, collaborator_user_id
+        )
+        
+        if error:
+            if "not found" in error:
+                return jsonify({"error": error}), 404
+            else:
+                return jsonify({"error": error}), 403
+        
+        return jsonify(result), 200
+        
+    except Exception as e:
+        print(f"Error in remove_project_collaborator: {e}")
+        return jsonify({"error": str(e)}), 500
