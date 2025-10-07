@@ -829,3 +829,191 @@ def remove_project_collaborator(project_id, user_id, collaborator_user_id):
         print(f"Error removing collaborator: {e}")
         db.session.rollback()
         raise
+
+# Add these functions to backend/task_service/app/service.py
+
+# ==================== EDIT PROJECT & MANAGE TASKS FUNCTIONS ====================
+
+def remove_collaborator_from_project_tasks(project_id, user_id):
+    """
+    Remove a user from all tasks and subtasks in a project when they are removed as collaborator
+    """
+    try:
+        # Get all tasks in the project (including subtasks)
+        tasks = Task.query.filter(Task.project_id == project_id).all()
+        
+        for task in tasks:
+            # Remove from task_collaborators if present
+            db.session.execute(
+                task_collaborators.delete().where(
+                    task_collaborators.c.task_id == task.id,
+                    task_collaborators.c.user_id == user_id
+                )
+            )
+        
+        db.session.commit()
+        return True
+        
+    except Exception as e:
+        print(f"Error removing collaborator from project tasks: {e}")
+        db.session.rollback()
+        raise
+
+
+def add_existing_task_to_project(task_id, project_id, user_id):
+    """
+    Add an existing standalone task to a project
+    User must be the task owner
+    """
+    try:
+        # Get the task
+        task = Task.query.get(task_id)
+        
+        if not task:
+            return None, "Task not found"
+        
+        # Check if user is the task owner
+        if task.owner_id != user_id:
+            return None, "Forbidden: Only the task owner can add it to a project"
+        
+        # Check if task already belongs to a project
+        if task.project_id is not None:
+            return None, "Task is already assigned to a project"
+        
+        # Check if user has access to the project (owner or collaborator)
+        project = Project.query.get(project_id)
+        if not project:
+            return None, "Project not found"
+        
+        collaborator_ids = project.collaborator_ids()
+        if user_id != project.owner_id and user_id not in collaborator_ids:
+            return None, "Forbidden: You don't have access to this project"
+        
+        # Assign task to project
+        task.project_id = project_id
+        db.session.commit()
+        
+        return task.to_json(), None
+        
+    except Exception as e:
+        print(f"Error adding task to project: {e}")
+        db.session.rollback()
+        raise
+
+
+def remove_task_from_project(task_id, user_id):
+    """
+    Unassign a task from its project
+    User must be the task owner
+    """
+    try:
+        task = Task.query.get(task_id)
+        
+        if not task:
+            return None, "Task not found"
+        
+        # Check if user is the task owner
+        if task.owner_id != user_id:
+            return None, "Forbidden: Only the task owner can remove it from a project"
+        
+        # Check if task belongs to a project
+        if task.project_id is None:
+            return None, "Task is not assigned to any project"
+        
+        # Remove from project
+        task.project_id = None
+        db.session.commit()
+        
+        return task.to_json(), None
+        
+    except Exception as e:
+        print(f"Error removing task from project: {e}")
+        db.session.rollback()
+        raise
+
+
+def create_task_in_project(task_data, project_id, user_id):
+    """
+    Create a new task directly within a project
+    User must be project owner or collaborator
+    """
+    try:
+        # Check if user has access to the project
+        project = Project.query.get(project_id)
+        if not project:
+            return None, "Project not found"
+        
+        collaborator_ids = project.collaborator_ids()
+        if user_id != project.owner_id and user_id not in collaborator_ids:
+            return None, "Forbidden: You must be a project owner or collaborator to create tasks"
+        
+        # Add project_id to task data
+        task_data['project_id'] = project_id
+        
+        # Create the task using existing function
+        new_task = create_task(task_data)
+        
+        return new_task, None
+        
+    except Exception as e:
+        print(f"Error creating task in project: {e}")
+        db.session.rollback()
+        raise
+
+
+def get_standalone_tasks_for_user(user_id):
+    """
+    Get all tasks owned by user that are not assigned to any project (standalone tasks)
+    """
+    try:
+        tasks = Task.query.filter(
+            Task.owner_id == user_id,
+            Task.project_id.is_(None),
+            Task.parent_task_id.is_(None)  # Only parent tasks
+        ).order_by(Task.created_at.desc()).all()
+        
+        return [task.to_json() for task in tasks]
+        
+    except Exception as e:
+        print(f"Error getting standalone tasks: {e}")
+        raise
+
+
+# Update the existing remove_project_collaborator function to cascade removal
+def remove_project_collaborator(project_id, user_id, collaborator_user_id):
+    """
+    Remove a collaborator from a project (only owner can remove)
+    Also removes them from all project tasks and subtasks
+    """
+    try:
+        project = Project.query.get(project_id)
+        
+        if not project:
+            return None, "Project not found"
+        
+        # Check if user is the owner
+        if project.owner_id != user_id:
+            return None, "Forbidden: Only the project owner can remove collaborators"
+        
+        # Cannot remove the owner
+        if collaborator_user_id == project.owner_id:
+            return None, "Cannot remove the project owner from collaborators"
+        
+        # Remove from project tasks first (CASCADE)
+        remove_collaborator_from_project_tasks(project_id, collaborator_user_id)
+        
+        # Remove from project collaborators
+        db.session.execute(
+            project_collaborators.delete().where(
+                project_collaborators.c.project_id == project_id,
+                project_collaborators.c.user_id == collaborator_user_id
+            )
+        )
+        db.session.commit()
+        
+        return {"message": "Collaborator removed successfully from project and all tasks"}, None
+        
+    except Exception as e:
+        print(f"Error removing collaborator: {e}")
+        db.session.rollback()
+        raise

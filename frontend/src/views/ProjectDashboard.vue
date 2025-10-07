@@ -1,19 +1,52 @@
 <template>
   <div class="min-h-screen bg-gray-50">
+    <!-- Modals -->
+    <EditProjectModal 
+      :show="showEditModal" 
+      :project="project"
+      @close="showEditModal = false"
+      @updated="handleProjectUpdated" />
+    
+    <ManageProjectTasksModal 
+      :show="showManageTasksModal" 
+      :project-id="parseInt(route.params.id)"
+      @close="showManageTasksModal = false"
+      @taskAdded="handleTaskAdded" />
+
     <!-- Page Header -->
     <div class="bg-white shadow-sm border-b border-gray-200">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        <div class="flex items-center">
-          <router-link to="/projects"
-            class="flex items-center text-indigo-600 hover:text-indigo-500 mr-6 text-sm font-medium">
-            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
-            </svg>
-            Back to Projects
-          </router-link>
-          <div v-if="!loading && project">
-            <h1 class="text-2xl font-bold text-gray-900">{{ project.title }}</h1>
-            <p class="text-sm text-gray-500 mt-1">{{ project.description }}</p>
+        <div class="flex items-center justify-between">
+          <div class="flex items-center">
+            <router-link to="/projects"
+              class="flex items-center text-indigo-600 hover:text-indigo-500 mr-6 text-sm font-medium">
+              <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+              </svg>
+              Back to Projects
+            </router-link>
+            <div v-if="!loading && project">
+              <h1 class="text-2xl font-bold text-gray-900">{{ project.title }}</h1>
+              <p class="text-sm text-gray-500 mt-1">{{ project.description }}</p>
+            </div>
+          </div>
+          
+          <!-- Action Buttons -->
+          <div v-if="!loading && project" class="flex items-center space-x-3">
+            <button v-if="isProjectOwner" @click="showEditModal = true"
+                    class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
+              <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+              </svg>
+              Edit Project
+            </button>
+            <button @click="showManageTasksModal = true"
+                    class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700">
+              <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+              </svg>
+              Manage Tasks
+            </button>
           </div>
         </div>
       </div>
@@ -179,16 +212,29 @@
           <!-- Tasks Grid -->
           <div v-else class="space-y-4">
             <div v-for="task in tasks" :key="task.id"
-                 class="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow cursor-pointer"
-                 @click="viewTaskDetails(task.id)">
+                 class="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
               <div class="flex justify-between items-start mb-2">
-                <h4 class="text-lg font-semibold text-gray-900">{{ task.title }}</h4>
-                <span :class="['px-2 py-1 text-xs font-medium rounded-full', getStatusBadgeColor(task.status)]">
-                  {{ task.status }}
-                </span>
+                <div class="flex-1 cursor-pointer" @click="viewTaskDetails(task.id)">
+                  <h4 class="text-lg font-semibold text-gray-900">{{ task.title }}</h4>
+                </div>
+                <div class="flex items-center space-x-2">
+                  <span :class="['px-2 py-1 text-xs font-medium rounded-full', getStatusBadgeColor(task.status)]">
+                    {{ task.status }}
+                  </span>
+                  <!-- Remove from project button (only for task owners) -->
+                  <button v-if="task.owner_id === authStore.currentUserId"
+                          @click="removeTaskFromProject(task.id)"
+                          :disabled="removingTask === task.id"
+                          class="text-red-600 hover:text-red-800 p-1 rounded hover:bg-red-50 disabled:text-gray-400"
+                          title="Remove from project">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                  </button>
+                </div>
               </div>
 
-              <p v-if="task.description" class="text-sm text-gray-600 mb-3 line-clamp-2">{{ task.description }}</p>
+              <p v-if="task.description" class="text-sm text-gray-600 mb-3 line-clamp-2 cursor-pointer" @click="viewTaskDetails(task.id)">{{ task.description }}</p>
 
               <div class="flex flex-wrap gap-4 text-xs text-gray-600">
                 <div class="flex items-center" :class="getDeadlineColor(task.deadline)">
@@ -228,6 +274,8 @@
 import { ref, onMounted, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import EditProjectModal from '@/components/EditProjectModal.vue'
+import ManageProjectTasksModal from '@/components/ManageProjectTasksModal.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -240,6 +288,9 @@ const error = ref(null)
 const project = ref(null)
 const tasks = ref([])
 const collaborators = ref([])
+const showEditModal = ref(false)
+const showManageTasksModal = ref(false)
+const removingTask = ref(null)
 
 const filters = ref({
   statuses: [],
@@ -253,6 +304,10 @@ const availableStatuses = ['Unassigned', 'Ongoing', 'Under Review', 'Completed']
 const getTaskCountByStatus = (status) => {
   return tasks.value.filter(task => task.status === status).length
 }
+
+const isProjectOwner = computed(() => {
+  return project.value && project.value.owner_id === authStore.currentUserId
+})
 
 // Helper functions
 const getStatusBadgeColor = (status) => {
@@ -354,6 +409,48 @@ const clearFilters = () => {
 
 const viewTaskDetails = (taskId) => {
   router.push(`/tasks/${taskId}`)
+}
+
+const removeTaskFromProject = async (taskId) => {
+  if (!confirm('Remove this task from the project? The task will become a standalone task.')) {
+    return
+  }
+
+  try {
+    removingTask.value = taskId
+
+    const response = await fetch(`${KONG_API_URL}/tasks/${taskId}/remove-from-project`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        user_id: authStore.currentUserId
+      })
+    })
+
+    if (!response.ok) {
+      const errorData = await response.json()
+      throw new Error(errorData.error || 'Failed to remove task from project')
+    }
+
+    // Reload dashboard
+    loadDashboard()
+
+  } catch (err) {
+    console.error('Error removing task from project:', err)
+    error.value = err.message
+  } finally {
+    removingTask.value = null
+  }
+}
+
+const handleProjectUpdated = () => {
+  loadDashboard()
+}
+
+const handleTaskAdded = () => {
+  loadDashboard()
 }
 
 // Lifecycle

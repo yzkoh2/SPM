@@ -455,3 +455,129 @@ def remove_project_collaborator(project_id, collaborator_user_id):
     except Exception as e:
         print(f"Error in remove_project_collaborator: {e}")
         return jsonify({"error": str(e)}), 500
+    
+# ==================== PROJECT TASK MANAGEMENT ROUTES ====================
+
+@task_bp.route("/projects/<int:project_id>/tasks", methods=["POST"])
+def create_task_in_project(project_id):
+    """
+    Create a new task directly within a project
+    User must be project owner or collaborator
+    """
+    try:
+        data = request.get_json()
+        print(f"Creating task in project {project_id} with data: {data}")
+        
+        user_id = data.get('user_id') or data.get('owner_id')
+        
+        if not user_id:
+            return jsonify({"error": "User ID is required"}), 400
+        
+        if not data.get('title'):
+            return jsonify({"error": "Task title is required"}), 400
+        
+        new_task, error = service.create_task_in_project(data, project_id, user_id)
+        
+        if error:
+            if "not found" in error:
+                return jsonify({"error": error}), 404
+            else:
+                return jsonify({"error": error}), 403
+        
+        return jsonify(new_task), 201
+        
+    except Exception as e:
+        print(f"Error in create_task_in_project: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+@task_bp.route("/tasks/<int:task_id>/add-to-project", methods=["POST"])
+def add_existing_task_to_project(task_id):
+    """
+    Add an existing standalone task to a project
+    User must be the task owner
+    
+    Body: { "project_id": 1, "user_id": 2 }
+    """
+    try:
+        data = request.get_json()
+        print(f"Adding task {task_id} to project with data: {data}")
+        
+        user_id = data.get('user_id')
+        project_id = data.get('project_id')
+        
+        if not user_id:
+            return jsonify({"error": "User ID is required"}), 400
+        
+        if not project_id:
+            return jsonify({"error": "Project ID is required"}), 400
+        
+        updated_task, error = service.add_existing_task_to_project(task_id, project_id, user_id)
+        
+        if error:
+            if "not found" in error:
+                return jsonify({"error": error}), 404
+            elif "already assigned" in error:
+                return jsonify({"error": error}), 409
+            else:
+                return jsonify({"error": error}), 403
+        
+        return jsonify(updated_task), 200
+        
+    except Exception as e:
+        print(f"Error in add_existing_task_to_project: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+@task_bp.route("/tasks/<int:task_id>/remove-from-project", methods=["POST"])
+def remove_task_from_project(task_id):
+    """
+    Unassign a task from its project
+    User must be the task owner
+    
+    Body: { "user_id": 2 }
+    """
+    try:
+        data = request.get_json()
+        print(f"Removing task {task_id} from project")
+        
+        user_id = data.get('user_id')
+        
+        if not user_id:
+            return jsonify({"error": "User ID is required"}), 400
+        
+        updated_task, error = service.remove_task_from_project(task_id, user_id)
+        
+        if error:
+            if "not found" in error:
+                return jsonify({"error": error}), 404
+            elif "not assigned" in error:
+                return jsonify({"error": error}), 400
+            else:
+                return jsonify({"error": error}), 403
+        
+        return jsonify(updated_task), 200
+        
+    except Exception as e:
+        print(f"Error in remove_task_from_project: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+@task_bp.route("/tasks/standalone", methods=["GET"])
+def get_standalone_tasks():
+    """
+    Get all standalone tasks (not assigned to any project) for a user
+    Query parameter: user_id
+    """
+    try:
+        user_id = request.args.get('user_id', type=int)
+        
+        if not user_id:
+            return jsonify({"error": "User ID is required"}), 400
+        
+        tasks = service.get_standalone_tasks_for_user(user_id)
+        return jsonify(tasks), 200
+        
+    except Exception as e:
+        print(f"Error in get_standalone_tasks: {e}")
+        return jsonify({"error": str(e)}), 500
