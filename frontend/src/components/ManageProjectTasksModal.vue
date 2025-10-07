@@ -2,10 +2,10 @@
   <div v-if="show" class="fixed inset-0 z-50 overflow-y-auto" @click.self="$emit('close')">
     <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
       <!-- Background overlay -->
-      <div class="fixed inset-0 transition-opacity bg-gray-500 bg-opacity-75" @click="$emit('close')"></div>
+      <div class="fixed inset-0 transition-opacity bg-gray-500 bg-opacity-20" @click="$emit('close')"></div>
 
-      <!-- Modal panel -->
-      <div class="inline-block w-full max-w-3xl p-6 my-8 overflow-hidden text-left align-middle transition-all transform bg-white shadow-xl rounded-lg">
+      <!-- Modal panel - FIXED: Added relative z-10 -->
+      <div class="inline-block w-full max-w-3xl p-6 my-8 overflow-hidden text-left align-middle transition-all transform bg-white shadow-xl rounded-lg relative z-10">
         <div class="flex justify-between items-center mb-6">
           <h3 class="text-2xl font-bold text-gray-900">Manage Project Tasks</h3>
           <button @click="$emit('close')" class="text-gray-400 hover:text-gray-600">
@@ -209,6 +209,7 @@ const createTask = async () => {
     }
 
     successMessage.value = 'Task created successfully!'
+    
     newTask.value = {
       title: '',
       description: '',

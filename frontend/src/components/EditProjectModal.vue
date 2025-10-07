@@ -4,8 +4,8 @@
       <!-- Background overlay -->
       <div class="fixed inset-0 transition-opacity bg-gray-500 bg-opacity-75" @click="$emit('close')"></div>
 
-      <!-- Modal panel -->
-      <div class="inline-block w-full max-w-2xl p-6 my-8 overflow-hidden text-left align-middle transition-all transform bg-white shadow-xl rounded-lg">
+      <!-- Modal panel - FIXED: Added relative z-10 -->
+      <div class="inline-block w-full max-w-2xl p-6 my-8 overflow-hidden text-left align-middle transition-all transform bg-white shadow-xl rounded-lg relative z-10">
         <div class="flex justify-between items-center mb-6">
           <h3 class="text-2xl font-bold text-gray-900">Edit Project</h3>
           <button @click="$emit('close')" class="text-gray-400 hover:text-gray-600">
@@ -148,7 +148,7 @@
 </template>
 
 <script setup>
-import { ref, watch, computed } from 'vue'
+import { ref, watch } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 
 const props = defineProps({
@@ -212,6 +212,7 @@ const saveProjectDetails = async () => {
     }
 
     successMessage.value = 'Project updated successfully!'
+    
     setTimeout(() => {
       emit('updated')
       emit('close')
