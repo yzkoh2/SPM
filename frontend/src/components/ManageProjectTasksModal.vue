@@ -1,71 +1,129 @@
 <template>
   <div v-if="show" class="fixed inset-0 z-50 overflow-y-auto" @click.self="$emit('close')">
     <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
-      <!-- Background overlay -->
-      <div class="fixed inset-0 transition-opacity bg-gray-500 bg-opacity-20" @click="$emit('close')"></div>
+      <!-- Background overlay with animation -->
+      <div class="fixed inset-0 transition-opacity bg-gray-500 bg-opacity-75 backdrop-blur-sm" @click="$emit('close')"></div>
 
-      <!-- Modal panel - FIXED: Added relative z-10 -->
-      <div class="inline-block w-full max-w-3xl p-6 my-8 overflow-hidden text-left align-middle transition-all transform bg-white shadow-xl rounded-lg relative z-10">
-        <div class="flex justify-between items-center mb-6">
-          <h3 class="text-2xl font-bold text-gray-900">Manage Project Tasks</h3>
-          <button @click="$emit('close')" class="text-gray-400 hover:text-gray-600">
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-            </svg>
-          </button>
-        </div>
-
-        <!-- Error Display -->
-        <div v-if="error" class="mb-4 p-3 bg-red-50 border border-red-200 rounded-md">
-          <p class="text-sm text-red-700">{{ error }}</p>
-        </div>
-
-        <!-- Success Message -->
-        <div v-if="successMessage" class="mb-4 p-3 bg-green-50 border border-green-200 rounded-md">
-          <p class="text-sm text-green-700">{{ successMessage }}</p>
-        </div>
-
-        <!-- Tabs -->
-        <div class="border-b border-gray-200 mb-6">
-          <nav class="-mb-px flex space-x-8">
-            <button @click="activeTab = 'create'"
-                    :class="[activeTab === 'create' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300', 'whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm']">
-              Create New Task
+      <!-- Modal panel -->
+      <div class="inline-block w-full max-w-3xl my-8 overflow-hidden text-left align-middle transition-all transform bg-white shadow-2xl rounded-2xl relative z-10">
+        
+        <!-- Header -->
+        <div class="bg-gradient-to-r from-indigo-600 to-indigo-700 px-6 py-5">
+          <div class="flex justify-between items-center">
+            <div>
+              <h3 class="text-2xl font-bold text-white">Manage Project Tasks</h3>
+              <p class="text-indigo-100 text-sm mt-1">Create new tasks or add existing ones to this project</p>
+            </div>
+            <button @click="$emit('close')" class="text-indigo-100 hover:text-white transition-colors">
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+              </svg>
             </button>
-            <button @click="activeTab = 'add'"
-                    :class="[activeTab === 'add' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300', 'whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm']">
-              Add Existing Task
-            </button>
-          </nav>
+          </div>
         </div>
 
-        <!-- Create New Task Tab -->
-        <div v-if="activeTab === 'create'">
-          <form @submit.prevent="createTask">
-            <div class="space-y-4">
+        <!-- Content Area -->
+        <div class="p-6">
+          <!-- Error Display -->
+          <div v-if="error" class="mb-4 p-4 bg-red-50 border-l-4 border-red-400 rounded-r-lg">
+            <div class="flex items-center">
+              <svg class="w-5 h-5 text-red-400 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+              </svg>
+              <p class="text-sm text-red-700 font-medium">{{ error }}</p>
+            </div>
+          </div>
+
+          <!-- Success Message -->
+          <div v-if="successMessage" class="mb-4 p-4 bg-green-50 border-l-4 border-green-400 rounded-r-lg">
+            <div class="flex items-center">
+              <svg class="w-5 h-5 text-green-400 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+              </svg>
+              <p class="text-sm text-green-700 font-medium">{{ successMessage }}</p>
+            </div>
+          </div>
+
+          <!-- Tabs -->
+          <div class="border-b border-gray-200 mb-6">
+            <nav class="-mb-px flex space-x-8">
+              <button @click="activeTab = 'create'"
+                      :class="[activeTab === 'create' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300', 'whitespace-nowrap py-4 px-1 border-b-2 font-semibold text-sm transition-colors flex items-center']">
+                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                </svg>
+                Create New Task
+              </button>
+              <button @click="activeTab = 'add'"
+                      :class="[activeTab === 'add' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300', 'whitespace-nowrap py-4 px-1 border-b-2 font-semibold text-sm transition-colors flex items-center']">
+                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                </svg>
+                Add Existing Task
+              </button>
+            </nav>
+          </div>
+
+          <!-- Create New Task Tab -->
+          <div v-if="activeTab === 'create'">
+            <form @submit.prevent="createTask" class="space-y-6">
+              
+              <!-- Task Title -->
               <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Task Title *</label>
-                <input v-model="newTask.title" type="text" required
-                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+                <label class="flex items-center text-sm font-semibold text-gray-700 mb-2">
+                  <svg class="w-4 h-4 mr-2 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                  </svg>
+                  Task Title
+                  <span class="text-red-500 ml-1">*</span>
+                </label>
+                <input v-model="newTask.title" 
+                       type="text" 
+                       required
+                       placeholder="Enter a clear, descriptive task title"
+                       class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all">
               </div>
 
+              <!-- Description -->
               <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
-                <textarea v-model="newTask.description" rows="3"
-                          class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"></textarea>
+                <label class="flex items-center text-sm font-semibold text-gray-700 mb-2">
+                  <svg class="w-4 h-4 mr-2 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h7"></path>
+                  </svg>
+                  Description
+                </label>
+                <textarea v-model="newTask.description" 
+                          rows="4"
+                          placeholder="Provide additional details about this task..."
+                          class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all resize-none"></textarea>
+                <p class="text-xs text-gray-500 mt-1">Optional: Add any relevant details or context</p>
               </div>
 
-              <div class="grid grid-cols-2 gap-4">
+              <!-- Deadline and Status Row -->
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Deadline -->
                 <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-1">Deadline</label>
-                  <input v-model="newTask.deadline" type="datetime-local"
-                         class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+                  <label class="flex items-center text-sm font-semibold text-gray-700 mb-2">
+                    <svg class="w-4 h-4 mr-2 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                    </svg>
+                    Deadline
+                  </label>
+                  <input v-model="newTask.deadline" 
+                         type="datetime-local"
+                         class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all">
                 </div>
 
+                <!-- Status -->
                 <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                  <label class="flex items-center text-sm font-semibold text-gray-700 mb-2">
+                    <svg class="w-4 h-4 mr-2 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    Status
+                  </label>
                   <select v-model="newTask.status"
-                          class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+                          class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all bg-white">
                     <option value="Unassigned">Unassigned</option>
                     <option value="Ongoing">Ongoing</option>
                     <option value="Under Review">Under Review</option>
@@ -74,64 +132,111 @@
                 </div>
               </div>
 
+              <!-- Priority -->
               <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Priority (1-10)</label>
-                <input v-model.number="newTask.priority" type="number" min="1" max="10"
-                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
-              </div>
-            </div>
-
-            <div class="mt-6 flex justify-end space-x-3">
-              <button type="button" @click="$emit('close')"
-                      class="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50">
-                Cancel
-              </button>
-              <button type="submit" :disabled="creating"
-                      class="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-400">
-                {{ creating ? 'Creating...' : 'Create Task' }}
-              </button>
-            </div>
-          </form>
-        </div>
-
-        <!-- Add Existing Task Tab -->
-        <div v-if="activeTab === 'add'">
-          <div class="space-y-4">
-            <!-- Loading -->
-            <div v-if="loadingStandaloneTasks" class="text-center py-8">
-              <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 mx-auto"></div>
-              <p class="text-sm text-gray-500 mt-2">Loading your tasks...</p>
-            </div>
-
-            <!-- Standalone Tasks List -->
-            <div v-else-if="standaloneTasks.length > 0" class="space-y-2 max-h-96 overflow-y-auto">
-              <div v-for="task in standaloneTasks" :key="task.id"
-                   class="border border-gray-200 rounded-lg p-4 hover:border-indigo-500 transition-colors">
-                <div class="flex justify-between items-start">
-                  <div class="flex-1">
-                    <h4 class="font-medium text-gray-900">{{ task.title }}</h4>
-                    <p v-if="task.description" class="text-sm text-gray-600 mt-1">{{ task.description }}</p>
-                    <div class="flex items-center space-x-4 mt-2 text-xs text-gray-500">
-                      <span :class="['px-2 py-1 rounded-full', getStatusColor(task.status)]">{{ task.status }}</span>
-                      <span v-if="task.deadline">Due: {{ formatDate(task.deadline) }}</span>
-                    </div>
-                  </div>
-                  <button @click="addTaskToProject(task.id)" 
-                          :disabled="addingTask === task.id"
-                          class="ml-4 px-3 py-1 bg-indigo-600 text-white text-sm rounded-md hover:bg-indigo-700 disabled:bg-gray-400">
-                    {{ addingTask === task.id ? 'Adding...' : 'Add to Project' }}
-                  </button>
+                <label class="flex items-center text-sm font-semibold text-gray-700 mb-2">
+                  <svg class="w-4 h-4 mr-2 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 11l5-5m0 0l5 5m-5-5v12"></path>
+                  </svg>
+                  Priority (1-10)
+                </label>
+                <div class="flex items-center space-x-4">
+                  <input v-model.number="newTask.priority" 
+                         type="range" 
+                         min="1" 
+                         max="10"
+                         class="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-indigo-600">
+                  <span class="flex items-center justify-center w-12 h-12 text-lg font-bold text-white bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-lg shadow-md">
+                    {{ newTask.priority }}
+                  </span>
+                </div>
+                <div class="flex justify-between text-xs text-gray-500 mt-2">
+                  <span>Low</span>
+                  <span>Medium</span>
+                  <span>High</span>
                 </div>
               </div>
-            </div>
 
-            <!-- No Tasks -->
-            <div v-else class="text-center py-12">
-              <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
-              </svg>
-              <h3 class="mt-2 text-sm font-medium text-gray-900">No standalone tasks</h3>
-              <p class="mt-1 text-sm text-gray-500">All your tasks are already assigned to projects.</p>
+              <!-- Action Buttons -->
+              <div class="flex justify-end space-x-3 pt-4 border-t border-gray-200">
+                <button type="button" 
+                        @click="$emit('close')"
+                        class="px-6 py-3 border border-gray-300 rounded-lg text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors">
+                  Cancel
+                </button>
+                <button type="submit" 
+                        :disabled="creating"
+                        class="px-6 py-3 bg-gradient-to-r from-indigo-600 to-indigo-700 text-white rounded-lg text-sm font-semibold hover:from-indigo-700 hover:to-indigo-800 disabled:from-gray-400 disabled:to-gray-400 disabled:cursor-not-allowed transition-all shadow-md hover:shadow-lg flex items-center">
+                  <svg v-if="!creating" class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                  </svg>
+                  <svg v-else class="animate-spin w-5 h-5 mr-2" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  {{ creating ? 'Creating...' : 'Create Task' }}
+                </button>
+              </div>
+            </form>
+          </div>
+
+          <!-- Add Existing Task Tab -->
+          <div v-if="activeTab === 'add'">
+            <div class="space-y-4">
+              <!-- Loading -->
+              <div v-if="loadingStandaloneTasks" class="text-center py-12">
+                <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
+                <p class="text-sm text-gray-500 mt-4">Loading your tasks...</p>
+              </div>
+
+              <!-- Standalone Tasks List -->
+              <div v-else-if="standaloneTasks.length > 0" class="space-y-3 max-h-96 overflow-y-auto pr-2">
+                <div v-for="task in standaloneTasks" :key="task.id"
+                     class="bg-gradient-to-r from-gray-50 to-white border border-gray-200 rounded-xl p-5 hover:border-indigo-400 hover:shadow-md transition-all">
+                  <div class="flex justify-between items-start">
+                    <div class="flex-1">
+                      <h4 class="font-semibold text-gray-900 text-lg">{{ task.title }}</h4>
+                      <p v-if="task.description" class="text-sm text-gray-600 mt-2 line-clamp-2">{{ task.description }}</p>
+                      <div class="flex items-center space-x-4 mt-3">
+                        <span :class="['px-3 py-1 rounded-full text-xs font-semibold', getStatusColor(task.status)]">
+                          {{ task.status }}
+                        </span>
+                        <span v-if="task.deadline" class="text-xs text-gray-500 flex items-center">
+                          <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                          </svg>
+                          {{ formatDate(task.deadline) }}
+                        </span>
+                      </div>
+                    </div>
+                    <button @click="addTaskToProject(task.id)" 
+                            :disabled="addingTask === task.id"
+                            class="ml-4 px-4 py-2 bg-gradient-to-r from-indigo-600 to-indigo-700 text-white text-sm font-semibold rounded-lg hover:from-indigo-700 hover:to-indigo-800 disabled:from-gray-400 disabled:to-gray-400 transition-all shadow-md hover:shadow-lg flex items-center whitespace-nowrap">
+                      <svg v-if="!addingTask" class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                      </svg>
+                      {{ addingTask === task.id ? 'Adding...' : 'Add to Project' }}
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- No Tasks -->
+              <div v-else class="text-center py-16">
+                <div class="bg-gray-100 rounded-full w-20 h-20 flex items-center justify-center mx-auto mb-4">
+                  <svg class="w-10 h-10 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+                  </svg>
+                </div>
+                <h3 class="text-lg font-semibold text-gray-900 mb-2">No standalone tasks</h3>
+                <p class="text-sm text-gray-500 mb-6">All your tasks are already assigned to projects.</p>
+                <button @click="activeTab = 'create'" class="text-indigo-600 hover:text-indigo-700 font-medium text-sm flex items-center mx-auto">
+                  <svg class="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                  </svg>
+                  Create a new task instead
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -210,6 +315,7 @@ const createTask = async () => {
 
     successMessage.value = 'Task created successfully!'
     
+    // Reset form
     newTask.value = {
       title: '',
       description: '',
@@ -308,3 +414,12 @@ const formatDate = (dateString) => {
   return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
 }
 </script>
+
+<style scoped>
+.line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+</style>
