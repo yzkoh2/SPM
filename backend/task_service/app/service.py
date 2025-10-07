@@ -970,7 +970,7 @@ def get_standalone_tasks_for_user(user_id):
             Task.owner_id == user_id,
             Task.project_id.is_(None),
             Task.parent_task_id.is_(None)  # Only parent tasks
-        ).order_by(Task.created_at.desc()).all()
+        ).order_by(Task.id.desc()).all()
         
         return [task.to_json() for task in tasks]
         
