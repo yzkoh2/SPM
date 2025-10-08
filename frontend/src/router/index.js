@@ -1,6 +1,11 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import Login from '@/views/Login.vue'
-import PersonalTaskboard from '@/views/PersonalTaskboard.vue';
+import PersonalTaskboard from '@/views/PersonalTaskboard.vue'
+import ScheduleView from '@/views/ScheduleView.vue'
+import PersonalSchedule from '@/views/PersonalSchedule.vue'
+import TeamSchedule from '@/views/TeamSchedule.vue'
+import ProjectSchedule from '@/views/ProjectSchedule.vue'
+import DepartmentSchedule from '@/views/DepartmentSchedule.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -10,6 +15,38 @@ const router = createRouter({
       name: 'dashboard',
       component: PersonalTaskboard,
       meta: { requiresAuth: true } 
+    },
+    {
+      path: '/schedule',
+      component: ScheduleView,
+      meta: { requiresAuth: true },
+      redirect: '/schedule/personal',
+      children: [
+        {
+          path: 'personal',
+          name: 'schedule-personal',
+          component: PersonalSchedule,
+          meta: { requiresAuth: true }
+        },
+        {
+          path: 'team',
+          name: 'schedule-team',
+          component: TeamSchedule,
+          meta: { requiresAuth: true }
+        },
+        {
+          path: 'project',
+          name: 'schedule-project',
+          component: ProjectSchedule,
+          meta: { requiresAuth: true }
+        },
+        {
+          path: 'department',
+          name: 'schedule-department',
+          component: DepartmentSchedule,
+          meta: { requiresAuth: true }
+        }
+      ]
     },
     {
       path: '/login',
@@ -89,47 +126,25 @@ const router = createRouter({
             next(`/tasks/${to.params.id}/subtasks/${to.params.subtaskId}`)
           }
         } catch (error) {
-          console.error('Error checking task ownership:', error)
-          next('/tasks')
+          console.error('Error checking subtask ownership:', error)
+          next(`/tasks/${to.params.id}/subtasks`)
         }
       }
-    }    
-  ],
+    }
+  ]
 })
 
-// Nav Guard for JWT Token
-router.beforeEach(async (to, from, next) => {
-  const token = localStorage.getItem('authToken');
-  const requiresAuth = to.matched.some(record => record.meta.requiresAuth);
-
-  if (requiresAuth && !token) {
-    return next({ name: 'login' });
+// Navigation guard for authentication
+router.beforeEach((to, from, next) => {
+  const isAuthenticated = localStorage.getItem('userID')
+  
+  if (to.meta.requiresAuth && !isAuthenticated) {
+    next('/login')
+  } else if (to.name === 'login' && isAuthenticated) {
+    next('/')
+  } else {
+    next()
   }
-
-  if (token) {
-    try {
-      const response = await fetch('http://localhost:8000/user/verifyJWT', {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-
-      if (!response.ok) {
-        throw new Error('Token verification failed');
-      }
-      
-      if (to.name === 'login') {
-        return next({ name: 'dashboard' });
-      }
-
-    } catch (error) {
-      console.error('Auth check failed:', error);
-      
-      if (requiresAuth) {
-        return next({ name: 'login' });
-      }
-    }
-  }
-
-  return next();
-});
+})
 
 export default router
