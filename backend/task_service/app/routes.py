@@ -33,8 +33,8 @@ def create_task():
         print(f"Creating task with data: {data}")
         
         # Validate required fields
-        if not data or not data.get('title'):
-            return jsonify({"error": "Title is required"}), 400
+        if not data or not data.get('title') or not data.get('description') or not data.get('deadline'):
+            return jsonify({"error": "Missing field(s): Title, Description or Deadline"}), 400
             
         if not data.get('owner_id'):
             return jsonify({"error": "Owner ID is required"}), 400

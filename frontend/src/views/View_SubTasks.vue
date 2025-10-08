@@ -216,10 +216,14 @@ async function createSubtask(formData) {
 
     const subtaskData = {
       title: formData.title,
-      status: formData.status
+      description: formData.description || null,
+      deadline: formData.deadline || null,
+      status: formData.status,
+      owner_id: authStore.currentUserId,
+      parent_task_id: parentTask.value.id
     }
 
-    const response = await fetch(`${KONG_API_URL}/tasks/${route.params.id}/subtasks`, {
+    const response = await fetch(`${KONG_API_URL}/tasks`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'

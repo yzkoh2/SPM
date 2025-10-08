@@ -1,6 +1,6 @@
 <template>
   <div class="bg-white rounded-lg shadow-md p-6 mb-8">
-    <h2 class="text-xl font-semibold text-gray-900 mb-4">{{ title }}</h2>
+    <h2 class="text-xl font-semibold text-gray-900 mb-4">{{ isSubtask ? 'Create New Subtask' : 'Create New Task' }}</h2>
     <form @submit.prevent="handleSubmit" class="space-y-4">
       <div>
         <label class="block text-sm font-medium text-gray-700 mb-2">
@@ -51,10 +51,6 @@
 import { ref, watch } from 'vue'
 
 const props = defineProps({
-  title: {
-    type: String,
-    default: 'Create New Task'
-  },
   isSubtask: {
     type: Boolean,
     default: false
@@ -83,6 +79,10 @@ const localData = ref({
 })
 
 const handleSubmit = () => {
+  if (!localData.value.title.trim() || !localData.value.deadline || !localData.value.description.trim()) {
+    alert('Please fill in Title, Deadline and Description.')
+    return
+  }
   emit('submit', { ...localData.value })
   // Reset form after submission
   localData.value = {
