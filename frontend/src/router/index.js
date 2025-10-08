@@ -134,17 +134,47 @@ const router = createRouter({
   ]
 })
 
-// Navigation guard for authentication
-router.beforeEach((to, from, next) => {
-  const isAuthenticated = localStorage.getItem('userID')
+// Navigation Guard with JWT Token Verification
+router.beforeEach(async (to, from, next) => {
+  const token = localStorage.getItem('authToken')
+  const requiresAuth = to.matched.some(record => record.meta.requiresAuth)
   
-  if (to.meta.requiresAuth && !isAuthenticated) {
-    next('/login')
-  } else if (to.name === 'login' && isAuthenticated) {
-    next('/')
-  } else {
-    next()
+  // If route requires authentication but no token exists
+  if (requiresAuth && !token) {
+    return next({ name: 'login' })
   }
+  
+  // If token exists, verify it with the backend
+  if (token) {
+    try {
+      const response = await fetch('http://localhost:8000/user/verifyJWT', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      })
+      
+      if (!response.ok) {
+        throw new Error('Token verification failed')
+      }
+      
+      // If trying to access login page while authenticated, redirect to dashboard
+      if (to.name === 'login') {
+        return next({ name: 'dashboard' })
+      }
+      
+    } catch (error) {
+      console.error('Auth check failed:', error)
+      
+      // If token verification fails and route requires auth, go to login
+      if (requiresAuth) {
+        // Clear invalid token
+        localStorage.removeItem('authToken')
+        localStorage.removeItem('userID')
+        return next({ name: 'login' })
+      }
+    }
+  }
+  
+  // Continue to the route
+  next()
 })
 
 export default router
