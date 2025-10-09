@@ -1,4 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import { useAuthStore } from '@/stores/auth'
 import Login from '@/views/Login.vue'
 import PersonalTaskboard from '@/views/PersonalTaskboard.vue'
 import ScheduleView from '@/views/ScheduleView.vue'
@@ -136,6 +137,7 @@ const router = createRouter({
 
 // Navigation Guard with JWT Token Verification
 router.beforeEach(async (to, from, next) => {
+  const authStore = useAuthStore()  // Get auth store instance
   const token = localStorage.getItem('authToken')
   const requiresAuth = to.matched.some(record => record.meta.requiresAuth)
   
@@ -160,20 +162,30 @@ router.beforeEach(async (to, from, next) => {
         return next({ name: 'dashboard' })
       }
       
+      // Token is valid, proceed to route
+      return next()
+      
     } catch (error) {
       console.error('Auth check failed:', error)
       
-      // If token verification fails and route requires auth, go to login
+      // CRITICAL FIX: Clear auth store state AND localStorage
+      authStore.user = null
+      authStore.token = null
+      localStorage.removeItem('authToken')
+      localStorage.removeItem('userID')
+      localStorage.removeItem('user')
+      
+      // If route requires auth, redirect to login
       if (requiresAuth) {
-        // Clear invalid token
-        localStorage.removeItem('authToken')
-        localStorage.removeItem('userID')
         return next({ name: 'login' })
       }
+      
+      // For public routes, allow access without token
+      return next()
     }
   }
   
-  // Continue to the route
+  // No token and route doesn't require auth - continue
   next()
 })
 
