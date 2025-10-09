@@ -101,7 +101,22 @@ def create_task(task_data):
         db.session.commit()
         
         print(f"Task created with ID: {new_task.id}")
-        
+        try:
+            collaborator_insert = task_collaborators.insert().values(
+                task_id=new_task.id,
+                user_id=new_task.owner_id
+            )
+            db.session.execute(collaborator_insert)
+            db.session.commit()
+            print(f"Owner {new_task.owner_id} added as collaborator for task {new_task.id}")
+        except Exception as e:
+            print(f"Error adding owner as collaborator: {e}")
+            # If this fails, we should roll back the task creation
+            # to avoid inconsistent state.
+            db.session.rollback()
+            # It's important to re-raise the exception to signal that the overall operation failed.
+            raise e
+
         # Return the created task
         return new_task.to_json()
         
