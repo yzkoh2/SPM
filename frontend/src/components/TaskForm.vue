@@ -32,6 +32,46 @@
           <option value="Completed">Completed</option>
         </select>
       </div>
+      
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-2">Priority</label>
+        <input v-model="localData.priority" type="range" min="1" max="10"
+          class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
+        <div class="flex justify-between text-xs text-gray-600 mt-1">
+          <span v-for="n in 10" :key="n">{{ n }}</span>
+        </div>
+      </div>
+
+      <div>
+        <label class="flex items-center">
+          <input v-model="localData.is_recurring" type="checkbox"
+            class="rounded border-gray-300 text-indigo-600 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50">
+          <span class="ml-2 text-sm text-gray-600">Is this a recurring task?</span>
+        </label>
+      </div>
+
+      <div v-if="localData.is_recurring">
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-2">Recurrence Interval</label>
+          <select v-model="localData.recurrence_interval"
+            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+            <option value="daily">Daily</option>
+            <option value="weekly">Weekly</option>
+            <option value="monthly">Monthly</option>
+            <option value="custom">Custom</option>
+          </select>
+        </div>
+        <div v-if="localData.recurrence_interval === 'custom'">
+          <label class="block text-sm font-medium text-gray-700 mb-2">Recurrence Days</label>
+          <input v-model="localData.recurrence_days" type="number"
+            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-2">Recurrence End Date</label>
+          <input v-model="localData.recurrence_end_date" type="datetime-local"
+            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+        </div>
+      </div>
 
       <div class="flex justify-end space-x-3">
         <button type="button" @click="$emit('cancel')"
@@ -75,7 +115,12 @@ const localData = ref({
   title: '',
   deadline: '',
   description: '',
-  status: 'Unassigned'
+  status: 'Unassigned',
+  priority: 5,
+  is_recurring: false,
+  recurrence_interval: 'daily',
+  recurrence_days: null,
+  recurrence_end_date: null,
 })
 
 const handleSubmit = () => {
@@ -89,7 +134,12 @@ const handleSubmit = () => {
     title: '',
     deadline: '',
     description: '',
-    status: 'Unassigned'
+    status: 'Unassigned',
+    priority: 5,
+    is_recurring: false,
+    recurrence_interval: 'daily',
+    recurrence_days: null,
+    recurrence_end_date: null,
   }
 }
 </script>

@@ -275,7 +275,12 @@ const createTask = async (formData) => {
       description: formData.description || null,
       deadline: formData.deadline || null,
       status: formData.status,
-      owner_id: authStore.currentUserId
+      owner_id: authStore.currentUserId,
+      priority: formData.priority,
+      is_recurring: formData.is_recurring,
+      recurrence_interval: formData.recurrence_interval,
+      recurrence_days: formData.recurrence_days,
+      recurrence_end_date: formData.recurrence_end_date
     }
 
     const response = await fetch(`${KONG_API_URL}/tasks`, {
@@ -310,7 +315,13 @@ const deleteTask = async (taskId) => {
 
   try {
     const response = await fetch(`${KONG_API_URL}/tasks/${taskId}`, {
-      method: 'DELETE'
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        user_id: authStore.user.id
+      })
     })
 
     if (response.ok || response.status === 404) {

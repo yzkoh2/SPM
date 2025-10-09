@@ -56,7 +56,23 @@ def create_task(task_data):
             except ValueError as e:
                 print(f"Error parsing deadline: {e}")
                 deadline = None
-        
+
+        recurrence_end_date = None
+        if task_data.get('recurrence_end_date'):
+            try:
+                if isinstance(task_data['recurrence_end_date'], str) and task_data['recurrence_end_date'].strip():
+                    # Handle datetime-local format from HTML input
+                    recurrence_end_date_str = task_data['recurrence_end_date']
+                    if 'T' in recurrence_end_date_str:
+                        recurrence_end_date = datetime.fromisoformat(recurrence_end_date_str)
+                    else:
+                        recurrence_end_date = datetime.strptime(recurrence_end_date_str, '%Y-%m-%d %H:%M:%S')
+                elif isinstance(task_data['recurrence_end_date'], datetime):
+                    recurrence_end_date = task_data['recurrence_end_date']
+            except ValueError as e:
+                print(f"Error parsing recurrence_end_date: {e}")
+                recurrence_end_date = None
+
         status = TaskStatusEnum.UNASSIGNED
         if task_data.get('status'):
             try:
@@ -72,7 +88,12 @@ def create_task(task_data):
             status=status,
             owner_id=task_data['owner_id'],
             project_id=task_data.get('project_id'),
-            parent_task_id=task_data.get('parent_task_id')
+            parent_task_id=task_data.get('parent_task_id'),
+            priority=task_data.get('priority'),
+            is_recurring=task_data.get('is_recurring', False),
+            recurrence_interval=task_data.get('recurrence_interval'),
+            recurrence_days=task_data.get('recurrence_days'),
+            recurrence_end_date=recurrence_end_date
         )
         
         # Add to database

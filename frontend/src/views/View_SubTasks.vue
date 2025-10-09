@@ -221,7 +221,12 @@ async function createSubtask(formData) {
       deadline: formData.deadline || null,
       status: formData.status,
       owner_id: authStore.currentUserId,
-      parent_task_id: parentTask.value.id
+      parent_task_id: parentTask.value.id,
+      priority: formData.priority,
+      is_recurring: formData.is_recurring,
+      recurrence_interval: formData.recurrence_interval,
+      recurrence_days: formData.recurrence_days,
+      recurrence_end_date: formData.recurrence_end_date
     }
 
     const response = await fetch(`${KONG_API_URL}/tasks`, {

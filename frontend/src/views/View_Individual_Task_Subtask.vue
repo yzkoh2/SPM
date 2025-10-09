@@ -649,18 +649,26 @@ const deleteTask = async () => {
 
   try {
     const response = await fetch(`${KONG_API_URL}/tasks/${task.value.id}`, {
-      method: 'DELETE'
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        user_id: authStore.user.id
+      })
     })
 
-    if (response.ok || response.status === 404) {
-      alert('Task deleted successfully!')
+    const data = await response.json()
+
+    if (response.ok) {
+      alert(data.message || 'Task deleted successfully')
       if (isSubtask.value) {
         router.push(`/tasks/${parentTaskId.value}/subtasks`)
       } else {
         router.push('/')
       }
     } else {
-      throw new Error(`Failed to delete: ${response.status}`)
+      throw new Error(data.error || `Failed to delete: ${response.status}`)
     }
   } catch (err) {
     console.error('Error deleting task:', err)
