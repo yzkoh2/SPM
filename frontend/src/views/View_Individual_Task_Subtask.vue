@@ -401,16 +401,23 @@ const canEditTask = computed(() => {
 })
 
 const isCollaborator = computed(() => {
-  if (!authStore.user || !collaboratorDetails.value) {
+  // Ensure we have the necessary data before checking
+  if (!authStore.user || !task.value) {
     return false
   }
-  
-  // The .some() method checks if at least one element 
-  // in the array passes the test implemented by the provided function.
-  return collaboratorDetails.value.some(
+
+  // Check if the current user is the owner of the task
+  const isOwner = authStore.user.id === task.value.owner_id
+
+  // Check if the current user is in the collaborators list
+  const isInCollaboratorsList = collaboratorDetails.value.some(
     (collaborator) => collaborator.user_id === authStore.user.id
   )
+
+  // The user is considered a collaborator if they are the owner OR in the list
+  return isOwner || isInCollaboratorsList
 })
+
 
 // Filter to show only top-level comments (no parent)
 const topLevelComments = computed(() => {
