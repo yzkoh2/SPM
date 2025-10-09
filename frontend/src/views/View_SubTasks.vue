@@ -185,9 +185,8 @@ async function fetchParentTask() {
 async function fetchSubtasks() {
   loading.value = true
   error.value = null
-
   try {
-    const response = await fetch(`${KONG_API_URL}/tasks/${route.params.id}/subtasks`, {
+    const response = await fetch(`${KONG_API_URL}/tasks/${parentTask.value.id}`, {
       headers: {
         'Content-Type': 'application/json'
       }
@@ -200,7 +199,9 @@ async function fetchSubtasks() {
       throw new Error(`Failed to fetch subtasks: ${response.status}`)
     }
 
-    subtasks.value = await response.json()
+    const data = await response.json()
+
+    subtasks.value = data.subtasks || []
   } catch (err) {
     console.error('Error fetching subtasks:', err)
     error.value = err.message
@@ -253,6 +254,9 @@ function viewSubtaskDetails(subtaskId) {
 
 // Function to edit subtask
 function editSubtask(subtask) {
+  router.push({
+    path: `/tasks/${route.params.id}/subtasks/${subtask.id}/edit`
+  })
   console.log('Edit subtask:', subtask)
 }
 
@@ -261,14 +265,23 @@ async function deleteSubtask(subtaskId) {
   if (!confirm('Are you sure you want to delete this subtask?')) return
 
   try {
-    const response = await fetch(`${KONG_API_URL}/tasks/${route.params.id}/subtasks/${subtaskId}`, {
-      method: 'DELETE'
+    const response = await fetch(`${KONG_API_URL}/tasks/${subtaskId}`, {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        user_id: authStore.user.id
+      })
     })
 
-    if (response.ok || response.status === 404) {
+    const data = await response.json()
+
+    if (response.ok) {
+      alert(data.message || 'Subtask deleted successfully')
       await fetchSubtasks()
     } else {
-      throw new Error(`Failed to delete subtask: ${response.status}`)
+      throw new Error(data.error || `Failed to delete subtask: ${response.status}`)
     }
   } catch (err) {
     console.error('Error deleting subtask:', err)
@@ -289,12 +302,12 @@ function getStatusBadgeColor(status) {
 }
 
 // Initialize component
-onMounted(() => {
+onMounted(async () => {
   if (!authStore.isAuthenticated) {
     router.push('/login')
     return
   }
-  fetchParentTask()
+  await fetchParentTask()
   fetchSubtasks()
 })
 </script>

@@ -73,17 +73,17 @@
                   :class="getStatusBadgeColor(task.status)">
                   {{ task.status }}
                 </span>
-                <span v-if="canUpdateTask" class="text-xs text-gray-500 flex items-center">
+                <span v-if="canEditTask" class="text-xs text-gray-500 flex items-center">
                   <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                       d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                   </svg>
-                  You can update this task
+                  You can edit this task
                 </span>
               </div>
             </div>
             <div class="flex items-center space-x-2 ml-4">
-              <button v-if="canUpdateTask" @click="showStatusModal = true"
+              <button @click="showStatusModal = true"
                 class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-md text-sm font-medium flex items-center">
                 <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -92,7 +92,7 @@
                 </svg>
                 Update Status
               </button>
-              <button @click="editTask"
+              <button v-if="canEditTask" @click="editTask"
                 class="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-md text-sm font-medium">
                 {{ isSubtask ? 'Edit Subtask' : 'Edit Task' }}
               </button>
@@ -395,7 +395,7 @@ const collaboratorDetails = ref([])
 const KONG_API_URL = "http://localhost:8000"
 
 // Computed properties
-const canUpdateTask = computed(() => {
+const canEditTask = computed(() => {
   if (!task.value || !authStore.user) return false
   return task.value.owner_id === authStore.user.id
 })

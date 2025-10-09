@@ -224,17 +224,25 @@ def _calculate_next_due_date(current_deadline, interval, custom_days):
     
     return None
 
-def delete_task(task_id):
+def delete_task(task_id, user_id):
     """Delete a task by ID"""
     try:
         task = Task.query.get(task_id)
         if not task:
-            return False
-            
+            return False, "Task not found"
+
+        if len(task.subtasks) != 0:
+            return False, "Cannot delete a task that has subtasks. Please delete or reassign subtasks first."
+    
+        is_owner = (task.owner_id == user_id)
+
+        if not is_owner:
+            return False, "Forbidden: You do not have permission to delete this task."
+
         print(f"Deleting task: {task.title}")
         db.session.delete(task)
         db.session.commit()
-        return True
+        return True, "Task deleted successfully"
         
     except Exception as e:
         print(f"Error in delete_task: {e}")
@@ -397,59 +405,6 @@ def get_task_subtasks(task_id):
         print(f"Error in get_task_subtasks: {e}")
         raise e
 
-def create_subtask(task_id, subtask_data):
-    """Create a new subtask for a task"""
-    try:
-        # Check if parent task exists
-        task = Task.query.filter_by(id=task_id).first()
-        if not task:
-            return None
-        
-        # Create new subtask
-        new_subtask = Subtask(
-            title=subtask_data['title'],
-            status=subtask_data.get('status', 'Unassigned'),
-            task_id=task_id
-        )
-        
-        db.session.add(new_subtask)
-        db.session.commit()
-        
-        return {
-            "id": new_subtask.id,
-            "title": new_subtask.title,
-            "status": new_subtask.status,
-            "task_id": new_subtask.task_id
-        }
-        
-    except Exception as e:
-        print(f"Error in create_subtask: {e}")
-        db.session.rollback()
-        raise e
-
-def get_subtask_details(task_id, subtask_id):
-    """Fetch a specific subtask"""
-    try:
-        subtask = Subtask.query.filter_by(id=subtask_id, task_id=task_id).first()
-        if not subtask:
-            return None
-        
-        return {
-            "id": subtask.id,
-            "title": subtask.title,
-            "status": subtask.status,
-            "task_id": subtask.task_id,
-            "parent_task": {
-                "id": subtask.parent_task.id,
-                "title": subtask.parent_task.title,
-                "status": subtask.parent_task.status
-            }
-        }
-        
-    except Exception as e:
-        print(f"Error in get_subtask_details: {e}")
-        raise e
-    
 # Add these functions to your existing task_service/app/service.py file
 
 # ==================== PROJECT FUNCTIONS ====================
