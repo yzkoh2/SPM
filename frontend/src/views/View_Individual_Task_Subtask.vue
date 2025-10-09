@@ -1,6 +1,5 @@
 <template>
   <div class="min-h-screen bg-gray-50">
-    <!-- Header with Back Navigation -->
     <header class="bg-white shadow-sm border-b border-gray-200">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="flex items-center py-6">
@@ -18,18 +17,28 @@
       </div>
     </header>
 
-    <!-- Status Update Modal - Only render when task is loaded -->
     <StatusUpdateModal v-if="task && showStatusModal" :show="showStatusModal" :task="task"
       @close="showStatusModal = false" @update-status="handleStatusUpdate" />
 
-    <!-- Main Content -->
+    <div v-if="showEditForm" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 flex items-center justify-center">
+        <div class="relative w-full max-w-2xl">
+          <TaskForm
+            :task-to-edit="taskToEdit"
+            :is-subtask="isSubtask"
+            :is-submitting="isUpdating"
+            submit-button-text="Update Task"
+            submit-button-loading-text="Updating..."
+            @submit="updateTask"
+            @cancel="closeEditModal"
+          />
+        </div>
+      </div>
+
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <!-- Loading State -->
       <div v-if="loading" class="flex justify-center items-center py-12">
         <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
       </div>
 
-      <!-- Error State -->
       <div v-else-if="error" class="bg-red-50 border border-red-200 rounded-md p-6">
         <div class="flex items-center">
           <svg class="w-6 h-6 text-red-600 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -48,7 +57,6 @@
         </div>
       </div>
 
-      <!-- Parent Task Reference -->
       <div v-if="isSubtask && parentTask" class="bg-blue-50 border border-blue-200 rounded-md p-4 mb-6">
         <div class="flex items-center justify-between">
           <div>
@@ -61,9 +69,7 @@
         </div>
       </div>
 
-      <!-- Task Details -->
       <div v-if="task" class="space-y-6">
-        <!-- Task Header Card -->
         <div class="bg-white rounded-lg shadow-md p-6 border-l-4" :class="getStatusBorderColor(task.status)">
           <div class="flex justify-between items-start mb-4">
             <div class="flex-1">
@@ -103,7 +109,6 @@
             </div>
           </div>
 
-          <!-- Task Description -->
           <div class="mt-4">
             <h3 class="text-lg font-medium text-gray-900 mb-2">Description</h3>
             <p class="text-gray-700 leading-relaxed">
@@ -111,7 +116,6 @@
             </p>
           </div>
 
-          <!-- Task Metadata -->
           <div class="mt-6 grid grid-cols-1 md:grid-cols-3 gap-6 pt-6 border-t border-gray-200">
             <div>
               <h4 class="text-sm font-medium text-gray-500 uppercase tracking-wide">Deadline</h4>
@@ -135,7 +139,6 @@
             </div>
           </div>
 
-          <!-- Collaborators Section -->
           <div v-if="collaboratorDetails.length > 0" class="mt-6 pt-6 border-t border-gray-200">
             <h4 class="text-sm font-medium text-gray-500 uppercase tracking-wide mb-3">Collaborators</h4>
             <div class="flex flex-wrap gap-2">
@@ -151,7 +154,6 @@
           </div>
         </div>
 
-        <!-- Stats Cards -->
         <div class="grid grid-cols-1 gap-6" :class="isSubtask ? 'md:grid-cols-2' : 'md:grid-cols-3'">
           <div v-if="!isSubtask" class="bg-white rounded-lg shadow-md p-6">
             <div class="flex items-center">
@@ -202,7 +204,6 @@
           </div>
         </div>
 
-        <!-- Subtasks Section -->
         <div v-if="!isSubtask" class="bg-white rounded-lg shadow-md p-6">
           <div class="flex justify-between items-center mb-6">
             <h3 class="text-xl font-semibold text-gray-900">Subtasks ({{ task.subtasks?.length || 0 }})</h3>
@@ -243,13 +244,11 @@
           </div>
         </div>
 
-        <!-- Comments Section -->
         <div class="bg-white rounded-lg shadow-md p-6">
           <h3 class="text-xl font-semibold text-gray-900 mb-6">
             Comments ({{ totalCommentCount }})
           </h3>
 
-          <!-- Add Comment Form -->
           <div class="mb-6 border-b border-gray-200 pb-6">
             <label class="block text-sm font-medium text-gray-700 mb-2">Add a Comment</label>
 
@@ -268,7 +267,6 @@
                 @keydown.ctrl.enter="addComment"
               ></textarea>
 
-              <!-- Custom rendering for @ mentions -->
               <template #item-@="{ item, isSelected }">
                 <div 
                   :class="['flex items-center p-2 space-x-3 cursor-pointer rounded-md transition-colors duration-150 ease-in-out', isSelected ? 'bg-indigo-100' : 'hover:bg-gray-50']"
@@ -295,7 +293,6 @@
             </div>
           </div>
 
-          <!-- Comments List (Nested) -->
           <div v-if="topLevelComments.length > 0" class="space-y-6">
             <CommentItem
               v-for="comment in topLevelComments"
@@ -317,7 +314,6 @@
           </div>
         </div>
 
-        <!-- Attachments Section -->
         <div class="bg-white rounded-lg shadow-md p-6">
           <h3 class="text-xl font-semibold text-gray-900 mb-6">Attachments ({{ task.attachments?.length || 0 }})</h3>
 
@@ -361,6 +357,7 @@ import { Mentionable } from 'vue-mention'
 import 'floating-vue/dist/style.css'
 import StatusUpdateModal from '@/components/StatusUpdateModal.vue'
 import CommentItem from '@/components/CommentItem.vue'
+import TaskForm from '@/components/TaskForm.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -373,10 +370,8 @@ const parentTaskId = ref(null)
 if (isSubtask.value) {
   parentTaskId.value = route.params.id
   taskId.value = route.params.subtaskId
-  console.log('Viewing as subtask. Parent Task ID:', parentTaskId.value, 'Subtask ID:', taskId.value)
 } else {
   taskId.value = route.params.id
-  console.log('Viewing as main task. Task ID:', taskId.value)
 }
 
 // Reactive data
@@ -390,6 +385,11 @@ const newComment = ref('')
 const addingComment = ref(false)
 const collaborators = ref([])
 const collaboratorDetails = ref([])
+
+// Form states
+const showEditForm = ref(false)
+const isUpdating = ref(false)
+const taskToEdit = ref(null)
 
 // API configuration
 const KONG_API_URL = "http://localhost:8000"
@@ -420,7 +420,6 @@ const fetchTaskDetails = async () => {
   try {
     loading.value = true
     error.value = null
-    console.log('Fetching task details for ID:', taskId.value)
 
     const response = await fetch(`${KONG_API_URL}/tasks/${taskId.value}`, {
       headers: {
@@ -431,7 +430,6 @@ const fetchTaskDetails = async () => {
     if (response.ok) {
       task.value = await response.json()
       comments.value = task.value.comments || []
-      console.log('Task details loaded:', task.value)
     } else if (response.status === 404) {
       error.value = 'Task not found'
     } else {
@@ -448,7 +446,6 @@ const fetchTaskDetails = async () => {
 
       if (parentResponse.ok) {
         parentTask.value = await parentResponse.json()
-        console.log('Parent task details loaded:', parentTask.value)
       } else {
         console.warn('Failed to load parent task details')
       }
@@ -471,7 +468,6 @@ const fetchCollaborators = async (taskId) => {
 
     if (response.ok) {
       collaborators.value = await response.json()
-      console.log('Task collaborators loaded:', collaborators.value)
 
       // Fetch details for each collaborator
       const detailsPromises = collaborators.value.map(collab =>
@@ -487,8 +483,6 @@ const fetchCollaborators = async (taskId) => {
         role: details[index]?.role || 'Unknown',
         username: details[index]?.username
       }))
-
-      console.log('Collaborator details loaded:', collaboratorDetails.value)
     } else {
       console.warn('Failed to load collaborators')
       collaboratorDetails.value = []
@@ -518,8 +512,6 @@ const fetchUserDetails = async (userId) => {
 // Handle status update
 const handleStatusUpdate = async ({ newStatus, comment }) => {
   try {
-    console.log('Updating task status:', { newStatus, comment, taskId: task.value.id, userId: authStore.user.id })
-
     const response = await fetch(`${KONG_API_URL}/tasks/${task.value.id}`, {
       method: 'PUT',
       headers: {
@@ -532,7 +524,6 @@ const handleStatusUpdate = async ({ newStatus, comment }) => {
     })
 
     const data = await response.json()
-    console.log('Response:', data)
 
     if (!response.ok) {
       throw new Error(data.error || 'Failed to update status')
@@ -593,7 +584,6 @@ const addComment = async ({body, parentCommentId = null}) => {
       if (!parentCommentId) {
           newComment.value = ''
       }
-      console.log('Comment added successfully')
     } else {
       const errorData = await response.json()
       throw new Error(errorData.error || 'Failed to add comment')
@@ -623,7 +613,6 @@ const handleDeleteComment = async (commentId) => {
     if (response.ok) {
       // Refresh task details to get updated comments
       await fetchTaskDetails()
-      console.log('Comment deleted successfully')
     } else {
       const errorData = await response.json()
       throw new Error(errorData.error || 'Failed to delete comment')
@@ -636,11 +625,67 @@ const handleDeleteComment = async (commentId) => {
 
 // Action methods
 const editTask = () => {
-  const editRoute = isSubtask.value 
-    ? `/tasks/${parentTaskId.value}/subtasks/${taskId.value}/edit`
-    : `/tasks/${taskId.value}/edit`
-  router.push(editRoute)
-}
+  taskToEdit.value = { ...task.value };
+  showEditForm.value = true;
+};
+
+const closeEditModal = () => {
+  showEditForm.value = false;
+  taskToEdit.value = null;
+};
+
+const updateTask = async (formData) => {
+  isUpdating.value = true;
+  try {
+    const originalTask = taskToEdit.value;
+    const changedFields = {};
+
+    for (const key in formData) {
+      if (key === 'id') continue;
+
+      let originalValue = originalTask[key];
+      let currentValue = formData[key];
+
+      if (key === 'deadline' || key === 'recurrence_end_date') {
+        originalValue = originalValue ? new Date(originalValue).toISOString().slice(0, 16) : null;
+        currentValue = currentValue || null;
+      }
+
+      if (originalValue !== currentValue) {
+        changedFields[key] = currentValue;
+      }
+    }
+
+    if (Object.keys(changedFields).length === 0) {
+      closeEditModal();
+      return; // No changes to update
+    }
+
+    const payload = {
+      ...changedFields,
+      user_id: authStore.user.id
+    };
+
+    const response = await fetch(`${KONG_API_URL}/tasks/${formData.id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || 'Failed to update task');
+    }
+
+    await fetchTaskDetails();
+    closeEditModal();
+  } catch (err) {
+    console.error('Error updating task:', err);
+    alert('Failed to update task: ' + err.message);
+  } finally {
+    isUpdating.value = false;
+  }
+};
 
 const deleteTask = async () => {
   if (!confirm('Are you sure you want to delete this task? This action cannot be undone.')) {

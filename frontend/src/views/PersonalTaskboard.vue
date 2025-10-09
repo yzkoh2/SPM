@@ -1,15 +1,12 @@
 <template>
   <div class="min-h-screen bg-gray-50">
 
-    <!-- Page Content -->
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <!-- Page Header -->
       <div class="mb-8">
         <h1 class="text-3xl font-bold text-gray-900">Task Dashboard</h1>
         <p class="text-sm text-gray-600 mt-1">Manage your tasks and collaborate with your team</p>
       </div>
 
-      <!-- Create Task Button -->
       <div class="mb-6">
         <button @click="showCreateForm = !showCreateForm"
           class="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-lg font-medium transition-colors flex items-center">
@@ -20,12 +17,23 @@
         </button>
       </div>
 
-      <!-- Create Task Form -->
       <TaskForm v-if="showCreateForm" title="Create New Task" :is-submitting="isCreating"
         submit-button-text="Create Task" submit-button-loading-text="Creating..." @submit="createTask"
         @cancel="showCreateForm = false" />
 
-      <!-- Filters and Sorting -->
+      <div v-if="showEditForm" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 flex items-center justify-center">
+        <div class="relative w-full max-w-2xl">
+          <TaskForm
+            :task-to-edit="taskToEdit"
+            :is-submitting="isUpdating"
+            submit-button-text="Update Task"
+            submit-button-loading-text="Updating..."
+            @submit="updateTask"
+            @cancel="closeEditModal"
+          />
+        </div>
+      </div>
+
       <div class="bg-white rounded-lg shadow-md p-6 mb-6">
         <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0">
           <div class="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-4">
@@ -67,7 +75,6 @@
         </div>
       </div>
 
-      <!-- Task Statistics -->
       <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
         <div class="bg-white rounded-lg shadow-md p-6">
           <div class="flex items-center">
@@ -130,7 +137,6 @@
         </div>
       </div>
 
-      <!-- Error Display -->
       <div v-if="error" class="bg-red-50 border border-red-200 rounded-md p-6 mb-6">
         <div class="flex items-center mb-4">
           <svg class="w-6 h-6 text-red-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -147,7 +153,6 @@
         </div>
       </div>
 
-      <!-- Tasks Grid -->
       <div v-if="loading" class="flex justify-center items-center py-12">
         <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
       </div>
@@ -183,10 +188,15 @@ const authStore = useAuthStore()
 // Reactive data
 const tasks = ref([])
 const loading = ref(true)
-const showCreateForm = ref(false)
-const isCreating = ref(false)
 const error = ref(null)
 const role = ref(null)
+
+// Form states
+const showCreateForm = ref(false)
+const isCreating = ref(false)
+const showEditForm = ref(false)
+const isUpdating = ref(false)
+const taskToEdit = ref(null)
 
 // Filters
 const filters = ref({
@@ -306,6 +316,73 @@ const createTask = async (formData) => {
   }
 }
 
+const updateTask = async (formData) => {
+  isUpdating.value = true
+  try {
+    const originalTask = taskToEdit.value;
+    const changedFields = {};
+
+    for (const key in formData) {
+      if (key === 'id') continue;
+
+      let originalValue = originalTask[key];
+      let currentValue = formData[key];
+
+      if (key === 'deadline' || key === 'recurrence_end_date') {
+        originalValue = originalValue ? new Date(originalValue).toISOString().slice(0, 16) : null;
+        currentValue = currentValue || null;
+      }
+
+      if (originalValue !== currentValue) {
+        changedFields[key] = currentValue;
+      }
+    }
+
+    if (Object.keys(changedFields).length === 0) {
+      closeEditModal();
+      return; // No changes to update
+    }
+
+    const payload = {
+      ...changedFields,
+      user_id: authStore.user.id
+    };
+
+    const response = await fetch(`${KONG_API_URL}/tasks/${formData.id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || 'Failed to update task');
+    }
+
+    await fetchTasks(authStore.user.id);
+    closeEditModal();
+  } catch (err) {
+    console.error('Error updating task:', err);
+    alert('Failed to update task: ' + err.message);
+  } finally {
+    isUpdating.value = false;
+  }
+};
+
+const editTask = (task) => {
+  if (authStore.user.id != task.owner_id) {
+    alert("You do not have permission to edit the task.");
+    return
+  }
+  taskToEdit.value = { ...task }
+  showEditForm.value = true
+}
+
+const closeEditModal = () => {
+  showEditForm.value = false
+  taskToEdit.value = null
+}
+
 const viewTaskDetails = (taskId) => {
   router.push(`/tasks/${taskId}`)
 }
@@ -316,7 +393,7 @@ const deleteTask = async (taskId) => {
   try {
     const response = await fetch(`${KONG_API_URL}/tasks/${taskId}`, {
       method: 'DELETE',
-      headers: {
+       headers: {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
@@ -333,10 +410,6 @@ const deleteTask = async (taskId) => {
     console.error('Error deleting task:', err)
     alert('Failed to delete task: ' + err.message)
   }
-}
-
-const editTask = (task) => {
-  router.push(`/tasks/${task.id}/edit`)
 }
 
 const applyFilters = () => {

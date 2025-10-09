@@ -1,6 +1,6 @@
 <template>
   <div class="bg-white rounded-lg shadow-md p-6 mb-8">
-    <h2 class="text-xl font-semibold text-gray-900 mb-4">{{ isSubtask ? 'Create New Subtask' : 'Create New Task' }}</h2>
+    <h2 class="text-xl font-semibold text-gray-900 mb-4">{{ formTitle }}</h2>
     <form @submit.prevent="handleSubmit" class="space-y-4">
       <div>
         <label class="block text-sm font-medium text-gray-700 mb-2">
@@ -88,7 +88,7 @@
 </template>
 
 <script setup>
-import { ref, watch } from 'vue'
+import { ref, watch, computed } from 'vue'
 
 const props = defineProps({
   isSubtask: {
@@ -106,12 +106,24 @@ const props = defineProps({
   submitButtonLoadingText: {
     type: String,
     default: 'Creating...'
+  },
+  taskToEdit: {
+    type: Object,
+    default: null
   }
 })
 
 const emit = defineEmits(['submit', 'cancel'])
 
-const localData = ref({
+const isEditMode = computed(() => !!props.taskToEdit)
+const formTitle = computed(() => {
+  if (isEditMode.value) {
+    return props.isSubtask ? 'Edit Subtask' : 'Edit Task'
+  }
+  return props.isSubtask ? 'Create New Subtask' : 'Create New Task'
+})
+
+const defaultFormData = {
   title: '',
   deadline: '',
   description: '',
@@ -121,25 +133,49 @@ const localData = ref({
   recurrence_interval: 'daily',
   recurrence_days: null,
   recurrence_end_date: null,
-})
+}
+
+const localData = ref({ ...defaultFormData })
+
+const formatDateForInput = (dateString) => {
+  if (!dateString) return '';
+  const date = new Date(dateString);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  const hours = String(date.getHours()).padStart(2, '0');
+  const minutes = String(date.getMinutes()).padStart(2, '0');
+  return `${year}-${month}-${day}T${hours}:${minutes}`;
+};
+
+
+watch(() => props.taskToEdit, (task) => {
+  if (task) {
+    localData.value = {
+      id: task.id,
+      title: task.title || '',
+      description: task.description || '',
+      deadline: formatDateForInput(task.deadline),
+      status: task.status || 'Unassigned',
+      priority: task.priority || 5,
+      is_recurring: task.is_recurring || false,
+      recurrence_interval: task.recurrence_interval || 'daily',
+      recurrence_days: task.recurrence_days || null,
+      recurrence_end_date: formatDateForInput(task.recurrence_end_date),
+    }
+  } else {
+    localData.value = { ...defaultFormData }
+  }
+}, { immediate: true })
 
 const handleSubmit = () => {
-  if (!localData.value.title.trim() || !localData.value.deadline || !localData.value.description.trim()) {
-    alert('Please fill in Title, Deadline and Description.')
+  if (!localData.value.title.trim()) {
+    alert('Please fill in a Title for the task.')
     return
   }
   emit('submit', { ...localData.value })
-  // Reset form after submission
-  localData.value = {
-    title: '',
-    deadline: '',
-    description: '',
-    status: 'Unassigned',
-    priority: 5,
-    is_recurring: false,
-    recurrence_interval: 'daily',
-    recurrence_days: null,
-    recurrence_end_date: null,
+  if (!isEditMode.value) {
+    localData.value = { ...defaultFormData }
   }
 }
 </script>
