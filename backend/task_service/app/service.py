@@ -318,7 +318,6 @@ def delete_comment(comment_id):
         db.session.rollback()
         raise e
 
-# Not Settled
 def get_task_collaborators(task_id):
     """Get all collaborators for a task"""
     try:
@@ -392,18 +391,7 @@ def remove_task_collaborator(task_id, collaborator_id, user_id):
         print(f"Error in remove_task_collaborator: {e}")
         raise e
 
-def get_task_subtasks(task_id):
-    """Fetch all subtasks for a specific task"""
-    try:
-        task = Task.query.filter_by(id=task_id).first()
-        if not task:
-            return None
-        
-        return [subtask.to_json() for subtask in task.subtasks]
-        
-    except Exception as e:
-        print(f"Error in get_task_subtasks: {e}")
-        raise e
+# Not Settled
 
 # Add these functions to your existing task_service/app/service.py file
 
