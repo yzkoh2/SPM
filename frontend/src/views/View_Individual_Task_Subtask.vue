@@ -89,7 +89,7 @@
               </div>
             </div>
             <div class="flex items-center space-x-2 ml-4">
-              <button @click="showStatusModal = true"
+              <button v-if="isCollaborator" @click="showStatusModal = true"
                 class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-md text-sm font-medium flex items-center">
                 <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -102,7 +102,7 @@
                 class="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-md text-sm font-medium">
                 {{ isSubtask ? 'Edit Subtask' : 'Edit Task' }}
               </button>
-              <button @click="deleteTask"
+              <button v-if="isCollaborator" @click="deleteTask"
                 class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md text-sm font-medium">
                 Delete
               </button>
@@ -284,7 +284,7 @@
               </template>
             </Mentionable>
 
-            <div class="mt-2 flex justify-end">
+            <div v-if="isCollaborator" class="mt-2 flex justify-end">
               <button @click="addComment({ body: newComment})" :disabled="!newComment.trim() || addingComment"
                 class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-md text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed">
                 <span v-if="addingComment">Adding...</span>
@@ -303,8 +303,8 @@
               @reply="addComment"
               @delete="handleDeleteComment" />
           </div>
-
-          <div v-else class="text-center py-8 text-gray-500">
+          
+          <div v-else v-if="isCollaborator" class="text-center py-8 text-gray-500">
             <svg class="mx-auto h-12 w-12 text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                 d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z">
@@ -398,6 +398,18 @@ const KONG_API_URL = "http://localhost:8000"
 const canEditTask = computed(() => {
   if (!task.value || !authStore.user) return false
   return task.value.owner_id === authStore.user.id
+})
+
+const isCollaborator = computed(() => {
+  if (!authStore.user || !collaboratorDetails.value) {
+    return false
+  }
+  
+  // The .some() method checks if at least one element 
+  // in the array passes the test implemented by the provided function.
+  return collaboratorDetails.value.some(
+    (collaborator) => collaborator.user_id === authStore.user.id
+  )
 })
 
 // Filter to show only top-level comments (no parent)
