@@ -412,6 +412,25 @@ def remove_project_collaborator(project_id, collaborator_user_id):
         return jsonify({"error": str(e)}), 500
     
 # ==================== PROJECT TASK MANAGEMENT ROUTES ====================
+@task_bp.route("/projects/<int:project_id>/tasks", methods=["GET"])
+def get_project_tasks(project_id):
+    """
+    Get all tasks for a project
+    """
+    try:
+        tasks, error = service.get_project_tasks(project_id)
+        if error:
+            if "not found" in error:
+                return jsonify({"error": error}), 404
+            else:
+                return jsonify({"error": error}), 403
+        
+        tasks_json = [task.to_json() for task in tasks]
+        return jsonify(tasks_json), 200
+        
+    except Exception as e:
+        print(f"Error in get_project_tasks: {e}")
+        return jsonify({"error": str(e)}), 500
 
 @task_bp.route("/projects/<int:project_id>/tasks", methods=["POST"])
 def create_task_in_project(project_id):

@@ -811,7 +811,23 @@ def remove_project_collaborator(project_id, user_id, collaborator_user_id):
 
 # Add these functions to backend/task_service/app/service.py
 
-# ==================== EDIT PROJECT & MANAGE TASKS FUNCTIONS ====================
+# ==================== EDIT PROJECT & GET/ MANAGE TASKS FUNCTIONS ====================
+def get_project_tasks(project_id):
+    """
+    Get all tasks (excluding subtasks) for a project
+    """
+    try:        
+        # Get all parent tasks in the project
+        tasks = Task.query.filter(
+            Task.project_id == project_id,
+            Task.parent_task_id.is_(None)
+        ).order_by(Task.id.desc()).all()
+        
+        return tasks, None
+        
+    except Exception as e:
+        print(f"Error getting project tasks: {e}")
+        raise
 
 def remove_collaborator_from_project_tasks(project_id, user_id):
     """
