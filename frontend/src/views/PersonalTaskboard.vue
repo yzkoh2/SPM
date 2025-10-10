@@ -7,6 +7,9 @@
         <p class="text-sm text-gray-600 mt-1">Manage your tasks and collaborate with your team</p>
       </div>
 
+     
+      <TaskboardNavigation/>
+
       <div class="mb-6">
         <button @click="showCreateForm = !showCreateForm"
           class="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-lg font-medium transition-colors flex items-center">
@@ -181,6 +184,7 @@ import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import TaskCard from '@/components/TaskCard.vue'
 import TaskForm from '@/components/TaskForm.vue'
+import TaskboardNavigation from '@/components/TaskboardNavigation.vue'
 
 const router = useRouter()
 const authStore = useAuthStore()

@@ -81,3 +81,49 @@ def verify_user(current_user):
     return jsonify(current_user.to_json())
 
 
+
+# --- added routes for team taskboard ---
+
+@user_bp.route('/users', methods=['GET'])
+def get_all_users():
+    """Get all users"""
+    try:
+        users = service.get_all_users()
+        return jsonify([user.to_json() for user in users]), 200
+    except Exception as e:
+        print(f"Error getting all users: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@user_bp.route('/teams', methods=['GET'])
+def get_all_teams():
+    """Get all teams with their department information"""
+    try:
+        teams = service.get_all_teams()
+        return jsonify([{
+            'id': team.id,
+            'name': team.name,
+            'department_id': team.department_id
+        } for team in teams]), 200
+    except Exception as e:
+        print(f"Error getting all teams: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@user_bp.route('/users/<int:user_id>/tasks', methods=['GET'])
+def get_user_tasks(user_id):
+    """Get all tasks for a specific user by proxying to task service"""
+    try:
+        # This endpoint proxies to the task service
+        import requests
+        
+        # Assuming task service is available at localhost:5001 (adjust if needed)
+        task_service_url = "http://localhost:8000/tasks"
+        response = requests.get(task_service_url, params={'owner_id': user_id})
+        
+        if response.status_code == 200:
+            return jsonify(response.json()), 200
+        else:
+            return jsonify({'error': 'Failed to fetch tasks'}), response.status_code
+            
+    except Exception as e:
+        print(f"Error getting user tasks: {e}")
+        return jsonify({'error': str(e)}), 500
