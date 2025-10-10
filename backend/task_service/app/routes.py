@@ -31,6 +31,38 @@ def get_all_tasks():
         print(f"Error in get_all_tasks: {e}")
         return jsonify({"error": str(e)}), 500
 
+@task_bp.route("/tasks/with-deadlines", methods=["GET"])
+def get_tasks_with_upcoming_deadlines():
+    #Get all tasks and subtasks that have upcoming deadlines.
+    #Used by notification service for deadline reminders.
+    try:
+        print("Getting all tasks with upcoming deadlines for notification service")
+        
+        from .models import Task
+        from datetime import datetime
+        
+        #Get current time
+        now = datetime.utcnow()
+        
+        #Query all tasks (including subtasks) with deadlines
+        tasks_with_deadlines = Task.query.filter(
+            Task.deadline.isnot(None), 
+            Task.deadline >= now, 
+            Task.status != 'Completed' 
+        ).all()
+        
+        # Convert to JSON
+        tasks_list = [task.to_json() for task in tasks_with_deadlines]
+        
+        print(f"Found {len(tasks_list)} tasks/subtasks with upcoming deadlines")
+        return jsonify(tasks_list), 200
+        
+    except Exception as e:
+        print(f"Error in get_tasks_with_upcoming_deadlines: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({"error": str(e)}), 500
+
 @task_bp.route("/tasks", methods=["POST"])
 def create_task():
     """Create a new task"""
