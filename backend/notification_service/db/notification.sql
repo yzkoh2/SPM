@@ -1,18 +1,17 @@
-from flask_sqlalchemy import SQLAlchemy
-from datetime import datetime
-
-db = SQLAlchemy()
-
-class DeadlineReminder(db.Model):
-    Track sent deadline reminders to prevent duplicates
-    __tablename__ = "deadline_reminders"
+-- Tracks which deadline reminders have been sent to prevent duplicates
+CREATE TABLE deadline_reminders (
+    id SERIAL PRIMARY KEY,
+    task_id INTEGER NOT NULL,
+    days_before INTEGER NOT NULL CHECK (days_before IN (7, 3, 1)),
+    sent_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     
-    id = db.Column(db.Integer, primary_key=True)
-    task_id = db.Column(db.Integer, nullable=False)
-    days_before = db.Column(db.Integer, nullable=False)  # 7, 3, or 1
-    sent_at = db.Column(db.DateTime, default=datetime.utcnow)
-    
-    # Prevent duplicate reminders for same task + interval
-    __table_args__ = (
-        db.UniqueConstraint('task_id', 'days_before', name='unique_task_reminder'),
-    )
+    -- Ensure we only send one reminder per (task_id, days_before) combination
+    UNIQUE(task_id, days_before)
+);
+
+-- Indexes for faster lookups
+CREATE INDEX idx_deadline_reminders_task ON deadline_reminders(task_id);
+CREATE INDEX idx_deadline_reminders_days ON deadline_reminders(days_before);
+CREATE INDEX idx_deadline_reminders_sent_at ON deadline_reminders(sent_at);
+
+COMMENT ON TABLE deadline_reminders IS 'Tracks deadline reminder notifications (7, 3, 1 days before) to prevent duplicates';

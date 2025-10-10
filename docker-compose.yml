@@ -6,6 +6,7 @@ networks:
 volumes:
   pgadmin_data:
   rabbitmq_data:
+  notification_db_data: 
 
 services:
   # Kong
@@ -142,6 +143,8 @@ services:
       - spm-net
     ports:
       - "6003:6003"
+    env_file:
+      - .env
     environment:
       SMTP_HOST: ${SMTP_HOST}
       SMTP_PORT: ${SMTP_PORT}
@@ -151,12 +154,15 @@ services:
       RABBITMQ_URL: amqp://admin:admin123@rabbitmq:5672/
       TASK_SERVICE_URL: http://spm_task_service:6001
       USER_SERVICE_URL: http://spm_user_service:6000
+      NOTIFICATION_DATABASE_URL: postgresql://user:user@notification_db:5432/notification_db
     depends_on:
       rabbitmq:
         condition: service_healthy
       task_service:
         condition: service_started
       user_service:
+        condition: service_started
+      notification_db:
         condition: service_started
       
   # Databases
@@ -204,3 +210,19 @@ services:
       - "5436:5432"
     volumes:
       - ./backend/project_service/db:/docker-entrypoint-initdb.d
+
+  notification_db:
+    image: postgres:15
+    container_name: notification_db
+    restart: always
+    networks:
+      - spm-net
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: user
+      POSTGRES_DB: notification_db
+    ports:
+      - "5437:5432"
+    volumes:
+      - ./backend/notification_service/db:/docker-entrypoint-initdb.d
+      - notification_db_data:/var/lib/postgresql/data
