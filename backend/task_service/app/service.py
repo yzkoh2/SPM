@@ -3,6 +3,7 @@ from sqlalchemy import or_
 from sqlalchemy.orm import aliased
 from datetime import datetime, timedelta
 from dateutil.relativedelta import relativedelta
+from .rabbitmq_publisher import publish_status_update 
 
 # Settled
 def get_all_tasks(user_id):
@@ -36,7 +37,7 @@ def get_all_tasks(user_id):
     return tasks_query.all()
 
 def create_task(task_data):
-    """Create a new task"""
+    #Create a new task
     try:
         print(f"Creating task with data: {task_data}")
         
@@ -96,7 +97,7 @@ def create_task(task_data):
             recurrence_end_date=recurrence_end_date
         )
         
-        # Add to database
+        #Add to database
         db.session.add(new_task)
         db.session.commit()
         
@@ -126,13 +127,13 @@ def create_task(task_data):
         raise e
 
 def update_task(task_id, user_id, task_data):
-    """Update an existing task"""
+    #Update an existing task
     try:
         task = Task.query.get(task_id)
         if not task:
             return None, "Task not found"
         
-        # Check if taks belongs to user
+        # Check if tasks belongs to user
         is_owner = (task.owner_id == user_id)
         is_collaborator = user_id in task.collaborator_ids()
 
@@ -143,6 +144,10 @@ def update_task(task_id, user_id, task_data):
                 if field != 'status':
                     return None, "Forbidden: Collaborators can only update the status of the task."
         
+        # Track status change
+        old_status = None
+        status_changed = False
+
         for field, data in task_data.items():
             if field == 'deadline' and data:
                 task.deadline = datetime.fromisoformat(data)
@@ -150,8 +155,14 @@ def update_task(task_id, user_id, task_data):
                 task.recurrence_end_date = datetime.fromisoformat(data)
             elif field == 'status':
                 try:
-                    # Directly find the enum member by its value (e.g., 'Under Review')
-                    task.status = TaskStatusEnum(task_data['status'])
+                    new_status_enum = TaskStatusEnum(task_data['status'])
+                    
+                    # Check if status changed
+                    if task.status != new_status_enum:
+                        old_status = task.status.value
+                        task.status = new_status_enum
+                        status_changed = True
+                    
                 except ValueError:
                     return None, "Invalid status value"
             else:
@@ -159,23 +170,36 @@ def update_task(task_id, user_id, task_data):
         
         db.session.flush()
 
-        # --- RECURRENCE LOGIC (remains the same) ---
+        #RECURRENCE LOGIC
         if 'status' in task_data and task.status == TaskStatusEnum.COMPLETED:
             if task.is_recurring:
                 _create_next_recurring_task(task)
 
         db.session.commit()
+
+        # Publish to RabbitMQ if status changed
+        if status_changed:
+            try:
+                from .rabbitmq_publisher import publish_status_update
+                
+                publish_status_update(
+                    task_id=task.id,
+                    old_status=old_status,
+                    new_status=task.status.value,
+                    changed_by_id=user_id
+                )
+            except Exception as e:
+                print(f"⚠️ Failed to publish to RabbitMQ: {e}")
+
         return task.to_json(), "Task updated successfully"
-        
+    
     except Exception as e:
         print(f"Error in update_task: {e}")
         db.session.rollback()
         raise e
 
 def _create_next_recurring_task(completed_task):
-    """
-    Creates the next instance of a recurring task.
-    """
+    #Creates the next instance of a recurring task.
     if completed_task.recurrence_end_date and datetime.utcnow() >= completed_task.recurrence_end_date:
         return
 
@@ -245,7 +269,7 @@ def _create_next_recurring_task(completed_task):
     completed_task.is_recurring = False
 
 def _calculate_next_due_date(current_deadline, interval, custom_days):
-    """Calculates the next due date based on the recurrence interval."""
+    #Calculates the next due date based on the recurrence interval.
     if not current_deadline:
         return None # Cannot calculate next date without a starting point
 
@@ -261,7 +285,7 @@ def _calculate_next_due_date(current_deadline, interval, custom_days):
     return None
 
 def delete_task(task_id, user_id):
-    """Delete a task by ID"""
+    #Delete a task by ID
     try:
         task = Task.query.get(task_id)
         if not task:
@@ -286,7 +310,7 @@ def delete_task(task_id, user_id):
         raise e
 
 def get_task_details(task_id):
-    """Fetch a task with its subtasks, comments, and attachments"""
+    #Fetch a task with its subtasks, comments, and attachments
     try:
         task = Task.query.filter_by(id=task_id).first()
         if not task:
@@ -299,7 +323,7 @@ def get_task_details(task_id):
         raise e
 
 def add_comment(task_id, data):
-    """Add a comment to a task"""
+    #Add a comment to a task
     try:
         task = Task.query.filter_by(id=task_id).first()
         if not task:
@@ -338,7 +362,7 @@ def add_comment(task_id, data):
         raise e
 
 def delete_comment(comment_id):
-    """Delete a comment by ID"""
+    #Delete a comment by ID
     try:
         comment = Comment.query.get(comment_id)
         if not comment:
@@ -355,7 +379,7 @@ def delete_comment(comment_id):
         raise e
 
 def get_task_collaborators(task_id):
-    """Get all collaborators for a task"""
+    #Get all collaborators for a task
     try:
         # Query the junction table directly using raw SQL
         result = db.session.execute(
@@ -370,7 +394,7 @@ def get_task_collaborators(task_id):
         raise e
 
 def add_task_collaborator(task_id, collaborator_id, user_id):
-    """Add a collaborator to a task"""
+    #Add a collaborator to a task
     task = Task.query.get(task_id)
     if not task:
         raise Exception("Task not found")
@@ -402,7 +426,7 @@ def add_task_collaborator(task_id, collaborator_id, user_id):
         raise e
 
 def remove_task_collaborator(task_id, collaborator_id, user_id):
-    """Remove a collaborator from a task"""
+    #Remove a collaborator from a task
     task = Task.query.get(task_id)
     if not task:
         raise Exception("Task not found")
@@ -434,7 +458,7 @@ def remove_task_collaborator(task_id, collaborator_id, user_id):
 # ==================== PROJECT FUNCTIONS ====================
 
 def create_project(project_data):
-    """Create a new project"""
+    #Create a new project
     try:
         print(f"Creating project with data: {project_data}")
         
@@ -473,7 +497,7 @@ def create_project(project_data):
 
 
 def get_project_by_id(project_id, user_id):
-    """Get a project by ID with authorization check"""
+    #Get a project by ID with authorization check
     try:
         project = Project.query.get(project_id)
         
