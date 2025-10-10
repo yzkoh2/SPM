@@ -1,23 +1,119 @@
 <template>
-    <div class="bg-white rounded-lg shadow-md p-6">
-      <div class="text-center py-12">
-        <svg class="w-20 h-20 text-indigo-200 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
-            d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
-        </svg>
-        <h3 class="text-xl font-semibold text-gray-900 mb-2">Project Schedule</h3>
-        <p class="text-gray-600 mb-4">View all tasks across your projects</p>
-        <div class="inline-block bg-indigo-50 border border-indigo-200 rounded-lg px-6 py-3">
-          <p class="text-sm text-indigo-700">
-            <span class="font-semibold">Coming Soon:</span> This feature will show a calendar view of all tasks from your projects, with the ability to filter by specific projects.
-          </p>
-        </div>
+  <div class="min-h-screen bg-gray-50">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div class="mb-6">
+        <h1 class="text-3xl font-bold text-gray-900">Project Schedule</h1>
+        <p class="text-gray-600 mt-2">View all project tasks in calendar format</p>
       </div>
+
+      <TaskCalendar :tasks="filteredTasks" :loading="loading" subtitle="Project tasks scheduled this month"
+        @view-task="viewTaskDetails">
+        <template #filters>
+          <select v-model="filters.projectId" @change="fetchTasks"
+            class="px-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            <option value="">All Projects</option>
+            <option v-for="project in projects" :key="project.id" :value="project.id">
+              {{ project.title }}
+            </option>
+          </select>
+
+          <select v-model="filters.status"
+            class="px-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            <option value="">All Statuses</option>
+            <option value="Unassigned">Unassigned</option>
+            <option value="Ongoing">Ongoing</option>
+            <option value="Under Review">Under Review</option>
+            <option value="Completed">Completed</option>
+          </select>
+        </template>
+      </TaskCalendar>
     </div>
-  </template>
-  
-  <script setup>
-  // Project schedule component - to be implemented
-  // Will fetch tasks from all projects the user is involved in
-  </script>
-  
+  </div>
+</template>
+
+<script setup>
+import { ref, computed, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
+import { useAuthStore } from '@/stores/auth'
+import TaskCalendar from '@/components/TaskCalendar.vue'
+
+const router = useRouter()
+const authStore = useAuthStore()
+const KONG_API_URL = "http://localhost:8000"
+
+const tasks = ref([])
+const projects = ref([])
+const loading = ref(true)
+
+const filters = ref({
+  projectId: '',
+  status: ''
+})
+
+const filteredTasks = computed(() => {
+  let filtered = [...tasks.value]
+
+  if (filters.value.projectId) {
+    filtered = filtered.filter(task => task.project_id === parseInt(filters.value.projectId))
+  }
+
+  if (filters.value.status) {
+    filtered = filtered.filter(task => task.status === filters.value.status)
+  }
+
+  return filtered
+})
+
+const fetchProjects = async () => {
+  try {
+    const userId = authStore.currentUserId
+    const response = await fetch(`${KONG_API_URL}/projects/user/${userId}`)
+    const data = await response.json()
+    projects.value = data
+    console.log('Fetched projects:', data)
+  } catch (error) {
+    console.error('Error fetching projects:', error)
+  }
+}
+
+const fetchTasks = async () => {
+  try {
+    loading.value = true
+    const userId = authStore.currentUserId
+    await fetchProjects()
+
+    // Get project IDs
+    const projectIds = projects.value.map(p => p.id)
+
+    if (projectIds.length === 0) {
+      tasks.value = []
+      return
+    }
+
+    // Fetch tasks for all projects
+    const allTasks = []
+    for (const projectId of projectIds) {
+      const response = await fetch(`${KONG_API_URL}/projects/${projectId}/tasks`)
+      if (!response.ok) {
+        console.error(`Failed to fetch tasks for project ${projectId}`)
+        continue
+      }
+      const projectTasks = await response.json()
+      allTasks.push(...projectTasks)
+    }
+    tasks.value = allTasks
+  } catch (error) {
+    console.error('Error fetching tasks:', error)
+  } finally {
+    loading.value = false
+  }
+}
+
+const viewTaskDetails = (taskId) => {
+  router.push(`/tasks/${taskId}`)
+}
+
+onMounted(() => {
+  fetchTasks()
+})
+</script>
