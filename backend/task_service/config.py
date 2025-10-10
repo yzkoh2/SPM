@@ -5,9 +5,8 @@ from dotenv import load_dotenv
 load_dotenv()
 
 class Config:
-    """Configuration class for Task Management Service"""
-    
-    # Database Configuration
+    #Configuration class for Task Management Service
+    #Database Configuration
     SQLALCHEMY_DATABASE_URI = os.getenv('TASK_DATABASE_URL')
     
     # Disable SQLAlchemy event system (not needed for this app)
@@ -16,6 +15,9 @@ class Config:
     
     # Secret key for session management (if needed)
     SECRET_KEY = os.getenv('SECRET_KEY')
+    
+    # RabbitMQ 
+    RABBITMQ_URL = os.getenv('RABBITMQ_URL', 'amqp://admin:admin123@rabbitmq:5672/')
     
     # Debug mode (set to False in production)
     # DEBUG = os.getenv('DEBUG', 'False').lower() in ['true', '1', 'yes']

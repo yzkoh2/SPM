@@ -5,7 +5,7 @@ networks:
 
 volumes:
   pgadmin_data:
-  # user_db_data:
+  rabbitmq_data:
 
 services:
   # Kong
@@ -27,9 +27,9 @@ services:
     volumes:
       - ./kong.yml:/etc/kong/kong.yml
     ports:
-      - "8000:8000" # Kong proxy - where API requests go
-      - "8001:8001" # Kong Admin API - for configuration
-      - "8002:8002" # Kong Manager (GUI). Listens for HTTP traffic
+      - "8000:8000"
+      - "8001:8001"
+      - "8002:8002"
 
   # PGAdmin
   pgadmin:
@@ -61,23 +61,30 @@ services:
       - .env
     networks:
       - spm-net
-  
-  # Documentation
-  # swagger:
-  #   build: 
-  #     context: ./documentation
-  #     dockerfile: Dockerfile
-  #   image: spm/swagger:1.0
-  #   container_name: spm-swagger
-  #   restart: always
-  #   ports:
-  #     - "6008:6008"
-  #   volumes:
-  #     - ./swagger:/usr/src/app/swagger
-  #   networks:
-  #     - spm-net
 
-  # Backend
+  # RabbitMQ Message Queue
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: spm-rabbitmq
+    restart: always
+    networks:
+      - spm-net
+    environment:
+      RABBITMQ_DEFAULT_USER: admin
+      RABBITMQ_DEFAULT_PASS: admin123
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: rabbitmq-diagnostics -q ping
+      interval: 10s
+      timeout: 10s
+      retries: 5
+      start_period: 40s
+
+  # Backend Services
   user_service:
     build: ./backend/user_service
     image: spm/user_service:1.0
@@ -105,10 +112,12 @@ services:
     environment:
       DATABASE_URL: ${TASK_DATABASE_URL}
       SECRET_KEY: ${SECRET_KEY}
-    # volumes:
-    #   - ./backend/task_service/uploads:/app/uploads
+      RABBITMQ_URL: amqp://admin:admin123@rabbitmq:5672/
     depends_on:
-      - task_db
+      task_db:
+        condition: service_started
+      rabbitmq:
+        condition: service_healthy
 
   project_service:
     build: ./backend/project_service
@@ -122,6 +131,35 @@ services:
       SECRET_KEY: ${SECRET_KEY}
     depends_on:
       - project_db
+  
+  # Notification Service
+  notification_service:
+    build: ./backend/notification_service
+    image: spm/notification_service:1.0
+    container_name: spm_notification_service
+    restart: always
+    networks:
+      - spm-net
+    ports:
+      - "6003:6003"
+    environment:
+      SMTP_HOST: ${SMTP_HOST}
+      SMTP_PORT: ${SMTP_PORT}
+      SMTP_USERNAME: ${SMTP_USERNAME}
+      SMTP_PASSWORD: ${SMTP_PASSWORD}
+      SMTP_FROM_EMAIL: ${SMTP_FROM_EMAIL}
+      RABBITMQ_URL: amqp://admin:admin123@rabbitmq:5672/
+      TASK_SERVICE_URL: http://spm_task_service:6001
+      USER_SERVICE_URL: http://spm_user_service:6000
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      task_service:
+        condition: service_started
+      user_service:
+        condition: service_started
+      
+  # Databases
   user_db:
     image: postgres:15
     container_name: user_db
