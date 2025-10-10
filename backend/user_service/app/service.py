@@ -55,6 +55,14 @@ def get_user_by_email(email):
 
 def get_user_by_username(username):
     return User.query.filter_by(username=username).first()
+
+def get_all_users():
+    """Get all users from the database"""
+    return User.query.all()
+
+def get_all_teams():
+    """Get all teams from the database"""
+    return Team.query.all()
 #############################################################################################################
 
 

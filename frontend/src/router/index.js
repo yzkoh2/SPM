@@ -131,6 +131,19 @@ const router = createRouter({
           next(`/tasks/${to.params.id}/subtasks`)
         }
       }
+    },
+
+    {
+      path: '/taskboard/team',
+      name: 'team-taskboard',
+      component: () => import('@/views/TeamTaskboard.vue'),
+      meta: { requiresAuth: true }
+    },
+    {
+      path: '/taskboard/department',
+      name: 'department-taskboard',
+      component: () => import('@/views/DepartmentTaskboard.vue'),
+      meta: { requiresAuth: true }
     }
   ]
 })

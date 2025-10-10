@@ -40,6 +40,7 @@ class User(db.Model):
         return f'<User {self.name} ({self.email})>'
 
     # Methods
+    
     def to_json(self):
         return {
             # 'username': self.username,
@@ -47,7 +48,8 @@ class User(db.Model):
             'username': self.username,
             'name': self.name,
             'email': self.email,
-            'role': self.role.value
+            'role': self.role.value,
+            'team_id': self.team_id  
         }
 
 class Team(db.Model):

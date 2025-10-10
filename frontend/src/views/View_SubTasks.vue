@@ -1,6 +1,5 @@
 <template>
   <div class="min-h-screen bg-gray-50">
-    <!-- Navigation Bar -->
     <nav class="bg-white shadow-sm border-b border-gray-200">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="flex justify-between items-center h-16">
@@ -11,7 +10,6 @@
             </div>
           </div>
 
-          <!-- Actions -->
           <div class="flex items-center space-x-4">
             <button @click="fetchSubtasks"
               class="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
@@ -27,9 +25,7 @@
       </div>
     </nav>
 
-    <!-- Main Content -->
     <main class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-      <!-- Create Subtask Button -->
       <div class="mb-6 px-4 sm:px-0">
         <button @click="showCreateForm = !showCreateForm"
           class="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-lg font-medium transition-colors flex items-center">
@@ -40,15 +36,27 @@
         </button>
       </div>
 
-      <!-- Create Subtask Form -->
       <div class="px-4 sm:px-0">
         <TaskForm v-if="showCreateForm" title="Create New Subtask" :is-subtask="true" :is-submitting="isCreating"
           submit-button-text="Create Subtask" submit-button-loading-text="Creating..." @submit="createSubtask"
           @cancel="showCreateForm = false" />
       </div>
 
+      <div v-if="showEditForm" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 flex items-center justify-center">
+        <div class="relative w-full max-w-2xl">
+          <TaskForm
+            :task-to-edit="subtaskToEdit"
+            :is-subtask="true"
+            :is-submitting="isUpdating"
+            submit-button-text="Update Subtask"
+            submit-button-loading-text="Updating..."
+            @submit="updateSubtask"
+            @cancel="closeEditModal"
+          />
+        </div>
+      </div>
+
       <div class="px-4 py-6 sm:px-0">
-        <!-- Task Overview Card -->
         <div v-if="parentTask" class="bg-white overflow-hidden shadow rounded-lg mb-6">
           <div class="px-4 py-5 sm:p-6">
             <div class="flex items-center justify-between">
@@ -70,13 +78,11 @@
           </div>
         </div>
 
-        <!-- Loading State -->
         <div v-if="loading" class="text-center">
           <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
           <p class="mt-2 text-gray-600">Loading subtasks...</p>
         </div>
 
-        <!-- Error State -->
         <div v-else-if="error" class="rounded-md bg-red-50 p-4">
           <div class="flex">
             <div class="ml-3">
@@ -88,7 +94,6 @@
           </div>
         </div>
 
-        <!-- Subtasks List -->
         <div v-else-if="subtasks.length > 0" class="space-y-3">
           <div class="flex justify-between items-center">
             <h3 class="text-lg font-medium text-gray-900">Subtasks ({{ subtasks.length }})</h3>
@@ -102,12 +107,10 @@
             </div>
           </div>
 
-          <!-- Subtasks Grid using TaskCard -->
           <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             <div v-for="subtask in subtasks" :key="subtask.id" class="relative">
               <TaskCard :task="subtask" @view="viewSubtaskDetails" @edit="editSubtask" @delete="deleteSubtask" />
 
-              <!-- Loading indicator overlay -->
               <div v-if="updatingSubtaskId === subtask.id"
                 class="absolute inset-0 bg-white bg-opacity-50 flex items-center justify-center rounded-lg">
                 <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
@@ -116,7 +119,6 @@
           </div>
         </div>
 
-        <!-- Empty State -->
         <div v-else class="text-center py-12">
           <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -146,9 +148,14 @@ const subtasks = ref([])
 const parentTask = ref(null)
 const loading = ref(true)
 const error = ref(null)
+const updatingSubtaskId = ref(null)
+
+// Form states
 const showCreateForm = ref(false)
 const isCreating = ref(false)
-const updatingSubtaskId = ref(null)
+const showEditForm = ref(false)
+const isUpdating = ref(false)
+const subtaskToEdit = ref(null)
 
 const KONG_API_URL = "http://localhost:8000"
 
@@ -185,9 +192,8 @@ async function fetchParentTask() {
 async function fetchSubtasks() {
   loading.value = true
   error.value = null
-
   try {
-    const response = await fetch(`${KONG_API_URL}/tasks/${route.params.id}/subtasks`, {
+    const response = await fetch(`${KONG_API_URL}/tasks/${route.params.id}`, {
       headers: {
         'Content-Type': 'application/json'
       }
@@ -200,7 +206,9 @@ async function fetchSubtasks() {
       throw new Error(`Failed to fetch subtasks: ${response.status}`)
     }
 
-    subtasks.value = await response.json()
+    const data = await response.json()
+
+    subtasks.value = data.subtasks || []
   } catch (err) {
     console.error('Error fetching subtasks:', err)
     error.value = err.message
@@ -220,7 +228,12 @@ async function createSubtask(formData) {
       deadline: formData.deadline || null,
       status: formData.status,
       owner_id: authStore.currentUserId,
-      parent_task_id: parentTask.value.id
+      parent_task_id: parentTask.value.id,
+      priority: formData.priority,
+      is_recurring: formData.is_recurring,
+      recurrence_interval: formData.recurrence_interval,
+      recurrence_days: formData.recurrence_days,
+      recurrence_end_date: formData.recurrence_end_date
     }
 
     const response = await fetch(`${KONG_API_URL}/tasks`, {
@@ -246,6 +259,59 @@ async function createSubtask(formData) {
   }
 }
 
+async function updateSubtask(formData) {
+  isUpdating.value = true;
+  try {
+    const originalSubtask = subtaskToEdit.value;
+    const changedFields = {};
+
+    for (const key in formData) {
+      if (key === 'id') continue;
+
+      let originalValue = originalSubtask[key];
+      let currentValue = formData[key];
+
+      if (key === 'deadline' || key === 'recurrence_end_date') {
+        originalValue = originalValue ? new Date(originalValue).toISOString().slice(0, 16) : null;
+        currentValue = currentValue || null;
+      }
+
+      if (originalValue !== currentValue) {
+        changedFields[key] = currentValue;
+      }
+    }
+
+    if (Object.keys(changedFields).length === 0) {
+      closeEditModal();
+      return;
+    }
+
+    const payload = {
+      ...changedFields,
+      user_id: authStore.user.id
+    };
+
+    const response = await fetch(`${KONG_API_URL}/tasks/${formData.id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || 'Failed to update subtask');
+    }
+
+    await fetchSubtasks();
+    closeEditModal();
+  } catch (err) {
+    console.error('Error updating subtask:', err);
+    alert('Failed to update subtask: ' + err.message);
+  } finally {
+    isUpdating.value = false;
+  }
+}
+
 // Function to view subtask details
 function viewSubtaskDetails(subtaskId) {
   router.push(`/tasks/${route.params.id}/subtasks/${subtaskId}`)
@@ -253,7 +319,17 @@ function viewSubtaskDetails(subtaskId) {
 
 // Function to edit subtask
 function editSubtask(subtask) {
-  console.log('Edit subtask:', subtask)
+  if (authStore.user.id != subtask.owner_id) {
+    alert("You do not have permission to edit the task.");
+    return
+  }
+  subtaskToEdit.value = { ...subtask };
+  showEditForm.value = true
+}
+
+function closeEditModal() {
+  showEditForm.value = false
+  subtaskToEdit.value = null
 }
 
 // Function to delete subtask
@@ -261,14 +337,23 @@ async function deleteSubtask(subtaskId) {
   if (!confirm('Are you sure you want to delete this subtask?')) return
 
   try {
-    const response = await fetch(`${KONG_API_URL}/tasks/${route.params.id}/subtasks/${subtaskId}`, {
-      method: 'DELETE'
+    const response = await fetch(`${KONG_API_URL}/tasks/${subtaskId}`, {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        user_id: authStore.user.id
+      })
     })
 
-    if (response.ok || response.status === 404) {
+    const data = await response.json()
+
+    if (response.ok) {
+      alert(data.message || 'Subtask deleted successfully')
       await fetchSubtasks()
     } else {
-      throw new Error(`Failed to delete subtask: ${response.status}`)
+      throw new Error(data.error || `Failed to delete subtask: ${response.status}`)
     }
   } catch (err) {
     console.error('Error deleting subtask:', err)
@@ -289,13 +374,13 @@ function getStatusBadgeColor(status) {
 }
 
 // Initialize component
-onMounted(() => {
+onMounted(async () => {
   if (!authStore.isAuthenticated) {
     router.push('/login')
     return
   }
-  fetchParentTask()
-  fetchSubtasks()
+  await fetchParentTask()
+  await fetchSubtasks()
 })
 </script>
 

@@ -56,7 +56,23 @@ def create_task(task_data):
             except ValueError as e:
                 print(f"Error parsing deadline: {e}")
                 deadline = None
-        
+
+        recurrence_end_date = None
+        if task_data.get('recurrence_end_date'):
+            try:
+                if isinstance(task_data['recurrence_end_date'], str) and task_data['recurrence_end_date'].strip():
+                    # Handle datetime-local format from HTML input
+                    recurrence_end_date_str = task_data['recurrence_end_date']
+                    if 'T' in recurrence_end_date_str:
+                        recurrence_end_date = datetime.fromisoformat(recurrence_end_date_str)
+                    else:
+                        recurrence_end_date = datetime.strptime(recurrence_end_date_str, '%Y-%m-%d %H:%M:%S')
+                elif isinstance(task_data['recurrence_end_date'], datetime):
+                    recurrence_end_date = task_data['recurrence_end_date']
+            except ValueError as e:
+                print(f"Error parsing recurrence_end_date: {e}")
+                recurrence_end_date = None
+
         status = TaskStatusEnum.UNASSIGNED
         if task_data.get('status'):
             try:
@@ -72,7 +88,12 @@ def create_task(task_data):
             status=status,
             owner_id=task_data['owner_id'],
             project_id=task_data.get('project_id'),
-            parent_task_id=task_data.get('parent_task_id')
+            parent_task_id=task_data.get('parent_task_id'),
+            priority=task_data.get('priority'),
+            is_recurring=task_data.get('is_recurring', False),
+            recurrence_interval=task_data.get('recurrence_interval'),
+            recurrence_days=task_data.get('recurrence_days'),
+            recurrence_end_date=recurrence_end_date
         )
         
         # Add to database
@@ -80,7 +101,22 @@ def create_task(task_data):
         db.session.commit()
         
         print(f"Task created with ID: {new_task.id}")
-        
+        try:
+            collaborator_insert = task_collaborators.insert().values(
+                task_id=new_task.id,
+                user_id=new_task.owner_id
+            )
+            db.session.execute(collaborator_insert)
+            db.session.commit()
+            print(f"Owner {new_task.owner_id} added as collaborator for task {new_task.id}")
+        except Exception as e:
+            print(f"Error adding owner as collaborator: {e}")
+            # If this fails, we should roll back the task creation
+            # to avoid inconsistent state.
+            db.session.rollback()
+            # It's important to re-raise the exception to signal that the overall operation failed.
+            raise e
+
         # Return the created task
         return new_task.to_json()
         
@@ -224,17 +260,25 @@ def _calculate_next_due_date(current_deadline, interval, custom_days):
     
     return None
 
-def delete_task(task_id):
+def delete_task(task_id, user_id):
     """Delete a task by ID"""
     try:
         task = Task.query.get(task_id)
         if not task:
-            return False
-            
+            return False, "Task not found"
+
+        if len(task.subtasks) != 0:
+            return False, "Cannot delete a task that has subtasks. Please delete or reassign subtasks first."
+    
+        is_owner = (task.owner_id == user_id)
+
+        if not is_owner:
+            return False, "Forbidden: You do not have permission to delete this task."
+
         print(f"Deleting task: {task.title}")
         db.session.delete(task)
         db.session.commit()
-        return True
+        return True, "Task deleted successfully"
         
     except Exception as e:
         print(f"Error in delete_task: {e}")
@@ -310,7 +354,6 @@ def delete_comment(comment_id):
         db.session.rollback()
         raise e
 
-# Not Settled
 def get_task_collaborators(task_id):
     """Get all collaborators for a task"""
     try:
@@ -384,72 +427,8 @@ def remove_task_collaborator(task_id, collaborator_id, user_id):
         print(f"Error in remove_task_collaborator: {e}")
         raise e
 
-def get_task_subtasks(task_id):
-    """Fetch all subtasks for a specific task"""
-    try:
-        task = Task.query.filter_by(id=task_id).first()
-        if not task:
-            return None
-        
-        return [subtask.to_json() for subtask in task.subtasks]
-        
-    except Exception as e:
-        print(f"Error in get_task_subtasks: {e}")
-        raise e
+# Not Settled
 
-def create_subtask(task_id, subtask_data):
-    """Create a new subtask for a task"""
-    try:
-        # Check if parent task exists
-        task = Task.query.filter_by(id=task_id).first()
-        if not task:
-            return None
-        
-        # Create new subtask
-        new_subtask = Subtask(
-            title=subtask_data['title'],
-            status=subtask_data.get('status', 'Unassigned'),
-            task_id=task_id
-        )
-        
-        db.session.add(new_subtask)
-        db.session.commit()
-        
-        return {
-            "id": new_subtask.id,
-            "title": new_subtask.title,
-            "status": new_subtask.status,
-            "task_id": new_subtask.task_id
-        }
-        
-    except Exception as e:
-        print(f"Error in create_subtask: {e}")
-        db.session.rollback()
-        raise e
-
-def get_subtask_details(task_id, subtask_id):
-    """Fetch a specific subtask"""
-    try:
-        subtask = Subtask.query.filter_by(id=subtask_id, task_id=task_id).first()
-        if not subtask:
-            return None
-        
-        return {
-            "id": subtask.id,
-            "title": subtask.title,
-            "status": subtask.status,
-            "task_id": subtask.task_id,
-            "parent_task": {
-                "id": subtask.parent_task.id,
-                "title": subtask.parent_task.title,
-                "status": subtask.parent_task.status
-            }
-        }
-        
-    except Exception as e:
-        print(f"Error in get_subtask_details: {e}")
-        raise e
-    
 # Add these functions to your existing task_service/app/service.py file
 
 # ==================== PROJECT FUNCTIONS ====================

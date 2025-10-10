@@ -1,6 +1,6 @@
 <template>
   <div class="bg-white rounded-lg shadow-md p-6 mb-8">
-    <h2 class="text-xl font-semibold text-gray-900 mb-4">{{ isSubtask ? 'Create New Subtask' : 'Create New Task' }}</h2>
+    <h2 class="text-xl font-semibold text-gray-900 mb-4">{{ formTitle }}</h2>
     <form @submit.prevent="handleSubmit" class="space-y-4">
       <div>
         <label class="block text-sm font-medium text-gray-700 mb-2">
@@ -32,6 +32,46 @@
           <option value="Completed">Completed</option>
         </select>
       </div>
+      
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-2">Priority</label>
+        <input v-model="localData.priority" type="range" min="1" max="10"
+          class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
+        <div class="flex justify-between text-xs text-gray-600 mt-1">
+          <span v-for="n in 10" :key="n">{{ n }}</span>
+        </div>
+      </div>
+
+      <div>
+        <label class="flex items-center">
+          <input v-model="localData.is_recurring" type="checkbox"
+            class="rounded border-gray-300 text-indigo-600 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50">
+          <span class="ml-2 text-sm text-gray-600">Is this a recurring task?</span>
+        </label>
+      </div>
+
+      <div v-if="localData.is_recurring">
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-2">Recurrence Interval</label>
+          <select v-model="localData.recurrence_interval"
+            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+            <option value="daily">Daily</option>
+            <option value="weekly">Weekly</option>
+            <option value="monthly">Monthly</option>
+            <option value="custom">Custom</option>
+          </select>
+        </div>
+        <div v-if="localData.recurrence_interval === 'custom'">
+          <label class="block text-sm font-medium text-gray-700 mb-2">Recurrence Days</label>
+          <input v-model="localData.recurrence_days" type="number"
+            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-2">Recurrence End Date</label>
+          <input v-model="localData.recurrence_end_date" type="datetime-local"
+            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+        </div>
+      </div>
 
       <div class="flex justify-end space-x-3">
         <button type="button" @click="$emit('cancel')"
@@ -48,7 +88,7 @@
 </template>
 
 <script setup>
-import { ref, watch } from 'vue'
+import { ref, watch, computed } from 'vue'
 
 const props = defineProps({
   isSubtask: {
@@ -66,30 +106,76 @@ const props = defineProps({
   submitButtonLoadingText: {
     type: String,
     default: 'Creating...'
+  },
+  taskToEdit: {
+    type: Object,
+    default: null
   }
 })
 
 const emit = defineEmits(['submit', 'cancel'])
 
-const localData = ref({
+const isEditMode = computed(() => !!props.taskToEdit)
+const formTitle = computed(() => {
+  if (isEditMode.value) {
+    return props.isSubtask ? 'Edit Subtask' : 'Edit Task'
+  }
+  return props.isSubtask ? 'Create New Subtask' : 'Create New Task'
+})
+
+const defaultFormData = {
   title: '',
   deadline: '',
   description: '',
-  status: 'Unassigned'
-})
+  status: 'Unassigned',
+  priority: 5,
+  is_recurring: false,
+  recurrence_interval: 'daily',
+  recurrence_days: null,
+  recurrence_end_date: null,
+}
+
+const localData = ref({ ...defaultFormData })
+
+const formatDateForInput = (dateString) => {
+  if (!dateString) return '';
+  const date = new Date(dateString);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  const hours = String(date.getHours()).padStart(2, '0');
+  const minutes = String(date.getMinutes()).padStart(2, '0');
+  return `${year}-${month}-${day}T${hours}:${minutes}`;
+};
+
+
+watch(() => props.taskToEdit, (task) => {
+  if (task) {
+    localData.value = {
+      id: task.id,
+      title: task.title || '',
+      description: task.description || '',
+      deadline: formatDateForInput(task.deadline),
+      status: task.status || 'Unassigned',
+      priority: task.priority || 5,
+      is_recurring: task.is_recurring || false,
+      recurrence_interval: task.recurrence_interval || 'daily',
+      recurrence_days: task.recurrence_days || null,
+      recurrence_end_date: formatDateForInput(task.recurrence_end_date),
+    }
+  } else {
+    localData.value = { ...defaultFormData }
+  }
+}, { immediate: true })
 
 const handleSubmit = () => {
-  if (!localData.value.title.trim() || !localData.value.deadline || !localData.value.description.trim()) {
-    alert('Please fill in Title, Deadline and Description.')
+  if (!localData.value.title.trim()) {
+    alert('Please fill in a Title for the task.')
     return
   }
   emit('submit', { ...localData.value })
-  // Reset form after submission
-  localData.value = {
-    title: '',
-    deadline: '',
-    description: '',
-    status: 'Unassigned'
+  if (!isEditMode.value) {
+    localData.value = { ...defaultFormData }
   }
 }
 </script>
