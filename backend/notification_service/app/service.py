@@ -3,6 +3,7 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from flask import current_app
 from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
 import requests
 from .email_templates import get_status_update_email, get_deadline_reminder_email
 from .models import db, DeadlineReminder
@@ -288,16 +289,17 @@ def send_deadline_reminder(task_id, days_before):
         return False
 
 def check_and_send_deadline_reminders():
-    #Check all tasks and send deadline reminders where appropriate.
     try:
+        #Use Singapore timezone (GMT+8)
+        singapore_tz = ZoneInfo('Asia/Singapore')
+        now = datetime.now(singapore_tz)
+        
         print(f"\n{'='*70}")
-        print(f"⏰ DEADLINE REMINDER CHECK - {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')} UTC")
+        print(f"⏰ DEADLINE REMINDER CHECK - {now.strftime('%Y-%m-%d %H:%M:%S %Z')}")  # Shows SGT
         print(f"{'='*70}\n")
         
-        now = datetime.utcnow()
-        reminder_intervals = [7, 3, 1]  # Days before deadline
+        reminder_intervals = [7, 3, 1]
         
-        #Get all tasks with deadlines
         tasks = get_all_tasks_with_deadlines()
         print(f"📋 Found {len(tasks)} tasks with deadlines")
         
@@ -311,18 +313,16 @@ def check_and_send_deadline_reminders():
                 continue
             
             try:
-                #Parse deadline
-                deadline = datetime.fromisoformat(deadline_str.replace('Z', '+00:00'))
+                #Parse deadline as UTC then convert to Singapore time
+                deadline_utc = datetime.fromisoformat(deadline_str.replace('Z', '+00:00'))
+                deadline = deadline_utc.astimezone(singapore_tz)
                 
-                #Check each reminder interval
                 for days_before in reminder_intervals:
-                    #Calculate when to send reminder
                     reminder_date = deadline - timedelta(days=days_before)
                     
-                    #Check if we should send reminder today
+                    #Compare dates in Singapore timezone
                     if reminder_date.date() == now.date():
                         
-                        #Check if we already sent this reminder
                         existing_reminder = DeadlineReminder.query.filter_by(
                             task_id=task_id,
                             days_before=days_before
@@ -332,7 +332,6 @@ def check_and_send_deadline_reminders():
                             print(f"⏭️ Already sent {days_before}-day reminder for task {task_id}")
                             continue
                         
-                        #Send the reminder
                         print(f"📤 Sending {days_before}-day reminder for task {task_id}: {task['title']}")
                         success = send_deadline_reminder(task_id, days_before)
                         
@@ -344,6 +343,8 @@ def check_and_send_deadline_reminders():
             
             except Exception as e:
                 print(f"❌ Error processing task {task_id}: {e}")
+                import traceback
+                traceback.print_exc()
                 continue
         
         print(f"\n{'='*70}")

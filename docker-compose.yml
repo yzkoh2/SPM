@@ -156,15 +156,15 @@ services:
       USER_SERVICE_URL: http://spm_user_service:6000
       NOTIFICATION_DATABASE_URL: postgresql://user:user@notification_db:5432/notification_db
     depends_on:
+      notification_db:
+        condition: service_healthy  
       rabbitmq:
         condition: service_healthy
       task_service:
         condition: service_started
       user_service:
         condition: service_started
-      notification_db:
-        condition: service_started
-      
+        
   # Databases
   user_db:
     image: postgres:15
@@ -226,3 +226,9 @@ services:
     volumes:
       - ./backend/notification_service/db:/docker-entrypoint-initdb.d
       - notification_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user -d notification_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s

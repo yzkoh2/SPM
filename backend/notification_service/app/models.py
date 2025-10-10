@@ -1,5 +1,6 @@
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
+from zoneinfo import ZoneInfo
 from sqlalchemy.dialects.postgresql import JSONB
 
 db = SQLAlchemy()
@@ -19,7 +20,7 @@ class DeadlineReminder(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     task_id = db.Column(db.Integer, nullable=False, index=True)
     days_before = db.Column(db.Integer, nullable=False)  
-    sent_at = db.Column(db.DateTime, default=datetime.utcnow)
+    sent_at = db.Column(db.DateTime, default=lambda: datetime.now(ZoneInfo('Asia/Singapore')))
     
     __table_args__ = (
         db.UniqueConstraint('task_id', 'days_before', name='unique_task_reminder'),

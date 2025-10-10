@@ -5,8 +5,7 @@ load_dotenv()
 
 class Config:
     #Configuration for Notification Service
-    SQLALCHEMY_DATABASE_URI = os.getenv('NOTIFICATION_DATABASE_URL','postgresql://user:user@notification_db:5432/notification_db').replace('postgresql://', 'postgresql+psycopg://')
-    
+    SQLALCHEMY_DATABASE_URI = os.getenv('NOTIFICATION_DATABASE_URL','postgresql://user:user@notification_db:5432/notification_db')
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     
     # Brevo SMTP Configuration

@@ -19,7 +19,8 @@ class DeadlineReminderScheduler:
             #Schedule the deadline check to run every hour
             self.scheduler.add_job(
                 func=self._run_deadline_check,
-                trigger=CronTrigger(minute='*'), #Run at the top of every hour
+                trigger=CronTrigger(minute='*'), #Run at every minute testing
+                #trigger=CronTrigger(minute='0'), #Run at the top of every hour
                 id='deadline_reminder_check',
                 name='Check and send deadline reminders',
                 replace_existing=True
