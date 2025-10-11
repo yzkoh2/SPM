@@ -585,6 +585,7 @@ const handleStatusUpdate = async ({ newStatus, comment }) => {
   } catch (err) {
     console.error('Error updating status:', err)
     alert('Failed to update status: ' + err.message)
+    showStatusModal.value = false
     throw err
   }
 }

@@ -140,25 +140,13 @@ def update_task(task_id, user_id, task_data):
             elif field == 'status':
                 try:
                     # Directly find the enum member by its value (e.g., 'Under Review')
-                    task.status = TaskStatusEnum(task_data['status'])
+                    new_status = TaskStatusEnum(data)
+                    if new_status == TaskStatusEnum.COMPLETED:
+                        if not _are_all_subtasks_completed(task):
+                            return None, "Cannot mark task as completed while it has incomplete subtasks."
+                    task.status = new_status
                 except ValueError:
                     return None, "Invalid status value"
-            elif field == 'owner_id' and data:
-                new_owner_id = data
-                # Set the new owner on the task
-                task.owner_id = new_owner_id
-                if new_owner_id not in task.collaborator_ids():
-                    try:
-                        collaborator_insert = task_collaborators.insert().values(
-                            task_id=task_id,
-                            user_id=new_owner_id
-                        )
-                        db.session.execute(collaborator_insert)
-                        db.session.commit()
-                    except Exception as e:
-                        print(f"Error adding new owner as collaborator: {e}")
-                        db.session.rollback()
-                        raise e
             elif hasattr(task, field):
                 setattr(task, field, data)
 
@@ -180,15 +168,8 @@ def update_task(task_id, user_id, task_data):
 
             # Remove collaborators from the task and all its subtasks
             collaborators_to_remove = task_data.get('collaborators_to_remove')
-            collaborators_to_remove = [uid for uid in collaborators_to_remove if uid != task.owner_id]
             if collaborators_to_remove:
-                task_ids_to_update = _get_all_subtask_ids(task.id)
-                db.session.execute(
-                    task_collaborators.delete().where(
-                        task_collaborators.c.task_id.in_(task_ids_to_update) &
-                        task_collaborators.c.user_id.in_(collaborators_to_remove)
-                    )
-                )
+                _remove_collaborators_from_subtasks(task, set(collaborators_to_remove))
 
         # --- RECURRENCE LOGIC (remains the same) ---
         if 'status' in task_data and task.status == TaskStatusEnum.COMPLETED:
@@ -317,6 +298,41 @@ def _add_collaborators_to_parents(task, collaborator_ids):
             current_task_node = Task.query.get(current_task_node.parent_task_id)
         else:
             current_task_node = None
+
+def _remove_collaborators_from_subtasks(task, collaborator_ids):
+    """
+    Helper function to remove a set of collaborators from a task and cascade down to all its subtasks.
+    """
+    if not collaborator_ids:
+        return
+
+    task_ids_to_update = _get_all_subtask_ids(task.id)
+    select_owners_query = db.select(Task.owner_id).where(Task.id.in_(task_ids_to_update)).distinct()
+    owner_ids_result = db.session.execute(select_owners_query)
+    protected_owner_ids = {owner_id for (owner_id,) in owner_ids_result}
+
+    # 3. Filter the list of collaborators to remove, excluding protected owners
+    safe_list_to_remove = [
+        user_id for user_id in collaborator_ids if user_id not in protected_owner_ids
+    ]
+
+    # 4. If there are any collaborators left to remove, execute the delete operation
+    if safe_list_to_remove:
+        db.session.execute(
+            task_collaborators.delete().where(
+                task_collaborators.c.task_id.in_(task_ids_to_update) &
+                task_collaborators.c.user_id.in_(safe_list_to_remove)
+            )
+        )
+
+def _are_all_subtasks_completed(task):
+    """Check if status of all subtasks of a task are completed"""
+    if not task.subtasks:
+        return True
+    for subtask in task.subtasks:
+        if subtask.status != TaskStatusEnum.COMPLETED:
+            return False
+    return True
 
 def delete_task(task_id, user_id):
     """Delete a task by ID"""
@@ -517,7 +533,7 @@ def _get_all_subtask_ids(task_id):
     ids = {task_id}
     children = Task.query.filter_by(parent_task_id=task_id).all()
     for child in children:
-        ids.update(get_all_subtask_ids(child.id))
+        ids.update(_get_all_subtask_ids(child.id))
     return ids
 # Not Settled
 
