@@ -98,36 +98,14 @@ def create_task(task_data):
         
         # Add to database
         db.session.add(new_task)
-        db.session.commit()
+        db.session.flush()
         
-        print(f"Task created with ID: {new_task.id}")
-        try:
-            collaborator_insert = task_collaborators.insert().values(
-                task_id=new_task.id,
-                user_id=new_task.owner_id
-            )
-            db.session.execute(collaborator_insert)
-            if 'collaborators_to_add' in task_data and task_data['collaborators_to_add']:
-                for user_id in task_data['collaborators_to_add']:
-                    # Ensure we don't add the owner a second time
-                    if user_id != new_task.owner_id:
-                        additional_collaborator_insert = task_collaborators.insert().values(
-                            task_id=new_task.id,
-                            user_id=user_id
-                        )
-                        db.session.execute(additional_collaborator_insert)
-            db.session.commit()
+        collaborators_to_add = set(task_data.get('collaborators_to_add', []))
+        collaborators_to_add.add(new_task.owner_id)
 
-        except Exception as e:
-            print(f"Error adding owner as collaborator: {e}")
-            # If this fails, we should roll back the task creation
-            # to avoid inconsistent state.
-            db.session.rollback()
-            # It's important to re-raise the exception to signal that the overall operation failed.
-            raise e
+        _add_collaborators_to_parents(new_task, collaborators_to_add)
 
-        # Return the created task
-        return new_task.to_json()
+        db.session.commit()
         
     except Exception as e:
         print(f"Error in create_task: {e}")
@@ -198,31 +176,13 @@ def update_task(task_id, user_id, task_data):
 
             # Add all new collaborators from the consolidated set
             if collaborators_to_add:
-                current_task_node = task
-                while current_task_node:
-                    # Get IDs of users who are already collaborators
-                    result = db.session.execute(
-                        task_collaborators.select().with_only_columns(task_collaborators.c.user_id)
-                        .where(task_collaborators.c.task_id == current_task_node.id)
-                    )
-                    existing_collab_ids = {row.user_id for row in result}
-                    
-                    # Find which users are genuinely new for this task
-                    new_for_this_task = collaborators_to_add - existing_collab_ids
-                    
-                    if new_for_this_task:
-                        db.session.execute(task_collaborators.insert(), [
-                            {'task_id': current_task_node.id, 'user_id': collab_id} for collab_id in new_for_this_task
-                        ])
-                    
-                    # Move up to the parent task
-                    current_task_node = Task.query.get(current_task_node.parent_task_id) if current_task_node.parent_task_id else None
+                _add_collaborators_to_parents(task, collaborators_to_add)
 
             # Remove collaborators from the task and all its subtasks
             collaborators_to_remove = task_data.get('collaborators_to_remove')
             collaborators_to_remove = [uid for uid in collaborators_to_remove if uid != task.owner_id]
             if collaborators_to_remove:
-                task_ids_to_update = get_all_subtask_ids(task.id)
+                task_ids_to_update = _get_all_subtask_ids(task.id)
                 db.session.execute(
                     task_collaborators.delete().where(
                         task_collaborators.c.task_id.in_(task_ids_to_update) &
@@ -330,6 +290,33 @@ def _calculate_next_due_date(current_deadline, interval, custom_days):
         return current_deadline + timedelta(days=custom_days)
     
     return None
+
+def _add_collaborators_to_parents(task, collaborator_ids):
+    """
+    Helper function to add a set of collaborators to a task and cascade up to all its parents.
+    """
+    if not collaborator_ids:
+        return
+
+    current_task_node = task
+    while current_task_node:
+        result = db.session.execute(
+            task_collaborators.select().with_only_columns(task_collaborators.c.user_id)
+            .where(task_collaborators.c.task_id == current_task_node.id)
+        )
+        existing_collab_ids = {row.user_id for row in result}
+        
+        new_for_this_task = collaborator_ids - existing_collab_ids
+        
+        if new_for_this_task:
+            db.session.execute(task_collaborators.insert(), [
+                {'task_id': current_task_node.id, 'user_id': collab_id} for collab_id in new_for_this_task
+            ])
+        
+        if current_task_node.parent_task_id:
+            current_task_node = Task.query.get(current_task_node.parent_task_id)
+        else:
+            current_task_node = None
 
 def delete_task(task_id, user_id):
     """Delete a task by ID"""
@@ -526,7 +513,7 @@ def remove_task_collaborator(task_id, collaborator_ids, user_id):
         print(f"Error in remove_task_collaborator: {e}")
         raise e
 
-def get_all_subtask_ids(task_id):
+def _get_all_subtask_ids(task_id):
     ids = {task_id}
     children = Task.query.filter_by(parent_task_id=task_id).all()
     for child in children:
