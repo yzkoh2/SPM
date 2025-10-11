@@ -3,6 +3,9 @@ from sqlalchemy import or_
 from sqlalchemy.orm import aliased
 from datetime import datetime, timedelta
 from dateutil.relativedelta import relativedelta
+from werkzeug.utils import secure_filename
+from flask import current_app
+import uuid
 
 # Settled
 def get_all_tasks(user_id):
@@ -535,8 +538,91 @@ def _get_all_subtask_ids(task_id):
     for child in children:
         ids.update(_get_all_subtask_ids(child.id))
     return ids
-# Not Settled
 
+def add_attachment(task_id, file, input_filename):
+    """Add an attachment to a task"""
+    try:
+        task = Task.query.get(task_id)
+        if not task:
+            return None
+
+        # Secure the filename and use it as the S3 object key
+        filename = secure_filename(file.filename)
+        s3_object_key = f"{uuid.uuid4()}_{filename}" 
+        
+        # Upload the file object to S3
+        current_app.s3_client.upload_fileobj(
+            file,
+            current_app.config['S3_BUCKET_NAME'],
+            s3_object_key,
+            ExtraArgs={'ContentType': file.content_type}
+        )
+
+        # In the DB, store the filename (S3 key), not a full URL
+        new_attachment = Attachment(
+            filename=input_filename,
+            url=s3_object_key,  # Storing S3 object key in the 'url' field
+            task_id=task_id
+        )
+        db.session.add(new_attachment)
+        db.session.commit()
+        return new_attachment.to_json()
+    except Exception as e:
+        db.session.rollback()
+        raise e
+
+def get_attachment_url(task_id, attachment_id):
+    """Generate a pre-signed URL for an attachment"""
+    try:
+        attachment = Attachment.query.filter_by(
+            id=attachment_id, task_id=task_id
+        ).first()
+
+        if not attachment:
+            return None, "Attachment not found"
+
+        presigned_url = current_app.s3_client.generate_presigned_url(
+            'get_object',
+            Params={
+                'Bucket': current_app.config['S3_BUCKET_NAME'],
+                'Key': attachment.url
+            },
+            ExpiresIn=3600  # URL valid for 1 hour
+        )
+
+        return {
+            "id": attachment.id,
+            "filename": attachment.filename,
+            "url": presigned_url,
+        }, "Success"
+    except Exception as e:
+        print(f"Error generating presigned URL: {e}")
+        return None, "Error generating URL"
+
+def delete_attachment_url(task_id, attachment_id):
+    """Delete an attachment from a task"""
+    try:
+        attachment = Attachment.query.filter_by(
+            id=attachment_id, task_id=task_id
+        ).first()
+
+        if not attachment:
+            return False, "Attachment not found"
+
+        # Delete the file from S3
+        current_app.s3_client.delete_object(
+            Bucket=current_app.config['S3_BUCKET_NAME'],
+            Key=attachment.url
+        )
+
+        # Delete the attachment record from the database
+        db.session.delete(attachment)
+        db.session.commit()
+        return True, "Attachment deleted successfully"
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error deleting attachment: {e}")
+        return False, "Error deleting attachment"
 # Add these functions to your existing task_service/app/service.py file
 
 # ==================== PROJECT FUNCTIONS ====================

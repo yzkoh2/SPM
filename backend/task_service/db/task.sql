@@ -87,7 +87,7 @@ INSERT INTO tasks (title, description, status, owner_id, project_id, parent_task
 
 -- Attachment for Task 1
 INSERT INTO attachments (filename, url, task_id) VALUES
-('homepage_mockup.png', 'http://example.com/homepage_mockup.png', 1);
+('Week 04 Project Instructions', 'Week_04_Project_Instructions.pdf', 1);
 
 -- Task 2: Backend API Setup (Standalone task, no project)
 INSERT INTO tasks (title, description, deadline, status, owner_id)
@@ -100,7 +100,7 @@ INSERT INTO tasks (title, status, owner_id, parent_task_id) VALUES
 
 -- Attachment for Task 2
 INSERT INTO attachments (filename, url, task_id) VALUES
-('api_endpoints.md', 'http://example.com/api_endpoints.md', 2);
+('Change Document', 'Change_Document_Week_6.pdf', 2);
 
 -- Sample Collaborators
 INSERT INTO project_collaborators (project_id, user_id) VALUES

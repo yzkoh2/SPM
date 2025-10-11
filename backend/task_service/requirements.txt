@@ -20,3 +20,5 @@ cryptography
 
 # For handling dates and times
 python-dateutil
+
+boto3
