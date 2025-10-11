@@ -66,6 +66,13 @@ class Team(db.Model):
 
     def __repr__(self):
         return f'<Team {self.name}>'
+    
+    def to_json(self):
+        return {
+            'id': self.id,
+            'name': self.name,
+            'department_id': self.department_id
+        }
 
 class Department(db.Model):
     """Department in a company."""
@@ -79,3 +86,9 @@ class Department(db.Model):
 
     def __repr__(self):
         return f'<Department {self.name}>'
+
+    def to_json(self):
+        return {
+            'id': self.id,
+            'name': self.name
+        }

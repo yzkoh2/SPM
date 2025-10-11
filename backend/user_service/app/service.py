@@ -1,19 +1,8 @@
 # app/services.py
-from .models import db, User, Team, RoleEnum
+from .models import db, User, Team, RoleEnum, Department
 from flask import current_app
 import jwt
 import datetime
-# import bcrypt
-
-# Password Hashing Functions
-# def hash_password(plain_text_password):
-#     """Hashes a password using bcrypt."""
-#     return bcrypt.hashpw(plain_text_password.encode('utf-8'), bcrypt.gensalt())
-
-# def check_password(plain_text_password, hashed_password):
-#     """Checks a plain-text password against a hashed one."""
-#     return bcrypt.checkpw(plain_text_password.encode('utf-8'), hashed_password.encode('utf-8'))
-#############################################################################################################
 
 
 # Verification Methods (JWT and Login)
@@ -63,6 +52,18 @@ def get_all_users():
 def get_all_teams():
     """Get all teams from the database"""
     return Team.query.all()
+
+def get_all_users_in_team(team_id):
+    """Get all users in a specific team"""
+    return User.query.filter_by(team_id=team_id).all()
+
+def get_all_dept():
+    """Get all departments from the database"""
+    return Department.query.all()
+
+def get_all_users_in_dept(dept_id):
+    """Get all users in a specific department"""
+    return User.query.join(Team).filter(Team.department_id == dept_id).all()
 #############################################################################################################
 
 
