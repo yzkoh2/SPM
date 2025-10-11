@@ -11,7 +11,7 @@
       </div>
       <div>
         <label class="block text-sm font-medium text-gray-700 mb-2">Deadline</label>
-        <input v-model="localData.deadline" type="datetime-local"
+        <input v-model="localData.deadline" type="datetime-local" :min="minDeadline"
           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
       </div>
 
@@ -68,7 +68,7 @@
         </div>
         <div>
           <label class="block text-sm font-medium text-gray-700 mb-2">Recurrence End Date</label>
-          <input v-model="localData.recurrence_end_date" type="datetime-local"
+          <input v-model="localData.recurrence_end_date" type="datetime-local" :min="minRecurrenceEndDate"
             class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
         </div>
       </div>
@@ -148,6 +148,13 @@ const formatDateForInput = (dateString) => {
   return `${year}-${month}-${day}T${hours}:${minutes}`;
 };
 
+const minDeadline = computed(() => {
+  return formatDateForInput(new Date());
+});
+
+const minRecurrenceEndDate = computed(() => {
+  return localData.value.deadline || minDeadline.value;
+});
 
 watch(() => props.taskToEdit, (task) => {
   if (task) {
@@ -167,6 +174,12 @@ watch(() => props.taskToEdit, (task) => {
     localData.value = { ...defaultFormData }
   }
 }, { immediate: true })
+
+watch(() => localData.value.deadline, (newDeadline) => {
+  if (localData.value.recurrence_end_date && newDeadline > localData.value.recurrence_end_date) {
+    localData.value.recurrence_end_date = newDeadline;
+  }
+});
 
 const handleSubmit = () => {
   if (!localData.value.title.trim()) {
