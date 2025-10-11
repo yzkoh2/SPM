@@ -20,16 +20,21 @@
         </button>
       </div>
 
-      <TaskForm v-if="showCreateForm" title="Create New Task" :is-submitting="isCreating"
-        submit-button-text="Create Task" submit-button-loading-text="Creating..." @submit="createTask"
+      <TaskForm v-if="showCreateForm" title="Create New Task" 
+        :is-submitting="isCreating"
+        :all-users="allUsers"
+        submit-button-text="Create Task" 
+        submit-button-loading-text="Creating..." 
+        @submit="createTask"
         @cancel="showCreateForm = false" />
 
-      <div v-if="showEditForm" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 flex items-center justify-center">
+      <div v-if="showEditForm" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 flex justify-center items-start p-8">
         <div class="relative w-full max-w-2xl">
           <TaskForm
             :task-to-edit="taskToEdit"
             :all-users="allUsers"
             :is-submitting="isUpdating"
+            :current-collaborators="collaboratorDetails"
             submit-button-text="Update Task"
             submit-button-loading-text="Updating..."
             @submit="updateTask"
@@ -196,6 +201,7 @@ const loading = ref(true)
 const error = ref(null)
 const role = ref(null)
 const allUsers = ref([])
+const collaboratorDetails = ref([])
 
 // Form states
 const showCreateForm = ref(false)
@@ -310,7 +316,8 @@ const createTask = async (formData) => {
       is_recurring: formData.is_recurring,
       recurrence_interval: formData.recurrence_interval,
       recurrence_days: formData.recurrence_days,
-      recurrence_end_date: formData.recurrence_end_date
+      recurrence_end_date: formData.recurrence_end_date,
+      collaborators_to_add: formData.collaborators_to_add || []
     }
 
     const response = await fetch(`${KONG_API_URL}/tasks`, {
@@ -389,12 +396,13 @@ const updateTask = async (formData) => {
   }
 };
 
-const editTask = (task) => {
+const editTask = async (task) => {
   if (authStore.user.id != task.owner_id) {
     alert("You do not have permission to edit the task.");
     return
   }
   taskToEdit.value = { ...task }
+  await fetchCollaboratorsForTask(task.id);
   showEditForm.value = true
 }
 
@@ -435,6 +443,37 @@ const deleteTask = async (taskId) => {
 const applyFilters = () => {
   // Filters are applied automatically via computed property
 }
+
+const fetchCollaboratorsForTask = async (taskId) => {
+  try {
+    const response = await fetch(`${KONG_API_URL}/tasks/${taskId}/collaborators`);
+    if (!response.ok) {
+        throw new Error('Failed to fetch collaborators');
+    }
+    const collaborators = await response.json();
+
+    const detailsPromises = collaborators.map(collab =>
+        fetch(`${KONG_API_URL}/user/${collab.user_id}`).then(res => {
+            if (res.ok) return res.json();
+            return null;
+        })
+    );
+    const details = (await Promise.all(detailsPromises)).filter(Boolean);
+
+    collaboratorDetails.value = collaborators.map(collab => {
+        const userDetail = details.find(d => d.id === collab.user_id);
+        return {
+            ...collab,
+            name: userDetail?.name || `User ${collab.user_id}`,
+            role: userDetail?.role || 'Unknown',
+        };
+    });
+  } catch (err) {
+    console.error('Error fetching collaborator details:', err);
+    collaboratorDetails.value = [];
+    alert('Could not load collaborator details for the task.');
+  }
+};
 
 const clearFilters = () => {
   filters.value.status = ''

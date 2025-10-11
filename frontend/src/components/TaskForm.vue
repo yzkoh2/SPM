@@ -1,7 +1,7 @@
 <template>
-  <div class="bg-white rounded-lg shadow-md p-6 mb-8">
+  <div class="bg-white rounded-lg shadow-md p-6">
     <h2 class="text-xl font-semibold text-gray-900 mb-4">{{ formTitle }}</h2>
-    <form @submit.prevent="handleSubmit" class="space-y-4">
+    <form @submit.prevent="handleSubmit" class="space-y-6">
       <div>
         <label class="block text-sm font-medium text-gray-700 mb-2">
           {{ isSubtask ? 'Subtask Title' : 'Task Title' }}
@@ -9,19 +9,20 @@
         <input v-model="localData.title" type="text" required
           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
       </div>
+
       <div>
         <label class="block text-sm font-medium text-gray-700 mb-2">Deadline</label>
         <input v-model="localData.deadline" type="datetime-local" :min="minDeadline"
           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
       </div>
-
+      
       <div>
         <label class="block text-sm font-medium text-gray-700 mb-2">Description</label>
         <textarea v-model="localData.description" rows="3"
           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
           placeholder="Describe the task in detail..."></textarea>
       </div>
-
+      
       <div>
         <label class="block text-sm font-medium text-gray-700 mb-2">Status</label>
         <select v-model="localData.status"
@@ -41,7 +42,7 @@
           <span v-for="n in 10" :key="n">{{ n }}</span>
         </div>
       </div>
-
+      
       <div>
         <label class="flex items-center">
           <input v-model="localData.is_recurring" type="checkbox"
@@ -75,7 +76,6 @@
 
       <div v-if="isEditMode && hierarchicalUsers.length > 0" class="border-t pt-6">
         <label class="block text-sm font-medium text-gray-700 mb-2">Assign New Owner</label>
-        
         <div class="grid grid-cols-2 gap-4 mb-3">
           <div>
             <label class="block text-xs text-gray-500">Filter by Department</label>
@@ -96,23 +96,64 @@
             </select>
           </div>
         </div>
-
-        <select 
-          v-model="localData.owner_id"
-          class="w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm px-3 py-2 border"
-        >
-          <option :value="taskToEdit.owner_id" disabled>-- Select a user to transfer to --</option>
+        <select v-model="localData.owner_id" class="w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm px-3 py-2 border">
+           <option :value="taskToEdit.owner_id" disabled>-- Select a user to transfer to --</option>
           <option v-for="user in filteredUsers" :key="user.id" :value="user.id">
             {{ user.name }} ({{ user.role }})
           </option>
         </select>
       </div>
-
-       <div v-else-if="isEditMode" class="border-t pt-6">
+      <div v-else-if="isEditMode" class="border-t pt-6">
          <label class="block text-sm font-medium text-gray-700">Owner</label>
          <p class="text-xs text-gray-500 mt-1">Your role does not permit transferring this task.</p>
       </div>
 
+      <div class="border-t pt-6">
+        <label class="block text-sm font-medium text-gray-700 mb-2">Manage Collaborators</label>
+        
+        <div class="space-y-2 mb-4">
+          <div v-if="localCollaborators.length === 0" class="text-sm text-gray-500">No collaborators added yet.</div>
+          <div v-for="collaborator in localCollaborators" :key="collaborator.user_id" class="flex items-center justify-between p-2 bg-gray-50 rounded-md">
+            <span class="text-sm font-medium text-gray-800">{{ collaborator.name }} ({{ collaborator.role }})</span>
+            <button @click="removeCollaborator(collaborator.user_id)" type="button" class="text-red-500 hover:text-red-700 text-xs font-semibold">
+              Remove
+            </button>
+          </div>
+        </div>
+        
+        <div class="grid grid-cols-2 gap-4 mb-3">
+          <div>
+            <label class="block text-xs text-gray-500">Filter by Department</label>
+            <select v-model="collaboratorDepartmentFilter" class="w-full mt-1 border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm px-3 py-2 border">
+              <option value="">All Departments</option>
+              <option v-for="dept in collaboratorDepartments" :key="dept" :value="dept">
+                {{ dept }}
+              </option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs text-gray-500">Filter by Team</label>
+            <select v-model="collaboratorTeamFilter" class="w-full mt-1 border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm px-3 py-2 border">
+              <option value="">All Teams</option>
+              <option v-for="team in collaboratorTeams" :key="team" :value="team">
+                {{ team }}
+              </option>
+            </select>
+          </div>
+        </div>
+
+        <div class="flex items-center space-x-2">
+          <select v-model="selectedCollaboratorId" class="flex-grow border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm px-3 py-2 border">
+            <option :value="null" disabled>Select a user to add...</option>
+            <option v-for="user in availableCollaborators" :key="user.id" :value="user.id">
+              {{ user.name }} ({{ user.role }})
+            </option>
+          </select>
+          <button @click="addCollaborator" type="button" :disabled="!selectedCollaboratorId" class="px-4 py-2 bg-indigo-500 hover:bg-indigo-600 text-white rounded-md text-sm font-medium disabled:opacity-50">
+            Add
+          </button>
+        </div>
+      </div>
 
       <div class="flex justify-end space-x-3 pt-4">
         <button type="button" @click="$emit('cancel')"
@@ -129,7 +170,7 @@
 </template>
 
 <script setup>
-import { ref, watch, computed } from 'vue'
+import { ref, watch, computed, watchEffect } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 
 const authStore = useAuthStore()
@@ -140,7 +181,8 @@ const props = defineProps({
   submitButtonText: { type: String, default: 'Create Task' },
   submitButtonLoadingText: { type: String, default: 'Creating...' },
   taskToEdit: { type: Object, default: null },
-  allUsers: { type: Array, default: () => [] }
+  allUsers: { type: Array, default: () => [] },
+  currentCollaborators: { type: Array, default: () => [] }
 })
 
 const emit = defineEmits(['submit', 'cancel'])
@@ -162,28 +204,86 @@ const defaultFormData = {
 }
 
 const localData = ref({ ...defaultFormData })
+const localCollaborators = ref([])
+const selectedCollaboratorId = ref(null)
 
-// --- COMBINED FILTERING LOGIC ---
+// --- COLLABORATOR LOGIC ---
 
+watchEffect(() => {
+  if (isEditMode.value) {
+    localCollaborators.value = JSON.parse(JSON.stringify(props.currentCollaborators || []))
+  } else {
+    localCollaborators.value = []
+  }
+})
+
+const collaboratorDepartmentFilter = ref('');
+const collaboratorTeamFilter = ref('');
+
+const collaboratorDepartments = computed(() => {
+  const depts = props.allUsers.map(u => u.department).filter(Boolean);
+  return [...new Set(depts)];
+});
+
+const collaboratorTeams = computed(() => {
+  let users = props.allUsers;
+  if (collaboratorDepartmentFilter.value) {
+    users = users.filter(u => u.department === collaboratorDepartmentFilter.value);
+  }
+  const teams = users.map(u => u.team).filter(Boolean);
+  return [...new Set(teams)];
+});
+
+watch(collaboratorDepartmentFilter, () => {
+  collaboratorTeamFilter.value = '';
+});
+
+
+const availableCollaborators = computed(() => {
+  const currentIds = new Set(localCollaborators.value.map(c => c.user_id));
+  const ownerId = isEditMode.value ? props.taskToEdit.owner_id : authStore.user.id;
+  currentIds.add(ownerId);
+
+  let users = props.allUsers.filter(u => !currentIds.has(u.id));
+
+  if (collaboratorDepartmentFilter.value) {
+    users = users.filter(u => u.department === collaboratorDepartmentFilter.value);
+  }
+  if (collaboratorTeamFilter.value) {
+    users = users.filter(u => u.team === collaboratorTeamFilter.value);
+  }
+  return users;
+});
+
+function addCollaborator() {
+  if (!selectedCollaboratorId.value) return;
+
+  const userToAdd = props.allUsers.find(u => u.id === selectedCollaboratorId.value);
+  if (userToAdd) {
+    localCollaborators.value.push({
+      user_id: userToAdd.id,
+      name: userToAdd.name,
+      role: userToAdd.role,
+    });
+  }
+  selectedCollaboratorId.value = null;
+}
+
+function removeCollaborator(userId) {
+  localCollaborators.value = localCollaborators.value.filter(c => c.user_id !== userId);
+}
+
+
+// --- Owner Transfer Logic ---
 const departmentFilter = ref('');
 const teamFilter = ref('');
-
-const roleHierarchy = {
-  'SM': 4,
-  'HR': 4,
-  'Director': 3,
-  'Manager': 2,
-  'Staff': 1
-};
+const roleHierarchy = { 'SM': 4, 'HR': 4, 'Director': 3, 'Manager': 2, 'Staff': 1 };
 
 const hierarchicalUsers = computed(() => {
   const currentUserRole = authStore.user?.role;
   const currentUserId = authStore.user?.id;
-  
   if (!currentUserRole || !currentUserId || !props.allUsers.length) return [];
-  
   const currentUserRank = roleHierarchy[currentUserRole] || 0;
-
   return props.allUsers.filter(user => {
     const userRank = roleHierarchy[user.role] || 0;
     return user.id !== currentUserId && userRank < currentUserRank;
@@ -210,18 +310,16 @@ watch(departmentFilter, () => {
 
 const filteredUsers = computed(() => {
   let users = hierarchicalUsers.value;
-
   if (departmentFilter.value) {
     users = users.filter(user => user.department === departmentFilter.value);
   }
-
   if (teamFilter.value) {
     users = users.filter(user => user.team === teamFilter.value);
   }
-
   return users;
 });
-// --- END COMBINED LOGIC ---
+
+// --- Date Formatting and Logic ---
 
 const formatDateForInput = (dateString) => {
   if (!dateString) return '';
@@ -231,26 +329,21 @@ const formatDateForInput = (dateString) => {
   const day = String(date.getDate()).padStart(2, '0');
   const hours = String(date.getHours()).padStart(2, '0');
   const minutes = String(date.getMinutes()).padStart(2, '0');
-
-  // Construct the string in the required format YYYY-MM-DDTHH:mm
   return `${year}-${month}-${day}T${hours}:${minutes}`;
 };
 
-// --- CORRECTED MINIMUM DEADLINE LOGIC ---
 const minDeadline = computed(() => {
-  // If we are editing a task AND that task already has a deadline,
-  // the minimum should be that existing deadline.
   if (isEditMode.value && localData.value.deadline) {
     return localData.value.deadline;
   }
-  // Otherwise (for new tasks), the minimum is the current time.
   return formatDateForInput(new Date());
 });
-// --- END CORRECTION ---
 
 const minRecurrenceEndDate = computed(() => {
   return localData.value.deadline || minDeadline.value;
 });
+
+// --- Watchers ---
 
 watch(() => props.taskToEdit, (task) => {
   if (task) {
@@ -278,14 +371,27 @@ watch(() => localData.value.deadline, (newDeadline) => {
   }
 });
 
+// --- Form Submission ---
+
 const handleSubmit = () => {
   if (!localData.value.title.trim()) {
     alert('Please fill in a Title for the task.')
     return
   }
-  emit('submit', { ...localData.value })
-  if (!isEditMode.value) {
-    localData.value = { ...defaultFormData }
-  }
+
+  // Calculate collaborator changes for the final payload
+  const initialIds = new Set((props.currentCollaborators || []).map(c => c.user_id));
+  const finalIds = new Set(localCollaborators.value.map(c => c.user_id));
+
+  const collaborators_to_add = [...finalIds].filter(id => !initialIds.has(id));
+  const collaborators_to_remove = [...initialIds].filter(id => !finalIds.has(id));
+
+  const payload = { 
+    ...localData.value,
+    collaborators_to_add,
+    collaborators_to_remove,
+  };
+
+  emit('submit', payload)
 }
 </script>
