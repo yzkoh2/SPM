@@ -351,7 +351,7 @@
               <div class="flex items-center space-x-2 ml-4">
                 <a :href="attachment.url" target="_blank"
                   class="text-indigo-600 hover:text-indigo-500 text-sm font-medium">
-                  Download
+                  View Attachment
                 </a>
                 <button v-if="isOwner" @click="deleteAttachment(task.id, attachment.id)"
                   class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md text-sm font-medium cursor-pointer">
