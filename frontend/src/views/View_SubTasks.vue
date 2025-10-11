@@ -48,6 +48,7 @@
             :task-to-edit="subtaskToEdit"
             :is-subtask="true"
             :is-submitting="isUpdating"
+            :all-users="allUsers"
             submit-button-text="Update Subtask"
             submit-button-loading-text="Updating..."
             @submit="updateSubtask"
@@ -156,6 +157,7 @@ const isCreating = ref(false)
 const showEditForm = ref(false)
 const isUpdating = ref(false)
 const subtaskToEdit = ref(null)
+const allUsers = ref([])
 
 const KONG_API_URL = "http://localhost:8000"
 
@@ -168,6 +170,20 @@ const progressPercentage = computed(() => {
   if (subtasks.value.length === 0) return 0
   return Math.round((completedCount.value / subtasks.value.length) * 100)
 })
+
+const fetchAllUsers = async () => {
+  try {
+    // Assume you have an endpoint that returns all users
+    const response = await fetch(`${KONG_API_URL}/user`);
+    if (response.ok) {
+      allUsers.value = await response.json();
+    } else {
+      console.error("Failed to fetch all users.");
+    }
+  } catch (err) {
+    console.error("Error fetching all users:", err);
+  }
+};
 
 // Function to fetch parent task details
 async function fetchParentTask() {
@@ -381,6 +397,7 @@ onMounted(async () => {
   }
   await fetchParentTask()
   await fetchSubtasks()
+  fetchAllUsers();
 })
 </script>
 

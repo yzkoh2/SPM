@@ -28,6 +28,7 @@
         <div class="relative w-full max-w-2xl">
           <TaskForm
             :task-to-edit="taskToEdit"
+            :all-users="allUsers"
             :is-submitting="isUpdating"
             submit-button-text="Update Task"
             submit-button-loading-text="Updating..."
@@ -194,6 +195,7 @@ const tasks = ref([])
 const loading = ref(true)
 const error = ref(null)
 const role = ref(null)
+const allUsers = ref([])
 
 // Form states
 const showCreateForm = ref(false)
@@ -246,6 +248,20 @@ const filteredTasks = computed(() => {
 })
 
 // Methods
+const fetchAllUsers = async () => {
+  try {
+    // Assume you have an endpoint that returns all users
+    const response = await fetch(`${KONG_API_URL}/user`);
+    if (response.ok) {
+      allUsers.value = await response.json();
+    } else {
+      console.error("Failed to fetch all users.");
+    }
+  } catch (err) {
+    console.error("Error fetching all users:", err);
+  }
+};
+
 const fetchTasks = async (userID) => {
   try {
     loading.value = true
@@ -433,6 +449,7 @@ onMounted(() => {
   if (authStore.isAuthenticated) {
     fetchTasks(authStore.user.id)
     role.value = authStore.user.role
+    fetchAllUsers();
   } else {
     authStore.logout()
   }
