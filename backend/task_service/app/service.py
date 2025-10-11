@@ -154,8 +154,25 @@ def update_task(task_id, user_id, task_data):
                     task.status = TaskStatusEnum(task_data['status'])
                 except ValueError:
                     return None, "Invalid status value"
+            elif field == 'owner_id' and data:
+                new_owner_id = data
+                # Set the new owner on the task
+                task.owner_id = new_owner_id
+                
+                try:
+                    collaborator_insert = task_collaborators.insert().values(
+                        task_id=task_id,
+                        user_id=new_owner_id
+                    )
+                    db.session.execute(collaborator_insert)
+                    db.session.commit()
+                except Exception as e:
+                    print(f"Error adding new owner as collaborator: {e}")
+                    db.session.rollback()
+                    raise e  
             else:
-                setattr(task, field, data)
+                if hasattr(task, field):
+                    setattr(task, field, data)
         
         db.session.flush()
 

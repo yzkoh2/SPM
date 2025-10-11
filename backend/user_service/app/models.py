@@ -42,15 +42,27 @@ class User(db.Model):
     # Methods
     
     def to_json(self):
-        return {
-            # 'username': self.username,
+        user_data = {
             'id': self.id,
             'username': self.username,
             'name': self.name,
             'email': self.email,
-            'role': self.role.value,
-            'team_id': self.team_id  
+            'role': self.role.value if self.role else None,
+            'team_id': self.team_id
         }
+
+        # Safely access related team and department information
+        if self.team:
+            user_data['team'] = self.team.name
+            if self.team.department:
+                user_data['department'] = self.team.department.name
+            else:
+                user_data['department'] = None # Handle case where team has no department
+        else:
+            user_data['team'] = None
+            user_data['department'] = None
+
+        return user_data
 
 class Team(db.Model):
     """Team in a company."""

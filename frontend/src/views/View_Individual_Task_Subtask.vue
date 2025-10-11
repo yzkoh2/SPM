@@ -24,6 +24,7 @@
         <div class="relative w-full max-w-2xl">
           <TaskForm
             :task-to-edit="taskToEdit"
+            :all-users="allUsers"
             :is-subtask="isSubtask"
             :is-submitting="isUpdating"
             submit-button-text="Update Task"
@@ -385,6 +386,7 @@ const newComment = ref('')
 const addingComment = ref(false)
 const collaborators = ref([])
 const collaboratorDetails = ref([])
+const allUsers = ref([])
 
 // Form states
 const showEditForm = ref(false)
@@ -511,6 +513,20 @@ const fetchCollaborators = async (taskId) => {
     collaboratorDetails.value = []
   }
 }
+
+const fetchAllUsers = async () => {
+  try {
+    // Assume you have an endpoint that returns all users
+    const response = await fetch(`${KONG_API_URL}/user`);
+    if (response.ok) {
+      allUsers.value = await response.json();
+    } else {
+      console.error("Failed to fetch all users.");
+    }
+  } catch (err) {
+    console.error("Error fetching all users:", err);
+  }
+};
 
 const fetchUserDetails = async (userId) => {
   try {
@@ -819,6 +835,7 @@ watch(
 // Load task details when component mounts
 onMounted(() => {
   fetchTaskDetails()
+  fetchAllUsers();
 })
 </script>
 
