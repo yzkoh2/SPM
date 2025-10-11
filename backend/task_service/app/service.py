@@ -220,16 +220,9 @@ def update_task(task_id, user_id, task_data):
 
             # Remove collaborators from the task and all its subtasks
             collaborators_to_remove = task_data.get('collaborators_to_remove')
+            collaborators_to_remove = [uid for uid in collaborators_to_remove if uid != task.owner_id]
             if collaborators_to_remove:
-                def get_all_subtask_ids(t_id):
-                    ids = {t_id}
-                    children = Task.query.filter_by(parent_task_id=t_id).all()
-                    for child in children:
-                        ids.update(get_all_subtask_ids(child.id))
-                    return ids
-                
                 task_ids_to_update = get_all_subtask_ids(task.id)
-                
                 db.session.execute(
                     task_collaborators.delete().where(
                         task_collaborators.c.task_id.in_(task_ids_to_update) &
@@ -533,6 +526,12 @@ def remove_task_collaborator(task_id, collaborator_ids, user_id):
         print(f"Error in remove_task_collaborator: {e}")
         raise e
 
+def get_all_subtask_ids(task_id):
+    ids = {task_id}
+    children = Task.query.filter_by(parent_task_id=task_id).all()
+    for child in children:
+        ids.update(get_all_subtask_ids(child.id))
+    return ids
 # Not Settled
 
 # Add these functions to your existing task_service/app/service.py file

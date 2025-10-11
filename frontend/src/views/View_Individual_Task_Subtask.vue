@@ -27,6 +27,7 @@
             :all-users="allUsers"
             :is-subtask="isSubtask"
             :is-submitting="isUpdating"
+            :current-collaborators="collaboratorDetails"
             submit-button-text="Update Task"
             submit-button-loading-text="Updating..."
             @submit="updateTask"
@@ -103,7 +104,7 @@
                 class="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-md text-sm font-medium">
                 {{ isSubtask ? 'Edit Subtask' : 'Edit Task' }}
               </button>
-              <button v-if="isCollaborator" @click="deleteTask"
+              <button v-if="isOwner" @click="deleteTask"
                 class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md text-sm font-medium">
                 Delete
               </button>
@@ -402,6 +403,10 @@ const canEditTask = computed(() => {
   return task.value.owner_id === authStore.user.id
 })
 
+const isOwner = computed(() => {
+  return authStore.user.id === task.value.owner_id
+})  
+
 const isCollaborator = computed(() => {
   // Ensure we have the necessary data before checking
   if (!authStore.user || !task.value) {
@@ -670,7 +675,7 @@ const closeEditModal = () => {
 };
 
 const updateTask = async (formData) => {
-  isUpdating.value = true;
+  isUpdating.value = true
   try {
     const originalTask = taskToEdit.value;
     const changedFields = {};
