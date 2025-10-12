@@ -24,8 +24,10 @@
         <div class="relative w-full max-w-2xl">
           <TaskForm
             :task-to-edit="taskToEdit"
+            :all-users="allUsers"
             :is-subtask="isSubtask"
             :is-submitting="isUpdating"
+            :current-collaborators="collaboratorDetails"
             submit-button-text="Update Task"
             submit-button-loading-text="Updating..."
             @submit="updateTask"
@@ -51,7 +53,7 @@
           </div>
         </div>
         <div class="mt-4">
-          <button @click="fetchTaskDetails" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md text-sm">
+          <button @click="fetchTaskDetails" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md text-sm cursor-pointer">
             Try Again
           </button>
         </div>
@@ -90,7 +92,7 @@
             </div>
             <div class="flex items-center space-x-2 ml-4">
               <button v-if="isCollaborator" @click="showStatusModal = true"
-                class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-md text-sm font-medium flex items-center">
+                class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-md text-sm font-medium flex items-center cursor-pointer">
                 <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                     d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15">
@@ -99,11 +101,11 @@
                 Update Status
               </button>
               <button v-if="canEditTask" @click="editTask"
-                class="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-md text-sm font-medium">
+                class="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-md text-sm font-medium cursor-pointer">
                 {{ isSubtask ? 'Edit Subtask' : 'Edit Task' }}
               </button>
-              <button v-if="isCollaborator" @click="deleteTask"
-                class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md text-sm font-medium">
+              <button v-if="isOwner" @click="deleteTask"
+                class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md text-sm font-medium cursor-pointer">
                 Delete
               </button>
             </div>
@@ -286,7 +288,7 @@
 
             <div v-if="isCollaborator" class="mt-2 flex justify-end">
               <button @click="addComment({ body: newComment})" :disabled="!newComment.trim() || addingComment"
-                class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-md text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed">
+                class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-md text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer">
                 <span v-if="addingComment">Adding...</span>
                 <span v-else>Add Comment</span>
               </button>
@@ -314,8 +316,25 @@
           </div>
         </div>
 
+        <AttachmentModal 
+            :show="showAttachmentModal" 
+            :task-id="task.id" 
+            :is-uploading="isUploadingAttachment"
+            @close="showAttachmentModal = false" 
+            @upload="addAttachment" 
+            v-if="task"
+        />
         <div class="bg-white rounded-lg shadow-md p-6">
-          <h3 class="text-xl font-semibold text-gray-900 mb-6">Attachments ({{ task.attachments?.length || 0 }})</h3>
+          <div class="flex justify-between items-center mb-6">
+            <h3 class="text-xl font-semibold text-gray-900">
+              Attachments ({{ task.attachments?.length || 0 }})
+            </h3>
+            
+            <button v-if="isOwner" @click="showAttachmentModal = true"
+              class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-md text-sm font-medium disabled:opacity-50 cursor-pointer">
+              <span>Add Attachment</span>
+            </button>
+          </div>
 
           <div v-if="task.attachments && task.attachments.length > 0" class="space-y-3">
             <div v-for="attachment in task.attachments" :key="attachment.id"
@@ -328,10 +347,17 @@
                 </svg>
                 <span class="text-gray-900">{{ attachment.filename }}</span>
               </div>
-              <a :href="attachment.url" target="_blank"
-                class="text-indigo-600 hover:text-indigo-500 text-sm font-medium">
-                Download
-              </a>
+
+              <div class="flex items-center space-x-2 ml-4">
+                <a :href="attachment.url" target="_blank"
+                  class="text-indigo-600 hover:text-indigo-500 text-sm font-medium">
+                  View Attachment
+                </a>
+                <button v-if="isOwner" @click="deleteAttachment(task.id, attachment.id)"
+                  class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md text-sm font-medium cursor-pointer">
+                  Delete
+                </button>
+              </div>
             </div>
           </div>
 
@@ -358,6 +384,7 @@ import 'floating-vue/dist/style.css'
 import StatusUpdateModal from '@/components/StatusUpdateModal.vue'
 import CommentItem from '@/components/CommentItem.vue'
 import TaskForm from '@/components/TaskForm.vue'
+import AttachmentModal from '@/components/AttachmentModal.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -385,6 +412,11 @@ const newComment = ref('')
 const addingComment = ref(false)
 const collaborators = ref([])
 const collaboratorDetails = ref([])
+const allUsers = ref([])
+
+// Modal States
+const showAttachmentModal = ref(false)
+const isUploadingAttachment = ref(false)
 
 // Form states
 const showEditForm = ref(false)
@@ -399,6 +431,10 @@ const canEditTask = computed(() => {
   if (!task.value || !authStore.user) return false
   return task.value.owner_id === authStore.user.id
 })
+
+const isOwner = computed(() => {
+  return authStore.user.id === task.value.owner_id
+})  
 
 const isCollaborator = computed(() => {
   // Ensure we have the necessary data before checking
@@ -449,6 +485,14 @@ const fetchTaskDetails = async () => {
     if (response.ok) {
       task.value = await response.json()
       comments.value = task.value.comments || []
+      if (task.value.attachments) {
+        const urlPromises = task.value.attachments.map(async (attachment) => {
+          const url = await getS3URL(task.value.id, attachment.id)
+          return { ...attachment, url: url }
+        })
+        // Wait for all URLs to be fetched and update the attachments array
+        task.value.attachments = await Promise.all(urlPromises)
+      }
     } else if (response.status === 404) {
       error.value = 'Task not found'
     } else {
@@ -512,6 +556,20 @@ const fetchCollaborators = async (taskId) => {
   }
 }
 
+const fetchAllUsers = async () => {
+  try {
+    // Assume you have an endpoint that returns all users
+    const response = await fetch(`${KONG_API_URL}/user`);
+    if (response.ok) {
+      allUsers.value = await response.json();
+    } else {
+      console.error("Failed to fetch all users.");
+    }
+  } catch (err) {
+    console.error("Error fetching all users:", err);
+  }
+};
+
 const fetchUserDetails = async (userId) => {
   try {
     const response = await fetch(`${KONG_API_URL}/user/${userId}`)
@@ -525,6 +583,79 @@ const fetchUserDetails = async (userId) => {
   } catch (err) {
     console.error(`Error fetching user ${userId}:`, err)
     return null
+  }
+}
+
+const getS3URL = async (taskId, attachmentId) => {
+  try {
+    const response = await fetch(`${KONG_API_URL}/tasks/${taskId}/attachments/${attachmentId}`)
+
+    if (response.ok) {
+      const data = await response.json()
+      return data.url
+    } else {
+      console.warn(`Failed to get S3 URL for attachment ${attachmentId}`)
+      return '#'
+    }
+  } catch (err) {
+    console.error('Error fetching S3 URL:', err)
+    return '#'
+  }
+}
+
+const addAttachment = async ({file, name, taskId}) => {
+  isUploadingAttachment.value = true
+  const formData = new FormData()
+  formData.append('file', file)
+  formData.append('filename', name)
+
+  try {
+    const response = await fetch(`${KONG_API_URL}/tasks/${taskId}/attachments`, {
+      method: 'POST',
+      body: formData
+    })
+
+    if (response.ok) {
+      // Refresh task details to get updated attachments
+      await fetchTaskDetails()
+      alert('Attachment uploaded successfully!')
+      showAttachmentModal.value = false
+    } else {
+      const errorData = await response.json()
+      throw new Error(errorData.error || 'Failed to upload attachment')
+    }
+  } catch (err) {
+    console.error('Error uploading attachment:', err)
+    alert('Failed to upload attachment: ' + err.message)
+  } finally {
+    isUploadingAttachment.value = false
+  }
+}
+
+const deleteAttachment = async (taskId, attachmentId) => {
+  if (!confirm('Are you sure you want to delete this attachment?')) {
+    return
+  }
+
+  try {
+    const response = await fetch(`${KONG_API_URL}/tasks/${taskId}/attachments/${attachmentId}`, {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    })
+
+    if (response.ok) {
+      // Refresh task details to get updated attachments
+      await fetchTaskDetails()
+      alert('Attachment deleted successfully!')
+    } else {
+      const errorData = await response.json()
+      throw new Error(errorData.error || 'Failed to delete attachment')
+    }
+  } catch (err) {
+    console.error('Error deleting attachment:', err)
+    alert('Failed to delete attachment: ' + err.message)
   }
 }
 
@@ -564,6 +695,7 @@ const handleStatusUpdate = async ({ newStatus, comment }) => {
   } catch (err) {
     console.error('Error updating status:', err)
     alert('Failed to update status: ' + err.message)
+    showStatusModal.value = false
     throw err
   }
 }
@@ -654,7 +786,7 @@ const closeEditModal = () => {
 };
 
 const updateTask = async (formData) => {
-  isUpdating.value = true;
+  isUpdating.value = true
   try {
     const originalTask = taskToEdit.value;
     const changedFields = {};
@@ -819,6 +951,7 @@ watch(
 // Load task details when component mounts
 onMounted(() => {
   fetchTaskDetails()
+  fetchAllUsers();
 })
 </script>
 

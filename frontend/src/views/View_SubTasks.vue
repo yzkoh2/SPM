@@ -37,7 +37,10 @@
       </div>
 
       <div class="px-4 sm:px-0">
-        <TaskForm v-if="showCreateForm" title="Create New Subtask" :is-subtask="true" :is-submitting="isCreating"
+        <TaskForm v-if="showCreateForm" title="Create New Subtask" 
+          :is-subtask="true" 
+          :is-submitting="isCreating"
+          :all-users="allUsers"
           submit-button-text="Create Subtask" submit-button-loading-text="Creating..." @submit="createSubtask"
           @cancel="showCreateForm = false" />
       </div>
@@ -48,6 +51,8 @@
             :task-to-edit="subtaskToEdit"
             :is-subtask="true"
             :is-submitting="isUpdating"
+            :all-users="allUsers"
+            :current-collaborators="collaboratorDetails"
             submit-button-text="Update Subtask"
             submit-button-loading-text="Updating..."
             @submit="updateSubtask"
@@ -156,6 +161,8 @@ const isCreating = ref(false)
 const showEditForm = ref(false)
 const isUpdating = ref(false)
 const subtaskToEdit = ref(null)
+const allUsers = ref([])
+const collaboratorDetails = ref([])
 
 const KONG_API_URL = "http://localhost:8000"
 
@@ -168,6 +175,20 @@ const progressPercentage = computed(() => {
   if (subtasks.value.length === 0) return 0
   return Math.round((completedCount.value / subtasks.value.length) * 100)
 })
+
+const fetchAllUsers = async () => {
+  try {
+    // Assume you have an endpoint that returns all users
+    const response = await fetch(`${KONG_API_URL}/user`);
+    if (response.ok) {
+      allUsers.value = await response.json();
+    } else {
+      console.error("Failed to fetch all users.");
+    }
+  } catch (err) {
+    console.error("Error fetching all users:", err);
+  }
+};
 
 // Function to fetch parent task details
 async function fetchParentTask() {
@@ -217,6 +238,37 @@ async function fetchSubtasks() {
   }
 }
 
+const fetchCollaboratorsForTask = async (taskId) => {
+  try {
+    const response = await fetch(`${KONG_API_URL}/tasks/${taskId}/collaborators`);
+    if (!response.ok) {
+        throw new Error('Failed to fetch collaborators');
+    }
+    const collaborators = await response.json();
+
+    const detailsPromises = collaborators.map(collab =>
+        fetch(`${KONG_API_URL}/user/${collab.user_id}`).then(res => {
+            if (res.ok) return res.json();
+            return null;
+        })
+    );
+    const details = (await Promise.all(detailsPromises)).filter(Boolean);
+
+    collaboratorDetails.value = collaborators.map(collab => {
+        const userDetail = details.find(d => d.id === collab.user_id);
+        return {
+            ...collab,
+            name: userDetail?.name || `User ${collab.user_id}`,
+            role: userDetail?.role || 'Unknown',
+        };
+    });
+  } catch (err) {
+    console.error('Error fetching collaborator details:', err);
+    collaboratorDetails.value = [];
+    alert('Could not load collaborator details for the task.');
+  }
+};
+
 // Function to create subtask
 async function createSubtask(formData) {
   try {
@@ -233,7 +285,8 @@ async function createSubtask(formData) {
       is_recurring: formData.is_recurring,
       recurrence_interval: formData.recurrence_interval,
       recurrence_days: formData.recurrence_days,
-      recurrence_end_date: formData.recurrence_end_date
+      recurrence_end_date: formData.recurrence_end_date,
+      collaborators_to_add: formData.collaborators_to_add || []
     }
 
     const response = await fetch(`${KONG_API_URL}/tasks`, {
@@ -324,6 +377,7 @@ function editSubtask(subtask) {
     return
   }
   subtaskToEdit.value = { ...subtask };
+  fetchCollaboratorsForTask(subtask.id);
   showEditForm.value = true
 }
 
@@ -381,6 +435,7 @@ onMounted(async () => {
   }
   await fetchParentTask()
   await fetchSubtasks()
+  fetchAllUsers();
 })
 </script>
 

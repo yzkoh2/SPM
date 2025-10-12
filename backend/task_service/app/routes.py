@@ -185,14 +185,14 @@ def get_task_subtask_collaborators(task_id):
 @task_bp.route('/tasks/<int:task_id>/collaborators', methods=['POST'])
 def add_collaborator_route(task_id):
     data = request.get_json()
-    collaborator_id = data.get('collaborator_id')
+    collaborator_ids = data.get('collaborator_ids')
     requested_by = data.get('requested_by')
 
-    if not collaborator_id or not requested_by:
-        return jsonify({"error": "Missing collaborator_id"}), 400
+    if not collaborator_ids or not requested_by:
+        return jsonify({"error": "Missing collaborator_ids"}), 400
 
     try:
-        service.add_task_collaborator(task_id, collaborator_id, requested_by)
+        service.add_task_collaborators(task_id, collaborator_ids, requested_by)
         return jsonify({"message": "Collaborator added successfully"}), 201
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -200,18 +200,62 @@ def add_collaborator_route(task_id):
 @task_bp.route('/tasks/<int:task_id>/collaborators', methods=['DELETE'])
 def remove_collaborator_route(task_id):
     data = request.get_json()
-    collaborator_id = data.get('collaborator_id')
+    collaborator_ids = data.get('collaborator_id')
     requested_by = data.get('requested_by')
 
-    if not collaborator_id or not requested_by:
+    if not collaborator_ids or not requested_by:
         return jsonify({"error": "Missing collaborator_id"}), 400
 
     try:
-        service.remove_task_collaborator(task_id, collaborator_id, requested_by)
+        service.remove_task_collaborator(task_id, collaborator_ids, requested_by)
         return jsonify({"message": "Collaborator removed successfully"}), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+@task_bp.route("/tasks/<int:task_id>/attachments", methods=["POST"])
+def add_attachment_route(task_id):
+    """Handles file upload to S3 and adds attachment to a task"""
+    if 'file' not in request.files:
+        return jsonify({"error": "No file part"}), 400
+    
+    file = request.files['file']
+    if file.filename == '':
+        return jsonify({"error": "No selected file"}), 400
+
+    filename = request.form.get('filename')
+
+    try:
+        new_attachment = service.add_attachment(task_id, file, filename)
+        if not new_attachment:
+            return jsonify({"error": "Task not found"}), 404
+        return jsonify(new_attachment), 201
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@task_bp.route("/tasks/<int:task_id>/attachments/<int:attachment_id>", methods=["GET"])
+def get_attachment_route(task_id, attachment_id):
+    """Get a specific attachment for a task"""
+    try:
+        attachment, message = service.get_attachment_url(task_id, attachment_id)
+        if not attachment:
+            return jsonify({"error": message}), 404
+        return jsonify(attachment), 200
+    except Exception as e:
+        print(f"Error in get_attachment: {e}")
+        return jsonify({"error": str(e)}), 500
+
+@task_bp.route("/tasks/<int:task_id>/attachments/<int:attachment_id>", methods=["DELETE"])
+def delete_attachment_route(task_id, attachment_id):
+    """Delete an attachment from a task"""
+    try:
+        success, message = service.delete_attachment_url(task_id, attachment_id)
+        if success:
+            return jsonify({"message": message}), 200
+        else:
+            return jsonify({"error": message}), 404
+    except Exception as e:
+        print(f"Error in delete_attachment: {e}")
+        return jsonify({"error": str(e)}), 500
 # Not Settled
 # ==================== PROJECT ROUTES ====================
 

@@ -4,6 +4,9 @@ from sqlalchemy.orm import aliased
 from datetime import datetime, timedelta
 from dateutil.relativedelta import relativedelta
 from .rabbitmq_publisher import publish_status_update 
+from werkzeug.utils import secure_filename
+from flask import current_app
+import uuid
 
 # Settled
 def get_all_tasks(user_id):
@@ -99,27 +102,14 @@ def create_task(task_data):
         
         #Add to database
         db.session.add(new_task)
-        db.session.commit()
+        db.session.flush()
         
-        print(f"Task created with ID: {new_task.id}")
-        try:
-            collaborator_insert = task_collaborators.insert().values(
-                task_id=new_task.id,
-                user_id=new_task.owner_id
-            )
-            db.session.execute(collaborator_insert)
-            db.session.commit()
-            print(f"Owner {new_task.owner_id} added as collaborator for task {new_task.id}")
-        except Exception as e:
-            print(f"Error adding owner as collaborator: {e}")
-            # If this fails, we should roll back the task creation
-            # to avoid inconsistent state.
-            db.session.rollback()
-            # It's important to re-raise the exception to signal that the overall operation failed.
-            raise e
+        collaborators_to_add = set(task_data.get('collaborators_to_add', []))
+        collaborators_to_add.add(new_task.owner_id)
 
-        # Return the created task
-        return new_task.to_json()
+        _add_collaborators_to_parents(new_task, collaborators_to_add)
+
+        db.session.commit()
         
     except Exception as e:
         print(f"Error in create_task: {e}")
@@ -140,35 +130,64 @@ def update_task(task_id, user_id, task_data):
         if not is_owner:
             if not is_collaborator:
                 return None, "Forbidden: You do not have permission to edit this task."
-            for field in task_data:
-                if field != 'status':
-                    return None, "Forbidden: Collaborators can only update the status of the task."
+            if any(field != 'status' for field in task_data):
+                return None, "Forbidden: Collaborators can only update the task's status."
         
         # Track status change
         old_status = None
         status_changed = False
 
         for field, data in task_data.items():
+            if field in ['id', 'owner_id', 'collaborators_to_add', 'collaborators_to_remove']:
+                continue
+
             if field == 'deadline' and data:
                 task.deadline = datetime.fromisoformat(data)
             elif field == 'recurring_end_date' and data:
                 task.recurrence_end_date = datetime.fromisoformat(data)
             elif field == 'status':
                 try:
-                    new_status_enum = TaskStatusEnum(task_data['status'])
+                    # Parse the new status value
+                    new_status_enum = TaskStatusEnum(data)
                     
-                    # Check if status changed
+                    # Validate subtasks before completing
+                    if new_status_enum == TaskStatusEnum.COMPLETED:
+                        if not _are_all_subtasks_completed(task):
+                            return None, "Cannot mark task as completed while it has incomplete subtasks."
+                    
+                    # Track status change for RabbitMQ
                     if task.status != new_status_enum:
                         old_status = task.status.value
-                        task.status = new_status_enum
                         status_changed = True
+                    
+                    # Update the status
+                    task.status = new_status_enum
                     
                 except ValueError:
                     return None, "Invalid status value"
-            else:
+            elif hasattr(task, field):
                 setattr(task, field, data)
-        
-        db.session.flush()
+
+        if is_owner:
+            # First, determine the final set of collaborators to be added.
+            # Use a set to automatically handle duplicates.
+            collaborators_to_add = set(task_data.get('collaborators_to_add', []))
+
+            # If the owner is being changed, update the task and add the new owner
+            # to our set of users to be added as collaborators.
+            new_owner_id = task_data.get('owner_id')
+            if new_owner_id and int(new_owner_id) != task.owner_id:
+                task.owner_id = int(new_owner_id)
+                collaborators_to_add.add(task.owner_id)
+
+            # Add all new collaborators from the consolidated set
+            if collaborators_to_add:
+                _add_collaborators_to_parents(task, collaborators_to_add)
+
+            # Remove collaborators from the task and all its subtasks
+            collaborators_to_remove = task_data.get('collaborators_to_remove')
+            if collaborators_to_remove:
+                _remove_collaborators_from_subtasks(task, set(collaborators_to_remove))
 
         #RECURRENCE LOGIC
         if 'status' in task_data and task.status == TaskStatusEnum.COMPLETED:
@@ -284,6 +303,68 @@ def _calculate_next_due_date(current_deadline, interval, custom_days):
     
     return None
 
+def _add_collaborators_to_parents(task, collaborator_ids):
+    """
+    Helper function to add a set of collaborators to a task and cascade up to all its parents.
+    """
+    if not collaborator_ids:
+        return
+
+    current_task_node = task
+    while current_task_node:
+        result = db.session.execute(
+            task_collaborators.select().with_only_columns(task_collaborators.c.user_id)
+            .where(task_collaborators.c.task_id == current_task_node.id)
+        )
+        existing_collab_ids = {row.user_id for row in result}
+        
+        new_for_this_task = collaborator_ids - existing_collab_ids
+        
+        if new_for_this_task:
+            db.session.execute(task_collaborators.insert(), [
+                {'task_id': current_task_node.id, 'user_id': collab_id} for collab_id in new_for_this_task
+            ])
+        
+        if current_task_node.parent_task_id:
+            current_task_node = Task.query.get(current_task_node.parent_task_id)
+        else:
+            current_task_node = None
+
+def _remove_collaborators_from_subtasks(task, collaborator_ids):
+    """
+    Helper function to remove a set of collaborators from a task and cascade down to all its subtasks.
+    """
+    if not collaborator_ids:
+        return
+
+    task_ids_to_update = _get_all_subtask_ids(task.id)
+    select_owners_query = db.select(Task.owner_id).where(Task.id.in_(task_ids_to_update)).distinct()
+    owner_ids_result = db.session.execute(select_owners_query)
+    protected_owner_ids = {owner_id for (owner_id,) in owner_ids_result}
+
+    # 3. Filter the list of collaborators to remove, excluding protected owners
+    safe_list_to_remove = [
+        user_id for user_id in collaborator_ids if user_id not in protected_owner_ids
+    ]
+
+    # 4. If there are any collaborators left to remove, execute the delete operation
+    if safe_list_to_remove:
+        db.session.execute(
+            task_collaborators.delete().where(
+                task_collaborators.c.task_id.in_(task_ids_to_update) &
+                task_collaborators.c.user_id.in_(safe_list_to_remove)
+            )
+        )
+
+def _are_all_subtasks_completed(task):
+    """Check if status of all subtasks of a task are completed"""
+    if not task.subtasks:
+        return True
+    for subtask in task.subtasks:
+        if subtask.status != TaskStatusEnum.COMPLETED:
+            return False
+    return True
+
 def delete_task(task_id, user_id):
     #Delete a task by ID
     try:
@@ -393,66 +474,183 @@ def get_task_collaborators(task_id):
         print(f"Error in get_task_collaborators: {e}")
         raise e
 
-def add_task_collaborator(task_id, collaborator_id, user_id):
-    #Add a collaborator to a task
+def add_task_collaborators(task_id, collaborator_ids, user_id):
+    """Add a list of collaborators to a task and all its parent tasks."""
+    if not isinstance(collaborator_ids, list) or not collaborator_ids:
+        raise ValueError("collaborator_ids must be a non-empty list.")
+
     task = Task.query.get(task_id)
     if not task:
         raise Exception("Task not found")
-    is_owner = (task.owner_id == user_id)
-    if not is_owner:
+
+    if task.owner_id != user_id:
         raise Exception("Forbidden: You do not have permission to edit this task.")
-    parent_task_id = task.parent_task_id
-    if parent_task_id:
-        result = db.session.execute(
-            task_collaborators.select().with_only_columns([task_collaborators.c.user_id])
-            .where(task_collaborators.c.task_id == parent_task_id)
-        )
-        parent_collab_ids = [row.user_id for row in result]
-        
-        if collaborator_id not in parent_collab_ids:
-            raise Exception("Collaborator must already be a collaborator of parent task.")
+
     try:
-        db.session.execute(
-            task_collaborators.insert().values(
-                task_id=task_id,
-                user_id=collaborator_id  
+        # Use a set to avoid duplicate collaborator IDs
+        collaborators_to_add = set(collaborator_ids)
+        
+        # Start with the current task and move up to its parents
+        current_task = task
+        while current_task:
+            # Get existing collaborators for the current task
+            result = db.session.execute(
+                task_collaborators.select().with_only_columns([task_collaborators.c.user_id])
+                .where(task_collaborators.c.task_id == current_task.id)
             )
-        )
+            existing_collaborators = {row.user_id for row in result}
+            
+            # Determine which collaborators are new for this task
+            new_collaborators_for_task = collaborators_to_add - existing_collaborators
+            
+            if new_collaborators_for_task:
+                new_collaborator_entries = [
+                    {'task_id': current_task.id, 'user_id': collab_id}
+                    for collab_id in new_collaborators_for_task
+                ]
+                db.session.execute(task_collaborators.insert(), new_collaborator_entries)
+            
+            # Move to the parent task
+            if current_task.parent_task_id:
+                current_task = Task.query.get(current_task.parent_task_id)
+            else:
+                current_task = None
+
         db.session.commit()
-        return {"message": "Collaborator added successfully"}
+        return {"message": "Collaborators added successfully to the task and its parents"}
     except Exception as e:
         db.session.rollback()
-        print(f"Error in add_task_collaborator: {e}")
+        print(f"Error in add_task_collaborators: {e}")
         raise e
 
-def remove_task_collaborator(task_id, collaborator_id, user_id):
-    #Remove a collaborator from a task
+def remove_task_collaborator(task_id, collaborator_ids, user_id):
+    """Remove a list of collaborators from a task and all its subtasks."""
+    if not isinstance(collaborator_ids, list) or not collaborator_ids:
+        raise ValueError("collaborator_ids must be a non-empty list.")
+
     task = Task.query.get(task_id)
     if not task:
         raise Exception("Task not found")
+
     is_owner = (task.owner_id == user_id)
     if not is_owner:
         raise Exception("Forbidden: You do not have permission to edit this task.")
-    task_ids = [task_id]
-    children = Task.query.filter_by(parent_task_id=task_id).all()
-    if children:
-        task_ids.extend([child.id for child in children])
+
+    # A recursive function to get all subtask IDs
+    def get_all_subtask_ids(t_id):
+        ids = {t_id}
+        children = Task.query.filter_by(parent_task_id=t_id).all()
+        for child in children:
+            ids.update(get_all_subtask_ids(child.id))
+        return ids
+
+    task_ids_to_update = get_all_subtask_ids(task_id)
+
     try:
         db.session.execute(
             task_collaborators.delete().where(
-                task_collaborators.c.task_id.in_(task_ids) &
-                (task_collaborators.c.user_id == collaborator_id)
+                task_collaborators.c.task_id.in_(task_ids_to_update) &
+                (task_collaborators.c.user_id.in_(collaborator_ids))
             )
         )
         db.session.commit()
-        return {"message": "Collaborator removed successfully"}
+        return {"message": "Collaborators removed successfully from the task and its subtasks"}
     except Exception as e:
         db.session.rollback()
         print(f"Error in remove_task_collaborator: {e}")
         raise e
 
-# Not Settled
+def _get_all_subtask_ids(task_id):
+    ids = {task_id}
+    children = Task.query.filter_by(parent_task_id=task_id).all()
+    for child in children:
+        ids.update(_get_all_subtask_ids(child.id))
+    return ids
 
+def add_attachment(task_id, file, input_filename):
+    """Add an attachment to a task"""
+    try:
+        task = Task.query.get(task_id)
+        if not task:
+            return None
+
+        # Secure the filename and use it as the S3 object key
+        filename = secure_filename(file.filename)
+        s3_object_key = f"{uuid.uuid4()}_{filename}" 
+        
+        # Upload the file object to S3
+        current_app.s3_client.upload_fileobj(
+            file,
+            current_app.config['S3_BUCKET_NAME'],
+            s3_object_key,
+            ExtraArgs={'ContentType': file.content_type}
+        )
+
+        # In the DB, store the filename (S3 key), not a full URL
+        new_attachment = Attachment(
+            filename=input_filename,
+            url=s3_object_key,  # Storing S3 object key in the 'url' field
+            task_id=task_id
+        )
+        db.session.add(new_attachment)
+        db.session.commit()
+        return new_attachment.to_json()
+    except Exception as e:
+        db.session.rollback()
+        raise e
+
+def get_attachment_url(task_id, attachment_id):
+    """Generate a pre-signed URL for an attachment"""
+    try:
+        attachment = Attachment.query.filter_by(
+            id=attachment_id, task_id=task_id
+        ).first()
+
+        if not attachment:
+            return None, "Attachment not found"
+
+        presigned_url = current_app.s3_client.generate_presigned_url(
+            'get_object',
+            Params={
+                'Bucket': current_app.config['S3_BUCKET_NAME'],
+                'Key': attachment.url
+            },
+            ExpiresIn=3600  # URL valid for 1 hour
+        )
+
+        return {
+            "id": attachment.id,
+            "filename": attachment.filename,
+            "url": presigned_url,
+        }, "Success"
+    except Exception as e:
+        print(f"Error generating presigned URL: {e}")
+        return None, "Error generating URL"
+
+def delete_attachment_url(task_id, attachment_id):
+    """Delete an attachment from a task"""
+    try:
+        attachment = Attachment.query.filter_by(
+            id=attachment_id, task_id=task_id
+        ).first()
+
+        if not attachment:
+            return False, "Attachment not found"
+
+        # Delete the file from S3
+        current_app.s3_client.delete_object(
+            Bucket=current_app.config['S3_BUCKET_NAME'],
+            Key=attachment.url
+        )
+
+        # Delete the attachment record from the database
+        db.session.delete(attachment)
+        db.session.commit()
+        return True, "Attachment deleted successfully"
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error deleting attachment: {e}")
+        return False, "Error deleting attachment"
 # Add these functions to your existing task_service/app/service.py file
 
 # ==================== PROJECT FUNCTIONS ====================

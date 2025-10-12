@@ -72,19 +72,7 @@ def login():
         print(f"An error has occured: {e}")
         return jsonify({'error': 'An unexpected error has occured. Please try again later.'}), 500
 
-
-# --- Protected Routes ---
-@user_bp.route('/user/verifyJWT', methods=['GET'])
-@token_required
-def verify_user(current_user):
-    # The current_user is passed from the token_required decorator
-    return jsonify(current_user.to_json())
-
-
-
-# --- added routes for team taskboard ---
-
-@user_bp.route('/users', methods=['GET'])
+@user_bp.route('/user', methods=['GET'])
 def get_all_users():
     """Get all users"""
     try:
@@ -94,36 +82,49 @@ def get_all_users():
         print(f"Error getting all users: {e}")
         return jsonify({'error': str(e)}), 500
 
-@user_bp.route('/teams', methods=['GET'])
+@user_bp.route('/user/teams', methods=['GET'])
 def get_all_teams():
-    """Get all teams with their department information"""
+    """Get all teams"""
     try:
         teams = service.get_all_teams()
-        return jsonify([{
-            'id': team.id,
-            'name': team.name,
-            'department_id': team.department_id
-        } for team in teams]), 200
+        return jsonify([team.to_json() for team in teams]), 200
     except Exception as e:
         print(f"Error getting all teams: {e}")
         return jsonify({'error': str(e)}), 500
 
-@user_bp.route('/users/<int:user_id>/tasks', methods=['GET'])
-def get_user_tasks(user_id):
-    """Get all tasks for a specific user by proxying to task service"""
+@user_bp.route('/user/team/<int:team_id>', methods=['GET'])
+def get_all_users_in_team(team_id):
+    """Get all users in a specific team"""
     try:
-        # This endpoint proxies to the task service
-        import requests
-        
-        # Assuming task service is available at localhost:5001 (adjust if needed)
-        task_service_url = "http://localhost:8000/tasks"
-        response = requests.get(task_service_url, params={'owner_id': user_id})
-        
-        if response.status_code == 200:
-            return jsonify(response.json()), 200
-        else:
-            return jsonify({'error': 'Failed to fetch tasks'}), response.status_code
-            
+        users = service.get_all_users_in_team(team_id)
+        return jsonify([user.to_json() for user in users]), 200
     except Exception as e:
-        print(f"Error getting user tasks: {e}")
+        print(f"Error getting users in team {team_id}: {e}")
         return jsonify({'error': str(e)}), 500
+
+@user_bp.route('/user/departments', methods=['GET'])
+def get_all_dept():
+    """Get all departments"""
+    try:
+        depts = service.get_all_dept()
+        return jsonify([dept.to_json() for dept in depts]), 200
+    except Exception as e:
+        print(f"Error getting all departments: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@user_bp.route('/user/department/<int:dept_id>', methods=['GET'])
+def get_all_users_in_dept(dept_id):
+    """Get all users in a specific department"""
+    try:
+        users = service.get_all_users_in_dept(dept_id)
+        return jsonify([user.to_json() for user in users]), 200
+    except Exception as e:
+        print(f"Error getting users in department {dept_id}: {e}")
+        return jsonify({'error': str(e)}), 500
+
+# --- Protected Routes ---
+@user_bp.route('/user/verifyJWT', methods=['GET'])
+@token_required
+def verify_user(current_user):
+    # The current_user is passed from the token_required decorator
+    return jsonify(current_user.to_json())

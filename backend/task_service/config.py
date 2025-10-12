@@ -15,6 +15,11 @@ class Config:
     
     # Secret key for session management (if needed)
     SECRET_KEY = os.getenv('SECRET_KEY')
+
+    S3_BUCKET_NAME = os.getenv('S3_BUCKET_NAME')
+    S3_ACCESS_KEY = os.getenv('S3_ACCESS_KEY')
+    S3_SECRET_KEY = os.getenv('S3_SECRET_KEY')
+    S3_REGION = os.getenv('S3_REGION')
     
     # RabbitMQ 
     RABBITMQ_URL = os.getenv('RABBITMQ_URL', 'amqp://admin:admin123@rabbitmq:5672/')
