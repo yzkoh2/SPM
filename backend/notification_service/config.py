@@ -22,3 +22,10 @@ class Config:
     USER_SERVICE_URL = os.getenv('USER_SERVICE_URL', 'http://spm_user_service:6000')
     TASK_SERVICE_URL = os.getenv('TASK_SERVICE_URL', 'http://spm_task_service:6001')
     PROJECT_SERVICE_URL = os.getenv('PROJECT_SERVICE_URL', 'http://spm_project_service:6002')
+
+
+class TestConfig(Config):
+    TESTING = True
+    SQLALCHEMY_DATABASE_URI = 'sqlite:///:memory:'
+    SQLALCHEMY_TRACK_MODIFICATIONS = False
+    WTF_CSRF_ENABLED = False   
