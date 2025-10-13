@@ -21,7 +21,7 @@ def get_all_tasks():
         
         tasks = service.get_all_tasks(owner_id)
 
-        if tasks is None:
+        if tasks is None or not isinstance(owner_id, int):
             return jsonify({"error": "Owner ID is required"}), 400
 
         tasks_json = [task.to_json() for task in tasks]
