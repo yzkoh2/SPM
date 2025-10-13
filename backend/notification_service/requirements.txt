@@ -6,6 +6,7 @@ pika
 requests
 psycopg2-binary
 APScheduler
+pytz==2024.1
 # Testing dependencies
 pytest==7.4.3
 pytest-cov==4.1.0

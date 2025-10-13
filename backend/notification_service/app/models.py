@@ -36,3 +36,25 @@ class DeadlineReminder(db.Model):
             'days_before': self.days_before,
             'sent_at': self.sent_at.isoformat() if self.sent_at else None
         }
+
+class OverdueAlert(db.Model):
+    #Track overdue task alerts to prevent duplicate notifications
+    #Example:
+    #Task ID 123 with deadline on Jan 10th:
+    #Jan 11: Send 1 day overdue, record: (task_id=123, days_overdue=1)
+    #Jan 13: Send 3 day overdue, record: (task_id=123, days_overdue=3)
+    #Jan X: Send X day overdue, record: (task_id=123, days_overdue=X), will continue to send day by day (1 time each day) until task is marked completed
+    __tablename__ = 'overdue_alerts'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    task_id = db.Column(db.Integer, nullable=False)
+    alert_date = db.Column(db.Date, nullable=False)
+    days_overdue = db.Column(db.Integer, nullable=False)
+    sent_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    __table_args__ = (
+        db.UniqueConstraint('task_id', 'alert_date', name='uix_task_alert_date'),
+    )
+    
+    def __repr__(self):
+        return f'<OverdueAlert task_id={self.task_id} alert_date={self.alert_date} days_overdue={self.days_overdue}>'

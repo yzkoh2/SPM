@@ -309,7 +309,7 @@ def get_deadline_reminder_email(task_title, days_before, deadline_str, descripti
                         <p style="margin: 0 0 20px 0; color: #374151; font-size: 14px;">
                             Ready to make progress on this task?
                         </p>
-                        <a href="#" style="display: inline-block; background: linear-gradient(135deg, {primary_color} 0%, {secondary_color} 100%); color: #ffffff; text-decoration: none; padding: 14px 35px; border-radius: 10px; font-weight: 600; font-size: 15px; box-shadow: 0 8px 20px rgba(99, 102, 241, 0.3);">
+                        <a href="http://localhost:5173/login" style="display: inline-block; background: linear-gradient(135deg, {primary_color} 0%, {secondary_color} 100%); color: #ffffff; text-decoration: none; padding: 14px 35px; border-radius: 10px; font-weight: 600; font-size: 15px; box-shadow: 0 8px 20px rgba(99, 102, 241, 0.3);">
                             View Task Details
                         </a>
                     </div>
@@ -343,6 +343,194 @@ def get_deadline_reminder_email(task_title, days_before, deadline_str, descripti
             
         </table>
         
+    </body>
+    </html>
+    """
+    
+    return subject, body_html
+
+def get_overdue_task_email(task_title, deadline_str, days_overdue, description, task_status, is_subtask=False):
+    #Generate email template for overdue task notifications
+    task_type = "Subtask" if is_subtask else "Task"
+    
+    #Red/Alert theme for overdue
+    primary_color = '#dc2626'  
+    secondary_color = '#991b1b'  
+    bg_color = '#fef2f2' 
+    light_bg = '#fee2e2' 
+    
+    #Determine urgency level
+    if days_overdue == 1:
+        urgency_badge = '1 Day Overdue'
+        icon = '⚠️'
+        message = 'This task became overdue yesterday.'
+    elif days_overdue <= 3:
+        urgency_badge = f'{days_overdue} Days Overdue'
+        icon = '🔴'
+        message = f'This task has been overdue for {days_overdue} days.'
+    else:
+        urgency_badge = f'{days_overdue} Days Overdue'
+        icon = '🚨'
+        message = f'This task has been overdue for {days_overdue} days. Immediate attention required!'
+    
+    subject = f"🚨 {task_type} Overdue: {task_title}"
+    
+    #Truncate long descriptions
+    display_description = description
+    if len(description) > 200:
+        display_description = description[:197] + "..."
+    
+    body_html = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    </head>
+    <body style="margin: 0; padding: 0; font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif; background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%); min-height: 100vh; padding: 40px 20px;">
+        <table role="presentation" style="width: 100%; max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 16px; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4); overflow: hidden;">
+            
+            <!-- Header -->
+            <tr>
+                <td style="background: linear-gradient(135deg, {primary_color} 0%, {secondary_color} 100%); padding: 40px 32px; text-align: center;">
+                    <div style="font-size: 48px; margin-bottom: 10px;">{icon}</div>
+                    <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: 700; text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);">
+                        {task_type} Overdue
+                    </h1>
+                </td>
+            </tr>
+            
+            <!-- Urgency Banner -->
+            <tr>
+                <td style="padding: 0;">
+                    <div style="background: {primary_color}; padding: 16px 32px; text-align: center;">
+                        <span style="display: inline-block; background: rgba(255, 255, 255, 0.2); backdrop-filter: blur(10px); color: #ffffff; padding: 8px 20px; border-radius: 20px; font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; border: 1px solid rgba(255, 255, 255, 0.3);">
+                            {urgency_badge}
+                        </span>
+                    </div>
+                </td>
+            </tr>
+            
+            <!-- Content -->
+            <tr>
+                <td style="padding: 32px;">
+                    
+                    <!-- Alert Message -->
+                    <div style="background: {light_bg}; border-left: 4px solid {primary_color}; border-radius: 8px; padding: 20px; margin-bottom: 25px;">
+                        <p style="margin: 0; color: {primary_color}; font-size: 15px; font-weight: 600; line-height: 1.6;">
+                            {message}
+                        </p>
+                    </div>
+                    
+                    <!-- Task Card -->
+                    <div style="background: {bg_color}; border-left: 5px solid {primary_color}; border-radius: 12px; padding: 25px; margin-bottom: 30px;">
+                        
+                        <!-- Task Type Badge -->
+                        <div style="margin-bottom: 12px;">
+                            <span style="display: inline-block; background: {primary_color}; color: #ffffff; padding: 6px 14px; border-radius: 6px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">
+                                {task_type}
+                            </span>
+                        </div>
+                        
+                        <!-- Task Title -->
+                        <h2 style="margin: 0 0 15px 0; color: #111827; font-size: 22px; font-weight: 700; line-height: 1.3;">
+                            {task_title}
+                        </h2>
+                        
+                        <!-- Description -->
+                        <p style="margin: 0; color: #374151; font-size: 15px; line-height: 1.6;">
+                            {display_description}
+                        </p>
+                    </div>
+                    
+                    <!-- Deadline & Status Info -->
+                    <div style="background: #ffffff; border: 2px solid {light_bg}; border-radius: 12px; padding: 25px; margin-bottom: 30px;">
+                        <table role="presentation" style="width: 100%;">
+                            <tr>
+                                <td style="padding-bottom: 20px;">
+                                    <table role="presentation">
+                                        <tr>
+                                            <td style="width: 40px; vertical-align: top;">
+                                                <div style="font-size: 20px;">📅</div>
+                                            </td>
+                                            <td style="vertical-align: top;">
+                                                <p style="margin: 0 0 2px 0; color: #64748b; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">
+                                                    Original Deadline
+                                                </p>
+                                                <p style="margin: 0; color: #1e293b; font-size: 15px; font-weight: 600;">
+                                                    {deadline_str}
+                                                </p>
+                                            </td>
+                                        </tr>
+                                    </table>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>
+                                    <table role="presentation">
+                                        <tr>
+                                            <td style="width: 40px; vertical-align: top;">
+                                                <div style="font-size: 20px;">📊</div>
+                                            </td>
+                                            <td style="vertical-align: top;">
+                                                <p style="margin: 0 0 2px 0; color: #64748b; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">
+                                                    Current Status
+                                                </p>
+                                                <p style="margin: 0; color: #1e293b; font-size: 15px; font-weight: 600;">
+                                                    {task_status}
+                                                </p>
+                                            </td>
+                                        </tr>
+                                    </table>
+                                </td>
+                            </tr>
+                        </table>
+                    </div>
+                    
+                    <!-- Action Section -->
+                    <div style="text-align: center; margin: 30px 0;">
+                        <p style="margin: 0 0 15px 0; color: #374151; font-size: 15px; font-weight: 500;">
+                            Please take action to address this overdue task.
+                        </p>
+                        <a href="http://localhost:5173/login" style="display: inline-block; background: linear-gradient(135deg, {primary_color} 0%, {secondary_color} 100%); color: #ffffff; text-decoration: none; padding: 14px 35px; border-radius: 10px; font-weight: 600; font-size: 15px; box-shadow: 0 8px 20px rgba(220, 38, 38, 0.3);">
+                            Update Task Now
+                        </a>
+                    </div>
+                    
+                    <!-- Action Tips -->
+                    <div style="background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 10px; padding: 20px; margin-top: 30px;">
+                        <p style="margin: 0 0 10px 0; color: #111827; font-size: 13px; font-weight: 600;">
+                            💡 Recommended Actions:
+                        </p>
+                        <ul style="margin: 0; padding-left: 20px; color: #374151; font-size: 13px; line-height: 1.8;">
+                            <li>Update the task status if it's completed</li>
+                            <li>Communicate with your team about the delay</li>
+                            <li>Re-prioritize and set a new realistic deadline</li>
+                            <li>Break down the task into smaller, manageable steps</li>
+                        </ul>
+                    </div>
+                    
+                </td>
+            </tr>
+            
+            <!-- Footer -->
+            <tr>
+                <td style="padding: 24px 32px; background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); border-top: 2px solid #e2e8f0;">
+                    <table role="presentation" style="width: 100%;">
+                        <tr>
+                            <td style="text-align: center;">
+                                <p style="margin: 0; color: #64748b; font-size: 12px; line-height: 1.6;">
+                                    <strong style="color: #475569;">Task Management System</strong><br>
+                                    This is an automated notification. Please do not reply to this email.
+                                </p>
+                            </td>
+                        </tr>
+                    </table>
+                </td>
+            </tr>
+            
+        </table>
     </body>
     </html>
     """
