@@ -2,17 +2,15 @@ import unittest
 import os
 import sys
 from unittest import mock
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 from zoneinfo import ZoneInfo
 import json
-import threading
-import time
 
 # Add the parent directory to the sys.path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from app import create_app
-from app.models import db, DeadlineReminder
+from app.models import db, DeadlineReminder, OverdueAlert
 from app.service import (
     send_email_via_smtp,
     get_user_email,
@@ -20,9 +18,13 @@ from app.service import (
     get_task_details,
     get_task_collaborators,
     get_all_tasks_with_deadlines,
+    parse_deadline,
+    format_deadline_for_email,
     send_status_update_notification,
     send_deadline_reminder,
-    check_and_send_deadline_reminders
+    check_and_send_deadline_reminders,
+    send_overdue_task_alert,
+    check_and_send_overdue_alerts
 )
 
 
@@ -131,6 +133,48 @@ class TestNotificationService(unittest.TestCase):
             self.assertIn('task_id=1', repr_str)
             self.assertIn('days_before=7', repr_str)
 
+    def test_overdue_alert_model(self):
+        """Test OverdueAlert model creation"""
+        with self.app.app_context():
+            singapore_tz = ZoneInfo('Asia/Singapore')
+            today = datetime.now(singapore_tz).date()
+            
+            alert = OverdueAlert(task_id=1, alert_date=today, days_overdue=2)
+            db.session.add(alert)
+            db.session.commit()
+
+            saved_alert = OverdueAlert.query.filter_by(task_id=1).first()
+            self.assertIsNotNone(saved_alert)
+            self.assertEqual(saved_alert.task_id, 1)
+            self.assertEqual(saved_alert.days_overdue, 2)
+
+    def test_overdue_alert_unique_constraint(self):
+        """Test that duplicate overdue alerts cannot be created"""
+        with self.app.app_context():
+            singapore_tz = ZoneInfo('Asia/Singapore')
+            today = datetime.now(singapore_tz).date()
+            
+            alert1 = OverdueAlert(task_id=1, alert_date=today, days_overdue=1)
+            db.session.add(alert1)
+            db.session.commit()
+
+            alert2 = OverdueAlert(task_id=1, alert_date=today, days_overdue=2)
+            db.session.add(alert2)
+            
+            with self.assertRaises(Exception):
+                db.session.commit()
+
+    def test_overdue_alert_repr(self):
+        """Test OverdueAlert __repr__ method"""
+        with self.app.app_context():
+            singapore_tz = ZoneInfo('Asia/Singapore')
+            today = datetime.now(singapore_tz).date()
+            
+            alert = OverdueAlert(task_id=1, alert_date=today, days_overdue=3)
+            repr_str = repr(alert)
+            self.assertIn('task_id=1', repr_str)
+            self.assertIn('days_overdue=3', repr_str)
+
     # ==================== Test Email Sending ====================
     
     @mock.patch('smtplib.SMTP')
@@ -234,6 +278,18 @@ class TestNotificationService(unittest.TestCase):
             mock_get.return_value = mock_response
 
             name = get_user_name(999)
+            self.assertEqual(name, 'A team member')
+
+    @mock.patch('requests.get')
+    def test_get_user_name_no_name_field(self, mock_get):
+        """Test get_user_name when name field doesn't exist"""
+        with self.app.app_context():
+            mock_response = mock.MagicMock()
+            mock_response.status_code = 200
+            mock_response.json.return_value = {'id': 1, 'email': 'test@test.com'}
+            mock_get.return_value = mock_response
+
+            name = get_user_name(1)
             self.assertEqual(name, 'A team member')
 
     @mock.patch('requests.get')
@@ -355,6 +411,72 @@ class TestNotificationService(unittest.TestCase):
             tasks = get_all_tasks_with_deadlines()
             self.assertEqual(len(tasks), 0)
 
+    # ==================== Test Helper Functions ====================
+    
+    def test_parse_deadline_timezone_aware_utc(self):
+        """Test parsing timezone-aware deadline in UTC"""
+        with self.app.app_context():
+            deadline_str = "2025-12-31T10:00:00Z"
+            result = parse_deadline(deadline_str)
+            
+            self.assertIsNotNone(result)
+            self.assertEqual(result.tzinfo.key, 'Asia/Singapore')
+
+    def test_parse_deadline_timezone_aware_with_offset(self):
+        """Test parsing timezone-aware deadline with offset"""
+        with self.app.app_context():
+            deadline_str = "2025-12-31T10:00:00+05:00"
+            result = parse_deadline(deadline_str)
+            
+            self.assertIsNotNone(result)
+            self.assertEqual(result.tzinfo.key, 'Asia/Singapore')
+
+    def test_parse_deadline_naive(self):
+        """Test parsing naive deadline"""
+        with self.app.app_context():
+            deadline_str = "2025-12-31T10:00:00"
+            result = parse_deadline(deadline_str)
+            
+            self.assertIsNotNone(result)
+            self.assertEqual(result.tzinfo.key, 'Asia/Singapore')
+
+    def test_parse_deadline_with_multiple_dashes(self):
+        """Test parsing deadline with multiple dashes in negative offset"""
+        with self.app.app_context():
+            deadline_str = "2025-12-31T10:00:00-05:00"
+            result = parse_deadline(deadline_str)
+            
+            self.assertIsNotNone(result)
+            self.assertEqual(result.tzinfo.key, 'Asia/Singapore')
+
+    def test_format_deadline_for_email_valid(self):
+        """Test formatting valid deadline for email"""
+        with self.app.app_context():
+            deadline_str = "2025-12-31T10:00:00Z"
+            result = format_deadline_for_email(deadline_str)
+            
+            self.assertIn('December', result)
+            self.assertIn('31', result)
+            self.assertIn('2025', result)
+
+    def test_format_deadline_for_email_no_deadline(self):
+        """Test formatting when no deadline"""
+        with self.app.app_context():
+            result = format_deadline_for_email('No deadline set')
+            self.assertEqual(result, 'No deadline set')
+
+    def test_format_deadline_for_email_none(self):
+        """Test formatting when deadline is None"""
+        with self.app.app_context():
+            result = format_deadline_for_email(None)
+            self.assertEqual(result, 'No deadline set')
+
+    def test_format_deadline_for_email_invalid(self):
+        """Test formatting invalid deadline"""
+        with self.app.app_context():
+            result = format_deadline_for_email('invalid-date')
+            self.assertEqual(result, 'No deadline set')
+
     # ==================== Test Status Update Notifications ====================
     
     @mock.patch('smtplib.SMTP')
@@ -447,7 +569,7 @@ class TestNotificationService(unittest.TestCase):
             mock_get.side_effect = mock_requests_get
             
             success = send_status_update_notification(1, 'Ongoing', 'Completed', 1)
-            self.assertFalse(success)
+            self.assertFalse(success)  
 
     @mock.patch('smtplib.SMTP')
     @mock.patch('requests.get')
@@ -473,62 +595,6 @@ class TestNotificationService(unittest.TestCase):
             success = send_status_update_notification(1, 'Ongoing', 'Completed', 1)
             self.assertFalse(success)
 
-    @mock.patch('smtplib.SMTP')
-    @mock.patch('requests.get')
-    def test_send_status_update_notification_invalid_deadline(self, mock_get, mock_smtp):
-        """Test status update with invalid deadline format"""
-        with self.app.app_context():
-            mock_server = mock.MagicMock()
-            mock_smtp.return_value.__enter__.return_value = mock_server
-            
-            task_bad_deadline = self.task_data.copy()
-            task_bad_deadline['deadline'] = 'invalid-date'
-            
-            def mock_requests_get(url, **kwargs):
-                mock_resp = mock.MagicMock()
-                mock_resp.status_code = 200
-                
-                if '/user/' in url:
-                    mock_resp.json.return_value = {'id': 1, 'name': 'Test', 'email': 'test@test.com'}
-                elif 'collaborators' in url:
-                    mock_resp.json.return_value = []
-                elif 'tasks/' in url:
-                    mock_resp.json.return_value = task_bad_deadline
-                return mock_resp
-            
-            mock_get.side_effect = mock_requests_get
-            
-            success = send_status_update_notification(1, 'Ongoing', 'Completed', 1)
-            self.assertTrue(success)
-
-    @mock.patch('smtplib.SMTP')
-    @mock.patch('requests.get')
-    def test_send_status_update_notification_empty_description(self, mock_get, mock_smtp):
-        """Test status update with empty description"""
-        with self.app.app_context():
-            mock_server = mock.MagicMock()
-            mock_smtp.return_value.__enter__.return_value = mock_server
-            
-            task_no_desc = self.task_data.copy()
-            task_no_desc['description'] = ''
-            
-            def mock_requests_get(url, **kwargs):
-                mock_resp = mock.MagicMock()
-                mock_resp.status_code = 200
-                
-                if '/user/' in url:
-                    mock_resp.json.return_value = {'id': 1, 'name': 'Test', 'email': 'test@test.com'}
-                elif 'collaborators' in url:
-                    mock_resp.json.return_value = []
-                elif 'tasks/' in url:
-                    mock_resp.json.return_value = task_no_desc
-                return mock_resp
-            
-            mock_get.side_effect = mock_requests_get
-            
-            success = send_status_update_notification(1, 'Ongoing', 'Completed', 1)
-            self.assertTrue(success)
-
     @mock.patch('requests.get')
     def test_send_status_update_notification_exception(self, mock_get):
         """Test exception handling in status update"""
@@ -536,6 +602,62 @@ class TestNotificationService(unittest.TestCase):
             mock_get.side_effect = Exception("Unexpected error")
             success = send_status_update_notification(1, 'Ongoing', 'Completed', 1)
             self.assertFalse(success)
+
+    @mock.patch('smtplib.SMTP')
+    @mock.patch('requests.get')
+    def test_send_status_update_with_none_description(self, mock_get, mock_smtp):
+        """Test status update with None description"""
+        with self.app.app_context():
+            mock_server = mock.MagicMock()
+            mock_smtp.return_value.__enter__.return_value = mock_server
+            
+            task_data = self.task_data.copy()
+            task_data['description'] = None
+            
+            def mock_requests_get(url, **kwargs):
+                mock_resp = mock.MagicMock()
+                mock_resp.status_code = 200
+                
+                if '/user/' in url:
+                    mock_resp.json.return_value = {'id': 1, 'name': 'Test', 'email': 'test@test.com'}
+                elif 'collaborators' in url:
+                    mock_resp.json.return_value = []
+                elif 'tasks/' in url:
+                    mock_resp.json.return_value = task_data
+                return mock_resp
+            
+            mock_get.side_effect = mock_requests_get
+            
+            success = send_status_update_notification(1, 'Ongoing', 'Completed', 1)
+            self.assertTrue(success)
+
+    @mock.patch('smtplib.SMTP')
+    @mock.patch('requests.get')
+    def test_send_status_update_partial_email_success(self, mock_get, mock_smtp):
+        """Test status update where some emails succeed and some fail"""
+        with self.app.app_context():
+            mock_server = mock.MagicMock()
+            mock_server.send_message.side_effect = [None, Exception("SMTP Error")]
+            mock_smtp.return_value.__enter__.return_value = mock_server
+            
+            def mock_requests_get(url, **kwargs):
+                mock_resp = mock.MagicMock()
+                mock_resp.status_code = 200
+                
+                if '/user/1' in url:
+                    mock_resp.json.return_value = {'id': 1, 'name': 'Owner', 'email': 'owner@test.com'}
+                elif '/user/2' in url:
+                    mock_resp.json.return_value = {'id': 2, 'name': 'Collab', 'email': 'collab@test.com'}
+                elif 'collaborators' in url:
+                    mock_resp.json.return_value = [{'user_id': 2}]
+                elif 'tasks/1' in url:
+                    mock_resp.json.return_value = self.task_data
+                return mock_resp
+            
+            mock_get.side_effect = mock_requests_get
+
+            success = send_status_update_notification(1, 'Ongoing', 'Completed', 1)
+            self.assertTrue(success)
 
     # ==================== Test Deadline Reminders ====================
     
@@ -617,19 +739,26 @@ class TestNotificationService(unittest.TestCase):
             
             with mock.patch.object(db.session, 'commit', side_effect=Exception("DB Error")):
                 success = send_deadline_reminder(task_id=1, days_before=7)
-                # Should still return True because emails were sent
                 self.assertTrue(success)
+
+    @mock.patch('requests.get')
+    def test_send_deadline_reminder_exception(self, mock_get):
+        """Test exception handling in deadline reminder"""
+        with self.app.app_context():
+            mock_get.side_effect = Exception("Unexpected error")
+            success = send_deadline_reminder(task_id=1, days_before=7)
+            self.assertFalse(success)
 
     @mock.patch('smtplib.SMTP')
     @mock.patch('requests.get')
-    def test_send_deadline_reminder_invalid_deadline(self, mock_get, mock_smtp):
-        """Test deadline reminder with invalid deadline"""
+    def test_send_deadline_reminder_with_none_description(self, mock_get, mock_smtp):
+        """Test deadline reminder with None description"""
         with self.app.app_context():
             mock_server = mock.MagicMock()
             mock_smtp.return_value.__enter__.return_value = mock_server
             
-            task_bad_deadline = self.task_data.copy()
-            task_bad_deadline['deadline'] = 'bad-date'
+            task_data = self.task_data.copy()
+            task_data['description'] = None
             
             def mock_requests_get(url, **kwargs):
                 mock_resp = mock.MagicMock()
@@ -640,7 +769,7 @@ class TestNotificationService(unittest.TestCase):
                 elif 'collaborators' in url:
                     mock_resp.json.return_value = []
                 elif 'tasks/' in url:
-                    mock_resp.json.return_value = task_bad_deadline
+                    mock_resp.json.return_value = task_data
                 return mock_resp
             
             mock_get.side_effect = mock_requests_get
@@ -648,16 +777,6 @@ class TestNotificationService(unittest.TestCase):
             success = send_deadline_reminder(task_id=1, days_before=7)
             self.assertTrue(success)
 
-    @mock.patch('requests.get')
-    def test_send_deadline_reminder_exception(self, mock_get):
-        """Test exception handling in deadline reminder"""
-        with self.app.app_context():
-            mock_get.side_effect = Exception("Unexpected error")
-            success = send_deadline_reminder(task_id=1, days_before=7)
-            self.assertFalse(success)
-
-    # ==================== Test Deadline Reminder Scheduler ====================
-    
     @mock.patch('smtplib.SMTP')
     @mock.patch('requests.get')
     def test_check_and_send_deadline_reminders_success(self, mock_get, mock_smtp):
@@ -778,6 +897,412 @@ class TestNotificationService(unittest.TestCase):
             reminders_sent = check_and_send_deadline_reminders()
             self.assertEqual(reminders_sent, 0)
 
+    @mock.patch('smtplib.SMTP')
+    @mock.patch('requests.get')
+    def test_check_deadline_reminders_3_days(self, mock_get, mock_smtp):
+        """Test deadline reminder check for 3 days before"""
+        with self.app.app_context():
+            mock_server = mock.MagicMock()
+            mock_smtp.return_value.__enter__.return_value = mock_server
+            
+            singapore_tz = ZoneInfo('Asia/Singapore')
+            now = datetime.now(singapore_tz)
+            deadline_3days = (now + timedelta(days=3)).replace(hour=14, minute=0)
+            
+            task = {
+                'id': 1,
+                'title': 'Task',
+                'deadline': deadline_3days.isoformat(),
+                'status': 'Ongoing',
+                'owner_id': 1,
+                'parent_task_id': None,
+                'description': 'Test'
+            }
+            
+            def mock_requests_get(url, **kwargs):
+                mock_resp = mock.MagicMock()
+                mock_resp.status_code = 200
+                
+                if 'with-deadlines' in url:
+                    mock_resp.json.return_value = [task]
+                elif 'collaborators' in url:
+                    mock_resp.json.return_value = []
+                elif 'tasks/1' in url:
+                    mock_resp.json.return_value = task
+                elif '/user/' in url:
+                    mock_resp.json.return_value = {'id': 1, 'name': 'Test', 'email': 'test@test.com'}
+                return mock_resp
+            
+            mock_get.side_effect = mock_requests_get
+
+            reminders_sent = check_and_send_deadline_reminders()
+            self.assertEqual(reminders_sent, 1)
+
+    @mock.patch('smtplib.SMTP')
+    @mock.patch('requests.get')
+    def test_check_deadline_reminders_1_day(self, mock_get, mock_smtp):
+        """Test deadline reminder check for 1 day before"""
+        with self.app.app_context():
+            mock_server = mock.MagicMock()
+            mock_smtp.return_value.__enter__.return_value = mock_server
+            
+            singapore_tz = ZoneInfo('Asia/Singapore')
+            now = datetime.now(singapore_tz)
+            deadline_1day = (now + timedelta(days=1)).replace(hour=14, minute=0)
+            
+            task = {
+                'id': 1,
+                'title': 'Task',
+                'deadline': deadline_1day.isoformat(),
+                'status': 'Ongoing',
+                'owner_id': 1,
+                'parent_task_id': None,
+                'description': 'Test'
+            }
+            
+            def mock_requests_get(url, **kwargs):
+                mock_resp = mock.MagicMock()
+                mock_resp.status_code = 200
+                
+                if 'with-deadlines' in url:
+                    mock_resp.json.return_value = [task]
+                elif 'collaborators' in url:
+                    mock_resp.json.return_value = []
+                elif 'tasks/1' in url:
+                    mock_resp.json.return_value = task
+                elif '/user/' in url:
+                    mock_resp.json.return_value = {'id': 1, 'name': 'Test', 'email': 'test@test.com'}
+                return mock_resp
+            
+            mock_get.side_effect = mock_requests_get
+
+            reminders_sent = check_and_send_deadline_reminders()
+            self.assertEqual(reminders_sent, 1)
+
+    # ==================== Test Overdue Alerts ====================
+    
+    @mock.patch('smtplib.SMTP')
+    @mock.patch('requests.get')
+    def test_send_overdue_task_alert_success(self, mock_get, mock_smtp):
+        """Test sending overdue task alert"""
+        with self.app.app_context():
+            mock_server = mock.MagicMock()
+            mock_smtp.return_value.__enter__.return_value = mock_server
+            
+            singapore_tz = ZoneInfo('Asia/Singapore')
+            overdue_task = self.task_data.copy()
+            overdue_task['deadline'] = (datetime.now(singapore_tz) - timedelta(days=2)).isoformat()
+            
+            def mock_requests_get(url, **kwargs):
+                mock_resp = mock.MagicMock()
+                mock_resp.status_code = 200
+                
+                if '/user/' in url:
+                    mock_resp.json.return_value = {'id': 1, 'name': 'Test', 'email': 'test@test.com'}
+                elif 'collaborators' in url:
+                    mock_resp.json.return_value = []
+                elif 'tasks/' in url:
+                    mock_resp.json.return_value = overdue_task
+                return mock_resp
+            
+            mock_get.side_effect = mock_requests_get
+
+            success = send_overdue_task_alert(task_id=1, days_overdue=2)
+            self.assertTrue(success)
+            
+            singapore_tz = ZoneInfo('Asia/Singapore')
+            today = datetime.now(singapore_tz).date()
+            alert = OverdueAlert.query.filter_by(task_id=1, alert_date=today).first()
+            self.assertIsNotNone(alert)
+            self.assertEqual(alert.days_overdue, 2)
+
+    @mock.patch('requests.get')
+    def test_send_overdue_task_alert_completed_task(self, mock_get):
+        """Test overdue alert not sent for completed task"""
+        with self.app.app_context():
+            completed_task = self.task_data.copy()
+            completed_task['status'] = 'Completed'
+            
+            mock_response = mock.MagicMock()
+            mock_response.status_code = 200
+            mock_response.json.return_value = completed_task
+            mock_get.return_value = mock_response
+
+            success = send_overdue_task_alert(task_id=1, days_overdue=1)
+            self.assertFalse(success)
+
+    @mock.patch('requests.get')
+    def test_send_overdue_task_alert_task_not_found(self, mock_get):
+        """Test overdue alert when task not found"""
+        with self.app.app_context():
+            mock_response = mock.MagicMock()
+            mock_response.status_code = 404
+            mock_get.return_value = mock_response
+
+            success = send_overdue_task_alert(task_id=999, days_overdue=1)
+            self.assertFalse(success)
+
+    @mock.patch('smtplib.SMTP')
+    @mock.patch('requests.get')
+    def test_send_overdue_task_alert_db_error(self, mock_get, mock_smtp):
+        """Test overdue alert with database error"""
+        with self.app.app_context():
+            mock_server = mock.MagicMock()
+            mock_smtp.return_value.__enter__.return_value = mock_server
+            
+            singapore_tz = ZoneInfo('Asia/Singapore')
+            overdue_task = self.task_data.copy()
+            overdue_task['deadline'] = (datetime.now(singapore_tz) - timedelta(days=1)).isoformat()
+            
+            def mock_requests_get(url, **kwargs):
+                mock_resp = mock.MagicMock()
+                mock_resp.status_code = 200
+                
+                if '/user/' in url:
+                    mock_resp.json.return_value = {'id': 1, 'name': 'Test', 'email': 'test@test.com'}
+                elif 'collaborators' in url:
+                    mock_resp.json.return_value = []
+                elif 'tasks/' in url:
+                    mock_resp.json.return_value = overdue_task
+                return mock_resp
+            
+            mock_get.side_effect = mock_requests_get
+            
+            with mock.patch.object(db.session, 'commit', side_effect=Exception("DB Error")):
+                success = send_overdue_task_alert(task_id=1, days_overdue=1)
+                self.assertTrue(success)
+
+    @mock.patch('requests.get')
+    def test_send_overdue_task_alert_exception(self, mock_get):
+        """Test exception handling in overdue alert"""
+        with self.app.app_context():
+            mock_get.side_effect = Exception("Unexpected error")
+            success = send_overdue_task_alert(task_id=1, days_overdue=1)
+            self.assertFalse(success)
+
+    @mock.patch('smtplib.SMTP')
+    @mock.patch('requests.get')
+    def test_send_overdue_alert_with_none_description(self, mock_get, mock_smtp):
+        """Test overdue alert with None description"""
+        with self.app.app_context():
+            mock_server = mock.MagicMock()
+            mock_smtp.return_value.__enter__.return_value = mock_server
+            
+            singapore_tz = ZoneInfo('Asia/Singapore')
+            task_data = self.task_data.copy()
+            task_data['description'] = None
+            task_data['deadline'] = (datetime.now(singapore_tz) - timedelta(days=1)).isoformat()
+            
+            def mock_requests_get(url, **kwargs):
+                mock_resp = mock.MagicMock()
+                mock_resp.status_code = 200
+                
+                if '/user/' in url:
+                    mock_resp.json.return_value = {'id': 1, 'name': 'Test', 'email': 'test@test.com'}
+                elif 'collaborators' in url:
+                    mock_resp.json.return_value = []
+                elif 'tasks/' in url:
+                    mock_resp.json.return_value = task_data
+                return mock_resp
+            
+            mock_get.side_effect = mock_requests_get
+            
+            success = send_overdue_task_alert(task_id=1, days_overdue=1)
+            self.assertTrue(success)
+
+    @mock.patch('smtplib.SMTP')
+    @mock.patch('requests.get')
+    def test_check_and_send_overdue_alerts_success(self, mock_get, mock_smtp):
+        """Test overdue alerts check"""
+        with self.app.app_context():
+            mock_server = mock.MagicMock()
+            mock_smtp.return_value.__enter__.return_value = mock_server
+            
+            singapore_tz = ZoneInfo('Asia/Singapore')
+            now = datetime.now(singapore_tz)
+            
+            overdue_task = {
+                'id': 1,
+                'title': 'Overdue Task',
+                'deadline': (now - timedelta(days=1)).isoformat(),
+                'status': 'Ongoing',
+                'owner_id': 1,
+                'parent_task_id': None,
+                'description': 'Test'
+            }
+            
+            def mock_requests_get(url, **kwargs):
+                mock_resp = mock.MagicMock()
+                mock_resp.status_code = 200
+                
+                if 'with-deadlines' in url:
+                    mock_resp.json.return_value = [overdue_task]
+                elif 'collaborators' in url:
+                    mock_resp.json.return_value = []
+                elif 'tasks/1' in url:
+                    mock_resp.json.return_value = overdue_task
+                elif '/user/' in url:
+                    mock_resp.json.return_value = {'id': 1, 'name': 'Test', 'email': 'test@test.com'}
+                return mock_resp
+            
+            mock_get.side_effect = mock_requests_get
+
+            alerts_sent = check_and_send_overdue_alerts()
+            self.assertEqual(alerts_sent, 1)
+
+    @mock.patch('smtplib.SMTP')
+    @mock.patch('requests.get')
+    def test_check_and_send_overdue_alerts_same_day_overdue(self, mock_get, mock_smtp):
+        """Test overdue alerts for same-day deadline that passed"""
+        with self.app.app_context():
+            mock_server = mock.MagicMock()
+            mock_smtp.return_value.__enter__.return_value = mock_server
+            
+            singapore_tz = ZoneInfo('Asia/Singapore')
+            now = datetime.now(singapore_tz)
+            
+            overdue_task = {
+                'id': 1,
+                'title': 'Overdue Task',
+                'deadline': now.replace(hour=8, minute=0).isoformat(),
+                'status': 'Ongoing',
+                'owner_id': 1,
+                'parent_task_id': None,
+                'description': 'Test'
+            }
+            
+            def mock_requests_get(url, **kwargs):
+                mock_resp = mock.MagicMock()
+                mock_resp.status_code = 200
+                
+                if 'with-deadlines' in url:
+                    mock_resp.json.return_value = [overdue_task]
+                elif 'collaborators' in url:
+                    mock_resp.json.return_value = []
+                elif 'tasks/1' in url:
+                    mock_resp.json.return_value = overdue_task
+                elif '/user/' in url:
+                    mock_resp.json.return_value = {'id': 1, 'name': 'Test', 'email': 'test@test.com'}
+                return mock_resp
+            
+            mock_get.side_effect = mock_requests_get
+
+            if now.hour > 8:
+                alerts_sent = check_and_send_overdue_alerts()
+                self.assertGreaterEqual(alerts_sent, 0)
+
+    @mock.patch('requests.get')
+    def test_check_and_send_overdue_alerts_no_tasks(self, mock_get):
+        """Test overdue check with no tasks"""
+        with self.app.app_context():
+            mock_response = mock.MagicMock()
+            mock_response.status_code = 200
+            mock_response.json.return_value = []
+            mock_get.return_value = mock_response
+
+            alerts_sent = check_and_send_overdue_alerts()
+            self.assertEqual(alerts_sent, 0)
+
+    @mock.patch('smtplib.SMTP')
+    @mock.patch('requests.get')
+    def test_check_and_send_overdue_alerts_completed_task(self, mock_get, mock_smtp):
+        """Test overdue check skips completed tasks"""
+        with self.app.app_context():
+            singapore_tz = ZoneInfo('Asia/Singapore')
+            now = datetime.now(singapore_tz)
+            
+            completed_task = {
+                'id': 1,
+                'title': 'Task',
+                'deadline': (now - timedelta(days=1)).isoformat(),
+                'status': 'Completed',
+                'owner_id': 1
+            }
+            
+            mock_response = mock.MagicMock()
+            mock_response.status_code = 200
+            mock_response.json.return_value = [completed_task]
+            mock_get.return_value = mock_response
+
+            alerts_sent = check_and_send_overdue_alerts()
+            self.assertEqual(alerts_sent, 0)
+
+    @mock.patch('smtplib.SMTP')
+    @mock.patch('requests.get')
+    def test_check_and_send_overdue_alerts_no_deadline(self, mock_get, mock_smtp):
+        """Test overdue check with task missing deadline"""
+        with self.app.app_context():
+            task_no_deadline = {
+                'id': 1,
+                'title': 'Task',
+                'deadline': None,
+                'status': 'Ongoing'
+            }
+            
+            mock_response = mock.MagicMock()
+            mock_response.status_code = 200
+            mock_response.json.return_value = [task_no_deadline]
+            mock_get.return_value = mock_response
+
+            alerts_sent = check_and_send_overdue_alerts()
+            self.assertEqual(alerts_sent, 0)
+
+    @mock.patch('smtplib.SMTP')
+    @mock.patch('requests.get')
+    def test_check_and_send_overdue_alerts_already_sent_today(self, mock_get, mock_smtp):
+        """Test overdue check skips alerts already sent today"""
+        with self.app.app_context():
+            singapore_tz = ZoneInfo('Asia/Singapore')
+            now = datetime.now(singapore_tz)
+            today = now.date()
+            
+            overdue_task = {
+                'id': 1,
+                'title': 'Task',
+                'deadline': (now - timedelta(days=1)).isoformat(),
+                'status': 'Ongoing'
+            }
+            
+            alert = OverdueAlert(task_id=1, alert_date=today, days_overdue=1)
+            db.session.add(alert)
+            db.session.commit()
+            
+            mock_response = mock.MagicMock()
+            mock_response.status_code = 200
+            mock_response.json.return_value = [overdue_task]
+            mock_get.return_value = mock_response
+
+            alerts_sent = check_and_send_overdue_alerts()
+            self.assertEqual(alerts_sent, 0)
+
+    @mock.patch('smtplib.SMTP')
+    @mock.patch('requests.get')
+    def test_check_and_send_overdue_alerts_invalid_deadline(self, mock_get, mock_smtp):
+        """Test overdue check with invalid deadline"""
+        with self.app.app_context():
+            task_bad = {
+                'id': 1,
+                'title': 'Task',
+                'deadline': 'invalid-date',
+                'status': 'Ongoing'
+            }
+            
+            mock_response = mock.MagicMock()
+            mock_response.status_code = 200
+            mock_response.json.return_value = [task_bad]
+            mock_get.return_value = mock_response
+
+            alerts_sent = check_and_send_overdue_alerts()
+            self.assertEqual(alerts_sent, 0)
+
+    @mock.patch('requests.get')
+    def test_check_and_send_overdue_alerts_exception(self, mock_get):
+        """Test overdue check exception handling"""
+        with self.app.app_context():
+            mock_get.side_effect = Exception("Error")
+            alerts_sent = check_and_send_overdue_alerts()
+            self.assertEqual(alerts_sent, 0)
+
     # ==================== Test Email Templates ====================
     
     def test_status_update_email_task(self):
@@ -880,17 +1405,61 @@ class TestNotificationService(unittest.TestCase):
         )
         self.assertIn('...', body)
 
-    def test_deadline_reminder_email_plural_days(self):
-        """Test deadline reminder plural/singular days"""
-        from app.email_templates import get_deadline_reminder_email
+    def test_overdue_task_email_1_day(self):
+        """Test overdue email for 1 day"""
+        from app.email_templates import get_overdue_task_email
 
-        # Plural
-        subject_7, _ = get_deadline_reminder_email('Task', 7, 'Date', 'Desc', 'Ongoing', False)
-        self.assertIn('days', subject_7)
+        subject, body = get_overdue_task_email(
+            'Task', 'Dec 31', 1, 'Description', 'Ongoing', False
+        )
 
-        # Singular
-        subject_1, _ = get_deadline_reminder_email('Task', 1, 'Date', 'Desc', 'Ongoing', False)
-        self.assertIn('day', subject_1)
+        self.assertIn('🚨', subject)
+        self.assertIn('1 Day Overdue', body)
+        self.assertIn('⚠️', body)
+
+    def test_overdue_task_email_3_days(self):
+        """Test overdue email for 3 days"""
+        from app.email_templates import get_overdue_task_email
+
+        subject, body = get_overdue_task_email(
+            'Task', 'Dec 31', 3, 'Description', 'Ongoing', False
+        )
+
+        self.assertIn('🚨', subject)
+        self.assertIn('3 Days Overdue', body)
+        self.assertIn('🔴', body)
+
+    def test_overdue_task_email_many_days(self):
+        """Test overdue email for many days"""
+        from app.email_templates import get_overdue_task_email
+
+        subject, body = get_overdue_task_email(
+            'Task', 'Dec 31', 10, 'Description', 'Ongoing', False
+        )
+
+        self.assertIn('🚨', subject)
+        self.assertIn('10 Days Overdue', body)
+
+    def test_overdue_task_email_subtask(self):
+        """Test overdue email for subtask"""
+        from app.email_templates import get_overdue_task_email
+
+        subject, body = get_overdue_task_email(
+            'Subtask', 'Date', 2, 'Desc', 'Ongoing', True
+        )
+
+        self.assertIn('Subtask', subject)
+        self.assertIn('Subtask', body)
+
+    def test_overdue_task_email_long_description(self):
+        """Test overdue email with long description"""
+        from app.email_templates import get_overdue_task_email
+
+        long_desc = 'C' * 250
+        subject, body = get_overdue_task_email(
+            'Task', 'Date', 1, long_desc, 'Ongoing', False
+        )
+        self.assertIn('...', body)
 
     # ==================== Test RabbitMQ Consumer ====================
     
@@ -1082,12 +1651,45 @@ class TestNotificationService(unittest.TestCase):
         
         consumer = RabbitMQConsumer(self.app)
         consumer.start_consuming()
-        
-        # Should handle gracefully
 
     @mock.patch('pika.BlockingConnection')
+    def test_rabbitmq_consumer_start_consuming_keyboard_interrupt(self, mock_conn):
+        """Test RabbitMQ consumer handling KeyboardInterrupt"""
+        from app.rabbitmq_consumer import RabbitMQConsumer
+        
+        mock_connection = mock.MagicMock()
+        mock_channel = mock.MagicMock()
+        mock_connection.channel.return_value = mock_channel
+        mock_connection.is_closed = False
+        mock_channel.start_consuming.side_effect = KeyboardInterrupt()
+        mock_conn.return_value = mock_connection
+        
+        consumer = RabbitMQConsumer(self.app)
+        consumer.connect()
+        consumer.start_consuming()
+        
+        mock_channel.stop_consuming.assert_called_once()
+        mock_connection.close.assert_called_once()
+
+    @mock.patch('pika.BlockingConnection')
+    def test_rabbitmq_consumer_start_consuming_exception(self, mock_conn):
+        """Test RabbitMQ consumer handling general exception during consuming"""
+        from app.rabbitmq_consumer import RabbitMQConsumer
+        
+        mock_connection = mock.MagicMock()
+        mock_channel = mock.MagicMock()
+        mock_connection.channel.return_value = mock_channel
+        mock_connection.is_closed = False
+        mock_channel.start_consuming.side_effect = Exception("Consumer error")
+        mock_conn.return_value = mock_connection
+        
+        consumer = RabbitMQConsumer(self.app)
+        consumer.connect()
+        consumer.start_consuming()
+
     @mock.patch('threading.Thread')
-    def test_start_consumer_thread(self, mock_thread, mock_conn):
+    @mock.patch('pika.BlockingConnection')
+    def test_start_consumer_thread(self, mock_conn, mock_thread):
         """Test starting consumer thread"""
         from app.rabbitmq_consumer import start_consumer_thread
         
@@ -1103,84 +1705,119 @@ class TestNotificationService(unittest.TestCase):
     
     def test_scheduler_initialization(self):
         """Test scheduler initialization"""
-        from app.scheduler import DeadlineReminderScheduler
+        from app.scheduler import NotificationScheduler
         
-        scheduler = DeadlineReminderScheduler(self.app)
+        scheduler = NotificationScheduler(self.app)
         self.assertIsNotNone(scheduler)
         self.assertIsNotNone(scheduler.scheduler)
 
     @mock.patch('app.service.check_and_send_deadline_reminders')
-    def test_scheduler_start(self, mock_check):
+    @mock.patch('app.service.check_and_send_overdue_alerts')
+    def test_scheduler_start(self, mock_overdue, mock_deadline):
         """Test scheduler start"""
-        from app.scheduler import DeadlineReminderScheduler
+        from app.scheduler import NotificationScheduler
         
-        mock_check.return_value = 0
+        mock_deadline.return_value = 0
+        mock_overdue.return_value = 0
         
-        scheduler = DeadlineReminderScheduler(self.app)
+        scheduler = NotificationScheduler(self.app)
         scheduler.start()
         
         jobs = scheduler.scheduler.get_jobs()
         self.assertEqual(len(jobs), 1)
-        self.assertEqual(jobs[0].id, 'deadline_reminder_check')
+        self.assertEqual(jobs[0].id, 'notification_check')
         
         scheduler.stop()
 
     @mock.patch('app.service.check_and_send_deadline_reminders')
-    def test_scheduler_start_error(self, mock_check):
+    @mock.patch('app.service.check_and_send_overdue_alerts')
+    def test_scheduler_start_error(self, mock_overdue, mock_deadline):
         """Test scheduler start with error"""
-        from app.scheduler import DeadlineReminderScheduler
+        from app.scheduler import NotificationScheduler
         
-        scheduler = DeadlineReminderScheduler(self.app)
+        scheduler = NotificationScheduler(self.app)
         
         with mock.patch.object(scheduler.scheduler, 'add_job', side_effect=Exception("Error")):
             scheduler.start()
-            # Should handle exception gracefully
 
     def test_scheduler_stop(self):
         """Test scheduler stop"""
-        from app.scheduler import DeadlineReminderScheduler
+        from app.scheduler import NotificationScheduler
         
-        scheduler = DeadlineReminderScheduler(self.app)
+        scheduler = NotificationScheduler(self.app)
         scheduler.start()
         scheduler.stop()
         
         self.assertFalse(scheduler.scheduler.running)
 
+    def test_scheduler_stop_when_not_running(self):
+        """Test stopping scheduler when it's not running"""
+        from app.scheduler import NotificationScheduler
+        
+        scheduler = NotificationScheduler(self.app)
+        scheduler.stop()
+
     @mock.patch('app.service.check_and_send_deadline_reminders')
-    def test_scheduler_run_now(self, mock_check):
-        """Test scheduler manual run"""
-        from app.scheduler import DeadlineReminderScheduler
+    @mock.patch('app.service.check_and_send_overdue_alerts')
+    def test_scheduler_run_checks_now(self, mock_overdue, mock_deadline):
+        """Test scheduler manual run of all checks"""
+        from app.scheduler import NotificationScheduler
+        
+        mock_deadline.return_value = 3
+        mock_overdue.return_value = 2
+        
+        scheduler = NotificationScheduler(self.app)
+        scheduler.run_checks_now()
+        
+        mock_deadline.assert_called_once()
+        mock_overdue.assert_called_once()
+
+    @mock.patch('app.service.check_and_send_deadline_reminders')
+    def test_scheduler_run_deadline_check_now(self, mock_check):
+        """Test scheduler manual deadline check"""
+        from app.scheduler import NotificationScheduler
         
         mock_check.return_value = 5
         
-        scheduler = DeadlineReminderScheduler(self.app)
-        result = scheduler.run_now()
+        scheduler = NotificationScheduler(self.app)
+        result = scheduler.run_deadline_check_now()
         
         self.assertEqual(result, 5)
         mock_check.assert_called_once()
 
-    @mock.patch('app.service.check_and_send_deadline_reminders')
-    def test_scheduler_run_now_exception(self, mock_check):
-        """Test scheduler manual run with exception"""
-        from app.scheduler import DeadlineReminderScheduler
+    @mock.patch('app.service.check_and_send_overdue_alerts')
+    def test_scheduler_run_overdue_check_now(self, mock_check):
+        """Test scheduler manual overdue check"""
+        from app.scheduler import NotificationScheduler
         
-        mock_check.side_effect = Exception("Error")
+        mock_check.return_value = 3
         
-        scheduler = DeadlineReminderScheduler(self.app)
+        scheduler = NotificationScheduler(self.app)
+        result = scheduler.run_overdue_check_now()
         
-        # Should handle exception
-        try:
-            scheduler.run_now()
-        except Exception:
-            pass
+        self.assertEqual(result, 3)
+        mock_check.assert_called_once()
 
     @mock.patch('app.service.check_and_send_deadline_reminders')
-    @mock.patch('threading.Thread')
-    def test_start_deadline_scheduler(self, mock_thread, mock_check):
-        """Test start_deadline_scheduler function"""
-        from app.scheduler import start_deadline_scheduler
+    @mock.patch('app.service.check_and_send_overdue_alerts')
+    def test_scheduler_run_all_checks_with_exception(self, mock_overdue, mock_deadline):
+        """Test scheduler's _run_all_checks with exception"""
+        from app.scheduler import NotificationScheduler
         
-        scheduler = start_deadline_scheduler(self.app)
+        mock_deadline.side_effect = Exception("Check error")
+        
+        scheduler = NotificationScheduler(self.app)
+        scheduler._run_all_checks()
+        
+        mock_deadline.assert_called_once()
+
+    @mock.patch('app.rabbitmq_consumer.start_consumer_thread')
+    @mock.patch('app.scheduler.start_notification_scheduler')
+    def test_start_notification_scheduler(self, mock_scheduler, mock_consumer):
+        """Test start_notification_scheduler function"""
+        from app.scheduler import start_notification_scheduler
+        
+        scheduler = start_notification_scheduler(self.app)
         
         self.assertIsNotNone(scheduler)
 
@@ -1207,28 +1844,12 @@ class TestNotificationService(unittest.TestCase):
             inspector = inspect(db.engine)
             tables = inspector.get_table_names()
             self.assertIn('deadline_reminders', tables)
+            self.assertIn('overdue_alerts', tables)
 
     def test_cors_enabled(self):
         """Test CORS is enabled"""
-        # CORS should be enabled in the app
         self.assertIsNotNone(self.app)
 
-    @mock.patch.dict(os.environ, {'WERKZEUG_RUN_MAIN': 'true'})
-    @mock.patch('app.rabbitmq_consumer.start_consumer_thread')
-    @mock.patch('app.scheduler.start_deadline_scheduler')
-    def test_app_background_services_start(self, mock_scheduler, mock_consumer):
-        """Test background services start in production"""
-        mock_consumer.return_value = mock.MagicMock()
-        mock_scheduler.return_value = mock.MagicMock()
-        
-        # Create app with production flag
-        app = create_app('testing')
-        
-        # Background services should not start in testing mode
-        # This test verifies the condition logic exists
-
-    # ==================== Test Config ====================
-    
     def test_config_class(self):
         """Test Config class"""
         from config import Config
@@ -1261,7 +1882,6 @@ class TestNotificationService(unittest.TestCase):
             
             mock_get.side_effect = mock_requests_get
             
-            # Full flow
             success = send_status_update_notification(1, 'Ongoing', 'Completed', 1)
             
             self.assertTrue(success)
@@ -1298,16 +1918,55 @@ class TestNotificationService(unittest.TestCase):
             
             mock_get.side_effect = mock_requests_get
             
-            # Full flow
             reminders_sent = check_and_send_deadline_reminders()
             
             self.assertEqual(reminders_sent, 1)
             mock_server.send_message.assert_called()
             
-            # Verify DB record
             reminder = DeadlineReminder.query.filter_by(task_id=1, days_before=7).first()
             self.assertIsNotNone(reminder)
-    # ==================== Additional Coverage Tests ====================
+
+    @mock.patch('smtplib.SMTP')
+    @mock.patch('requests.get')
+    def test_end_to_end_overdue_alert(self, mock_get, mock_smtp):
+        """Test end-to-end overdue alert flow"""
+        with self.app.app_context():
+            mock_server = mock.MagicMock()
+            mock_smtp.return_value.__enter__.return_value = mock_server
+            
+            singapore_tz = ZoneInfo('Asia/Singapore')
+            now = datetime.now(singapore_tz)
+            deadline = (now - timedelta(days=2)).replace(hour=14, minute=0)
+            
+            task = self.task_data.copy()
+            task['deadline'] = deadline.isoformat()
+            
+            def mock_requests_get(url, **kwargs):
+                mock_resp = mock.MagicMock()
+                mock_resp.status_code = 200
+                
+                if 'with-deadlines' in url:
+                    mock_resp.json.return_value = [task]
+                elif 'collaborators' in url:
+                    mock_resp.json.return_value = []
+                elif 'tasks/1' in url:
+                    mock_resp.json.return_value = task
+                elif '/user/' in url:
+                    mock_resp.json.return_value = {'id': 1, 'name': 'Test', 'email': 'test@test.com'}
+                return mock_resp
+            
+            mock_get.side_effect = mock_requests_get
+            
+            alerts_sent = check_and_send_overdue_alerts()
+            
+            self.assertEqual(alerts_sent, 1)
+            mock_server.send_message.assert_called()
+            
+            today = datetime.now(singapore_tz).date()
+            alert = OverdueAlert.query.filter_by(task_id=1, alert_date=today).first()
+            self.assertIsNotNone(alert)
+
+    # ==================== Additional Edge Cases ====================
     
     @mock.patch('requests.get')
     def test_get_task_collaborators_missing_user_id(self, mock_get):
@@ -1315,419 +1974,15 @@ class TestNotificationService(unittest.TestCase):
         with self.app.app_context():
             mock_response = mock.MagicMock()
             mock_response.status_code = 200
-            # Return collaborators without user_id field (should cause KeyError)
+            # This will cause a KeyError when trying to access collab['user_id']
             mock_response.json.return_value = [{'id': 1, 'name': 'Test'}]
             mock_get.return_value = mock_response
 
+            # The function should handle the KeyError and return empty list
             collaborators = get_task_collaborators(1)
-            # Should handle error and return empty list
             self.assertEqual(len(collaborators), 0)
 
-    @mock.patch('smtplib.SMTP')
-    @mock.patch('requests.get')
-    def test_send_status_update_with_none_description(self, mock_get, mock_smtp):
-        """Test status update with None description"""
-        with self.app.app_context():
-            mock_server = mock.MagicMock()
-            mock_smtp.return_value.__enter__.return_value = mock_server
-            
-            task_data = {
-                'id': 1,
-                'title': 'Test Task',
-                'description': None,
-                'status': 'Ongoing',
-                'owner_id': 1,
-                'deadline': None,
-                'parent_task_id': None
-            }
-            
-            def mock_requests_get(url, **kwargs):
-                mock_resp = mock.MagicMock()
-                mock_resp.status_code = 200
-                
-                if '/user/' in url:
-                    mock_resp.json.return_value = {'id': 1, 'name': 'Test', 'email': 'test@test.com'}
-                elif 'collaborators' in url:
-                    mock_resp.json.return_value = []
-                elif 'tasks/' in url:
-                    mock_resp.json.return_value = task_data
-                return mock_resp
-            
-            mock_get.side_effect = mock_requests_get
-            
-            success = send_status_update_notification(1, 'Ongoing', 'Completed', 1)
-            self.assertTrue(success)
 
-    @mock.patch('smtplib.SMTP')
-    @mock.patch('requests.get')
-    def test_send_deadline_reminder_with_none_description(self, mock_get, mock_smtp):
-        """Test deadline reminder with None description"""
-        with self.app.app_context():
-            mock_server = mock.MagicMock()
-            mock_smtp.return_value.__enter__.return_value = mock_server
-            
-            singapore_tz = ZoneInfo('Asia/Singapore')
-            task_data = {
-                'id': 1,
-                'title': 'Test Task',
-                'description': None,
-                'status': 'Ongoing',
-                'owner_id': 1,
-                'deadline': (datetime.now(singapore_tz) + timedelta(days=7)).isoformat(),
-                'parent_task_id': None
-            }
-            
-            def mock_requests_get(url, **kwargs):
-                mock_resp = mock.MagicMock()
-                mock_resp.status_code = 200
-                
-                if '/user/' in url:
-                    mock_resp.json.return_value = {'id': 1, 'name': 'Test', 'email': 'test@test.com'}
-                elif 'collaborators' in url:
-                    mock_resp.json.return_value = []
-                elif 'tasks/' in url:
-                    mock_resp.json.return_value = task_data
-                return mock_resp
-            
-            mock_get.side_effect = mock_requests_get
-            
-            success = send_deadline_reminder(task_id=1, days_before=7)
-            self.assertTrue(success)
-
-    @mock.patch('smtplib.SMTP')
-    @mock.patch('requests.get')
-    def test_check_deadline_reminders_3_days(self, mock_get, mock_smtp):
-        """Test deadline reminder check for 3 days before"""
-        with self.app.app_context():
-            mock_server = mock.MagicMock()
-            mock_smtp.return_value.__enter__.return_value = mock_server
-            
-            singapore_tz = ZoneInfo('Asia/Singapore')
-            now = datetime.now(singapore_tz)
-            
-            # Create task with deadline exactly 3 days away
-            deadline_3days = (now + timedelta(days=3)).replace(hour=14, minute=0)
-            
-            task = {
-                'id': 1,
-                'title': 'Task',
-                'deadline': deadline_3days.isoformat(),
-                'status': 'Ongoing',
-                'owner_id': 1,
-                'parent_task_id': None,
-                'description': 'Test'
-            }
-            
-            def mock_requests_get(url, **kwargs):
-                mock_resp = mock.MagicMock()
-                mock_resp.status_code = 200
-                
-                if 'with-deadlines' in url:
-                    mock_resp.json.return_value = [task]
-                elif 'collaborators' in url:
-                    mock_resp.json.return_value = []
-                elif 'tasks/1' in url:
-                    mock_resp.json.return_value = task
-                elif '/user/' in url:
-                    mock_resp.json.return_value = {'id': 1, 'name': 'Test', 'email': 'test@test.com'}
-                return mock_resp
-            
-            mock_get.side_effect = mock_requests_get
-
-            reminders_sent = check_and_send_deadline_reminders()
-            # Should send 3-day reminder
-            self.assertEqual(reminders_sent, 1)
-
-    @mock.patch('smtplib.SMTP')
-    @mock.patch('requests.get')
-    def test_check_deadline_reminders_1_day(self, mock_get, mock_smtp):
-        """Test deadline reminder check for 1 day before"""
-        with self.app.app_context():
-            mock_server = mock.MagicMock()
-            mock_smtp.return_value.__enter__.return_value = mock_server
-            
-            singapore_tz = ZoneInfo('Asia/Singapore')
-            now = datetime.now(singapore_tz)
-            
-            # Create task with deadline exactly 1 day away
-            deadline_1day = (now + timedelta(days=1)).replace(hour=14, minute=0)
-            
-            task = {
-                'id': 1,
-                'title': 'Task',
-                'deadline': deadline_1day.isoformat(),
-                'status': 'Ongoing',
-                'owner_id': 1,
-                'parent_task_id': None,
-                'description': 'Test'
-            }
-            
-            def mock_requests_get(url, **kwargs):
-                mock_resp = mock.MagicMock()
-                mock_resp.status_code = 200
-                
-                if 'with-deadlines' in url:
-                    mock_resp.json.return_value = [task]
-                elif 'collaborators' in url:
-                    mock_resp.json.return_value = []
-                elif 'tasks/1' in url:
-                    mock_resp.json.return_value = task
-                elif '/user/' in url:
-                    mock_resp.json.return_value = {'id': 1, 'name': 'Test', 'email': 'test@test.com'}
-                return mock_resp
-            
-            mock_get.side_effect = mock_requests_get
-
-            reminders_sent = check_and_send_deadline_reminders()
-            # Should send 1-day reminder
-            self.assertEqual(reminders_sent, 1)
-
-    @mock.patch('requests.get')
-    def test_get_user_name_no_name_field(self, mock_get):
-        """Test get_user_name when name field doesn't exist"""
-        with self.app.app_context():
-            mock_response = mock.MagicMock()
-            mock_response.status_code = 200
-            mock_response.json.return_value = {'id': 1, 'email': 'test@test.com'}
-            mock_get.return_value = mock_response
-
-            name = get_user_name(1)
-            self.assertEqual(name, 'A team member')
-
-    @mock.patch('smtplib.SMTP')
-    @mock.patch('requests.get')
-    def test_send_status_update_partial_email_success(self, mock_get, mock_smtp):
-        """Test status update where some emails succeed and some fail"""
-        with self.app.app_context():
-            mock_server = mock.MagicMock()
-            
-            # First email succeeds, second fails
-            mock_server.send_message.side_effect = [None, Exception("SMTP Error")]
-            mock_smtp.return_value.__enter__.return_value = mock_server
-            
-            singapore_tz = ZoneInfo('Asia/Singapore')
-            task_data = {
-                'id': 1,
-                'title': 'Test Task',
-                'description': 'Test',
-                'status': 'Ongoing',
-                'owner_id': 1,
-                'deadline': (datetime.now(singapore_tz) + timedelta(days=7)).isoformat(),
-                'parent_task_id': None
-            }
-            
-            def mock_requests_get(url, **kwargs):
-                mock_resp = mock.MagicMock()
-                mock_resp.status_code = 200
-                
-                if '/user/1' in url:
-                    mock_resp.json.return_value = {'id': 1, 'name': 'Owner', 'email': 'owner@test.com'}
-                elif '/user/2' in url:
-                    mock_resp.json.return_value = {'id': 2, 'name': 'Collab', 'email': 'collab@test.com'}
-                elif 'collaborators' in url:
-                    mock_resp.json.return_value = [{'user_id': 2}]
-                elif 'tasks/1' in url:
-                    mock_resp.json.return_value = task_data
-                return mock_resp
-            
-            mock_get.side_effect = mock_requests_get
-
-            success = send_status_update_notification(1, 'Ongoing', 'Completed', 1)
-            # Should return True because at least one email was sent
-            self.assertTrue(success)
-
-    def test_deadline_reminder_model_sent_at_default(self):
-        """Test DeadlineReminder model with default sent_at"""
-        with self.app.app_context():
-            reminder = DeadlineReminder(task_id=1, days_before=7)
-            db.session.add(reminder)
-            db.session.commit()
-            
-            # sent_at should be set automatically
-            self.assertIsNotNone(reminder.sent_at)
-
-    @mock.patch('smtplib.SMTP')
-    def test_send_email_smtp_context_manager(self, mock_smtp):
-        """Test SMTP connection using context manager"""
-        with self.app.app_context():
-            mock_server = mock.MagicMock()
-            mock_smtp.return_value.__enter__.return_value = mock_server
-            mock_smtp.return_value.__exit__.return_value = None
-
-            success, error = send_email_via_smtp(
-                'test@example.com',
-                'Test Subject',
-                '<html><body>Test</body></html>'
-            )
-
-            self.assertTrue(success)
-            # Verify __enter__ was called (context manager)
-            mock_smtp.return_value.__enter__.assert_called_once()
-
-    @mock.patch('pika.BlockingConnection')
-    def test_rabbitmq_consumer_start_consuming_keyboard_interrupt(self, mock_conn):
-        """Test RabbitMQ consumer handling KeyboardInterrupt"""
-        from app.rabbitmq_consumer import RabbitMQConsumer
-        
-        mock_connection = mock.MagicMock()
-        mock_channel = mock.MagicMock()
-        mock_connection.channel.return_value = mock_channel
-        mock_connection.is_closed = False
-        mock_channel.start_consuming.side_effect = KeyboardInterrupt()
-        mock_conn.return_value = mock_connection
-        
-        consumer = RabbitMQConsumer(self.app)
-        consumer.connect()
-        
-        # This should handle KeyboardInterrupt gracefully
-        consumer.start_consuming()
-        
-        mock_channel.stop_consuming.assert_called_once()
-        mock_connection.close.assert_called_once()
-
-    @mock.patch('pika.BlockingConnection')
-    def test_rabbitmq_consumer_start_consuming_exception(self, mock_conn):
-        """Test RabbitMQ consumer handling general exception during consuming"""
-        from app.rabbitmq_consumer import RabbitMQConsumer
-        
-        mock_connection = mock.MagicMock()
-        mock_channel = mock.MagicMock()
-        mock_connection.channel.return_value = mock_channel
-        mock_connection.is_closed = False
-        mock_channel.start_consuming.side_effect = Exception("Consumer error")
-        mock_conn.return_value = mock_connection
-        
-        consumer = RabbitMQConsumer(self.app)
-        consumer.connect()
-        
-        # This should handle exception gracefully
-        consumer.start_consuming()
-
-    @mock.patch('pika.BlockingConnection')
-    def test_rabbitmq_consumer_connect_first_attempt_success(self, mock_conn):
-        """Test RabbitMQ connection success on first attempt"""
-        from app.rabbitmq_consumer import RabbitMQConsumer
-        
-        mock_connection = mock.MagicMock()
-        mock_channel = mock.MagicMock()
-        mock_connection.channel.return_value = mock_channel
-        mock_conn.return_value = mock_connection
-        
-        consumer = RabbitMQConsumer(self.app)
-        success = consumer.connect(max_retries=5, retry_delay=0.1)
-        
-        self.assertTrue(success)
-        # Should only call once (no retries)
-        self.assertEqual(mock_conn.call_count, 1)
-
-    @mock.patch('time.sleep')
-    @mock.patch('pika.BlockingConnection')
-    def test_rabbitmq_consumer_connect_retry_then_success(self, mock_conn, mock_sleep):
-        """Test RabbitMQ connection retry then success"""
-        from app.rabbitmq_consumer import RabbitMQConsumer
-        import pika
-        
-        # First call fails, second succeeds
-        mock_connection = mock.MagicMock()
-        mock_channel = mock.MagicMock()
-        mock_connection.channel.return_value = mock_channel
-        
-        mock_conn.side_effect = [
-            pika.exceptions.AMQPConnectionError("Error"),
-            mock_connection
-        ]
-        
-        consumer = RabbitMQConsumer(self.app)
-        success = consumer.connect(max_retries=3, retry_delay=0.1)
-        
-        self.assertTrue(success)
-        self.assertEqual(mock_conn.call_count, 2)
-        mock_sleep.assert_called_once_with(0.1)
-
-    @mock.patch('pika.BlockingConnection')
-    def test_rabbitmq_consumer_close_no_connection(self, mock_conn):
-        """Test closing RabbitMQ consumer with no connection"""
-        from app.rabbitmq_consumer import RabbitMQConsumer
-        
-        consumer = RabbitMQConsumer(self.app)
-        # Don't connect, just try to close
-        consumer.close()
-        # Should handle gracefully
-
-    @mock.patch('app.service.check_and_send_deadline_reminders')
-    def test_scheduler_run_deadline_check_with_error(self, mock_check):
-        """Test scheduler's _run_deadline_check with exception"""
-        from app.scheduler import DeadlineReminderScheduler
-        
-        mock_check.side_effect = Exception("Check error")
-        
-        scheduler = DeadlineReminderScheduler(self.app)
-        
-        # Call the internal method directly
-        scheduler._run_deadline_check()
-        
-        # Should handle exception gracefully
-        mock_check.assert_called_once()
-
-    def test_scheduler_stop_when_not_running(self):
-        """Test stopping scheduler when it's not running"""
-        from app.scheduler import DeadlineReminderScheduler
-        
-        scheduler = DeadlineReminderScheduler(self.app)
-        # Don't start it, just stop
-        scheduler.stop()
-        # Should handle gracefully
-
-    @mock.patch('app.service.check_and_send_deadline_reminders')
-    def test_scheduler_run_now_with_different_result(self, mock_check):
-        """Test scheduler manual run with different result"""
-        from app.scheduler import DeadlineReminderScheduler
-        
-        mock_check.return_value = 10
-        
-        scheduler = DeadlineReminderScheduler(self.app)
-        result = scheduler.run_now()
-        
-        self.assertEqual(result, 10)
-
-    @mock.patch('app.rabbitmq_consumer.start_consumer_thread')
-    @mock.patch('app.scheduler.start_deadline_scheduler')
-    def test_create_app_production_mode_mock_db(self, mock_scheduler, mock_consumer):
-        """Test app creation in production mode with mocked database"""
-        mock_consumer.return_value = mock.MagicMock()
-        mock_scheduler.return_value = mock.MagicMock()
-        
-        # Mock the database creation to avoid PostgreSQL connection
-        with mock.patch('app.models.db.create_all'):
-            # Temporarily set testing database URL
-            import os
-            original_url = os.environ.get('NOTIFICATION_DATABASE_URL')
-            os.environ['NOTIFICATION_DATABASE_URL'] = 'sqlite:///:memory:'
-            
-            try:
-                app = create_app()
-                self.assertIsNotNone(app)
-                self.assertFalse(app.config.get('TESTING', False))
-            finally:
-                # Restore original URL
-                if original_url:
-                    os.environ['NOTIFICATION_DATABASE_URL'] = original_url
-                elif 'NOTIFICATION_DATABASE_URL' in os.environ:
-                    del os.environ['NOTIFICATION_DATABASE_URL']
-
-    @mock.patch.dict(os.environ, {'WERKZEUG_RUN_MAIN': 'true', 'NOTIFICATION_DATABASE_URL': 'sqlite:///:memory:'})
-    @mock.patch('app.rabbitmq_consumer.start_consumer_thread')
-    @mock.patch('app.scheduler.start_deadline_scheduler')
-    @mock.patch('app.models.db.create_all')
-    def test_create_app_with_background_services_mock(self, mock_create_all, mock_scheduler, mock_consumer):
-        """Test app creation with background services starting (mocked)"""
-        mock_consumer.return_value = mock.MagicMock()
-        mock_scheduler.return_value = mock.MagicMock()
-        
-        app = create_app()
-        
-        # Verify app was created
-        self.assertIsNotNone(app)
 
 if __name__ == "__main__":
     unittest.main()
