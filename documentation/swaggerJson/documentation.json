@@ -23,12 +23,18 @@
     {
       "name": "Project",
       "description": "Endpoints for project management"
+    },
+    {
+      "name": "Notification",
+      "description": "Email notification management endpoints"
     }
   ],
   "paths": {
     "/user/create": {
       "post": {
-        "tags": ["User"],
+        "tags": [
+          "User"
+        ],
         "summary": "Create a new user",
         "description": "Registers a new user in the system with a username, email, and password.",
         "requestBody": {
@@ -37,7 +43,12 @@
             "application/json": {
               "schema": {
                 "type": "object",
-                "required": ["username", "name", "email", "password"],
+                "required": [
+                  "username",
+                  "name",
+                  "email",
+                  "password"
+                ],
                 "properties": {
                   "username": {
                     "type": "string",
@@ -77,7 +88,9 @@
             "description": "Bad Request - Missing required fields.",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/Error" }
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
               }
             }
           },
@@ -85,7 +98,9 @@
             "description": "Conflict - A user with the given username or email already exists.",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/Error" }
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
               }
             }
           }
@@ -94,7 +109,9 @@
     },
     "/user/login": {
       "post": {
-        "tags": ["User"],
+        "tags": [
+          "User"
+        ],
         "summary": "User Login",
         "description": "Authenticates a user and returns a JWT token upon successful login.",
         "requestBody": {
@@ -103,7 +120,10 @@
             "application/json": {
               "schema": {
                 "type": "object",
-                "required": ["email", "password"],
+                "required": [
+                  "email",
+                  "password"
+                ],
                 "properties": {
                   "email": {
                     "type": "string",
@@ -149,7 +169,9 @@
             "description": "Bad Request - Missing email or password.",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/Error" }
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
               }
             }
           },
@@ -157,7 +179,9 @@
             "description": "Unauthorized - Invalid login credentials.",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/Error" }
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
               }
             }
           },
@@ -165,7 +189,9 @@
             "description": "Internal Server Error.",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/Error" }
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
               }
             }
           }
@@ -174,7 +200,9 @@
     },
     "/user/{user_id}": {
       "get": {
-        "tags": ["User"],
+        "tags": [
+          "User"
+        ],
         "summary": "Get a user by ID",
         "description": "Retrieves public information for a single user by their unique ID.",
         "parameters": [
@@ -203,7 +231,9 @@
             "description": "Not Found - The user with the specified ID was not found.",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/Error" }
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
               }
             }
           }
@@ -212,7 +242,9 @@
     },
     "/user/verifyJWT": {
       "get": {
-        "tags": ["User"],
+        "tags": [
+          "User"
+        ],
         "summary": "Verify JWT and get current user data",
         "description": "Protected endpoint that requires a valid JWT. Decodes the token and returns the authenticated user's data.",
         "security": [
@@ -235,7 +267,9 @@
             "description": "Unauthorized - Token is missing, invalid, or expired.",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/Error" }
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
               }
             }
           },
@@ -243,7 +277,9 @@
             "description": "Not Found - The user associated with the token was not found.",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/Error" }
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
               }
             }
           }
@@ -252,7 +288,9 @@
     },
     "/tasks": {
       "get": {
-        "tags": ["Task"],
+        "tags": [
+          "Task"
+        ],
         "summary": "Get all tasks",
         "description": "Get all tasks, optionally filtered by owner_id",
         "responses": {
@@ -288,7 +326,9 @@
         }
       },
       "post": {
-        "tags": ["Task"],
+        "tags": [
+          "Task"
+        ],
         "summary": "Create a new task",
         "description": "Create a new task by providing title and owner_id",
         "requestBody": {
@@ -320,7 +360,10 @@
                     "example": 1
                   }
                 },
-                "required": ["title", "owner_id"]
+                "required": [
+                  "title",
+                  "owner_id"
+                ]
               }
             }
           }
@@ -373,7 +416,9 @@
     },
     "/tasks/{task_id}/subtasks": {
       "post": {
-        "tags": ["Task"],
+        "tags": [
+          "Task"
+        ],
         "summary": "Create a new subtask for a task",
         "description": "Create a new subtask under the specified task",
         "parameters": [
@@ -403,7 +448,9 @@
                     "example": "Unassigned"
                   }
                 },
-                "required": ["title"]
+                "required": [
+                  "title"
+                ]
               }
             }
           }
@@ -472,7 +519,9 @@
     },
     "/projects": {
       "post": {
-        "tags": ["Project"],
+        "tags": [
+          "Project"
+        ],
         "summary": "Create a new project",
         "description": "Create a new project. The user who creates the project becomes the owner.",
         "requestBody": {
@@ -481,7 +530,10 @@
             "application/json": {
               "schema": {
                 "type": "object",
-                "required": ["name", "user_id"],
+                "required": [
+                  "name",
+                  "user_id"
+                ],
                 "properties": {
                   "name": {
                     "type": "string",
@@ -551,7 +603,9 @@
     },
     "/projects/{project_id}": {
       "get": {
-        "tags": ["Project"],
+        "tags": [
+          "Project"
+        ],
         "summary": "Get a project by ID",
         "description": "Retrieve detailed information about a specific project",
         "parameters": [
@@ -604,7 +658,9 @@
         }
       },
       "put": {
-        "tags": ["Project"],
+        "tags": [
+          "Project"
+        ],
         "summary": "Update project details",
         "description": "Update project information. Only the project owner can update the project.",
         "parameters": [
@@ -624,7 +680,9 @@
             "application/json": {
               "schema": {
                 "type": "object",
-                "required": ["user_id"],
+                "required": [
+                  "user_id"
+                ],
                 "properties": {
                   "name": {
                     "type": "string",
@@ -712,7 +770,9 @@
         }
       },
       "delete": {
-        "tags": ["Project"],
+        "tags": [
+          "Project"
+        ],
         "summary": "Delete a project",
         "description": "Delete a project. Only the project owner can delete the project.",
         "parameters": [
@@ -732,7 +792,9 @@
             "application/json": {
               "schema": {
                 "type": "object",
-                "required": ["user_id"],
+                "required": [
+                  "user_id"
+                ],
                 "properties": {
                   "user_id": {
                     "type": "integer",
@@ -806,7 +868,9 @@
     },
     "/projects/user/{user_id}": {
       "get": {
-        "tags": ["Project"],
+        "tags": [
+          "Project"
+        ],
         "summary": "Get all projects for a user",
         "description": "Retrieve all projects that a user is involved in (as owner or collaborator)",
         "parameters": [
@@ -826,7 +890,10 @@
             "description": "Filter projects by user role (owner or collaborator)",
             "schema": {
               "type": "string",
-              "enum": ["owner", "collaborator"]
+              "enum": [
+                "owner",
+                "collaborator"
+              ]
             }
           }
         ],
@@ -883,6 +950,293 @@
           }
         }
       }
+    },
+    "/notifications/status-update": {
+      "post": {
+        "tags": [
+          "Notification"
+        ],
+        "summary": "Send status update notification (Internal)",
+        "description": "Internal endpoint to trigger status update email notifications. Typically called by the Task Service or through RabbitMQ messaging.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "task_id",
+                  "old_status",
+                  "new_status",
+                  "changed_by_id"
+                ],
+                "properties": {
+                  "task_id": {
+                    "type": "integer",
+                    "example": 123
+                  },
+                  "old_status": {
+                    "type": "string",
+                    "enum": [
+                      "Unassigned",
+                      "Ongoing",
+                      "Under Review",
+                      "Completed"
+                    ],
+                    "example": "Ongoing"
+                  },
+                  "new_status": {
+                    "type": "string",
+                    "enum": [
+                      "Unassigned",
+                      "Ongoing",
+                      "Under Review",
+                      "Completed"
+                    ],
+                    "example": "Completed"
+                  },
+                  "changed_by_id": {
+                    "type": "integer",
+                    "example": 5
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Status update notifications sent successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "example": "Status update notifications sent successfully"
+                    },
+                    "recipients_notified": {
+                      "type": "integer",
+                      "example": 3
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Task not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/reminders/task/{task_id}": {
+      "get": {
+        "tags": [
+          "Notification"
+        ],
+        "summary": "Get deadline reminders for a task",
+        "description": "Retrieve all deadline reminders sent for a specific task",
+        "parameters": [
+          {
+            "name": "task_id",
+            "in": "path",
+            "required": true,
+            "description": "The unique identifier of the task",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Task reminders retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "task_id": {
+                      "type": "integer",
+                      "example": 123
+                    },
+                    "reminders": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/DeadlineReminder"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No reminders found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/scheduler/trigger": {
+      "post": {
+        "tags": [
+          "Notification"
+        ],
+        "summary": "Manually trigger deadline reminder check",
+        "description": "Manually trigger the deadline reminder scheduler to check for upcoming deadlines and send reminders. Useful for testing.",
+        "responses": {
+          "200": {
+            "description": "Scheduler triggered successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "example": "Deadline reminder check completed"
+                    },
+                    "reminders_sent": {
+                      "type": "integer",
+                      "example": 5
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "format": "date-time",
+                      "example": "2025-10-13T14:30:00+08:00"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/alerts/overdue/{task_id}": {
+      "get": {
+        "tags": [
+          "Notification"
+        ],
+        "summary": "Get overdue alerts for a task",
+        "description": "Retrieve all overdue alerts sent for a specific task",
+        "parameters": [
+          {
+            "name": "task_id",
+            "in": "path",
+            "required": true,
+            "description": "The unique identifier of the task",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Task overdue alerts retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "task_id": {
+                      "type": "integer",
+                      "example": 123
+                    },
+                    "alerts": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/OverdueAlert"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No alerts found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/scheduler/trigger-overdue": {
+      "post": {
+        "tags": [
+          "Notification"
+        ],
+        "summary": "Manually trigger overdue task check",
+        "description": "Manually trigger the overdue task scheduler to check for overdue tasks and send alerts. Useful for testing.",
+        "responses": {
+          "200": {
+            "description": "Overdue check triggered successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "example": "Overdue task check completed"
+                    },
+                    "alerts_sent": {
+                      "type": "integer",
+                      "example": 3
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "format": "date-time",
+                      "example": "2025-10-13T14:30:00+08:00"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -916,8 +1270,14 @@
       "Task": {
         "type": "object",
         "properties": {
-          "id": { "type": "integer", "example": 101 },
-          "title": { "type": "string", "example": "Finish project report" },
+          "id": {
+            "type": "integer",
+            "example": 101
+          },
+          "title": {
+            "type": "string",
+            "example": "Finish project report"
+          },
           "description": {
             "type": "string",
             "example": "Complete and submit the project report by deadline"
@@ -927,57 +1287,96 @@
             "format": "date-time",
             "example": "2025-09-30T23:59:59Z"
           },
-          "status": { "type": "string", "example": "Unassigned" },
-          "owner_id": { "type": "integer", "example": 1 },
+          "status": {
+            "type": "string",
+            "example": "Unassigned"
+          },
+          "owner_id": {
+            "type": "integer",
+            "example": 1
+          },
           "subtasks": {
             "type": "array",
-            "items": { "$ref": "#/components/schemas/Subtask" }
+            "items": {
+              "$ref": "#/components/schemas/Subtask"
+            }
           },
           "comments": {
             "type": "array",
-            "items": { "$ref": "#/components/schemas/Comment" }
+            "items": {
+              "$ref": "#/components/schemas/Comment"
+            }
           },
           "attachments": {
             "type": "array",
-            "items": { "$ref": "#/components/schemas/Attachment" }
+            "items": {
+              "$ref": "#/components/schemas/Attachment"
+            }
           }
         }
       },
       "Subtask": {
         "type": "object",
         "properties": {
-          "id": { "type": "integer", "example": 201 },
+          "id": {
+            "type": "integer",
+            "example": 201
+          },
           "title": {
             "type": "string",
             "example": "Draft introduction section"
           },
-          "status": { "type": "string", "example": "In Progress" },
-          "task_id": { "type": "integer", "example": 101 }
+          "status": {
+            "type": "string",
+            "example": "In Progress"
+          },
+          "task_id": {
+            "type": "integer",
+            "example": 101
+          }
         }
       },
       "Comment": {
         "type": "object",
         "properties": {
-          "id": { "type": "integer", "example": 301 },
+          "id": {
+            "type": "integer",
+            "example": 301
+          },
           "body": {
             "type": "string",
             "example": "Please review the draft by tomorrow"
           },
-          "author_id": { "type": "integer", "example": 1 },
-          "task_id": { "type": "integer", "example": 101 }
+          "author_id": {
+            "type": "integer",
+            "example": 1
+          },
+          "task_id": {
+            "type": "integer",
+            "example": 101
+          }
         }
       },
       "Attachment": {
         "type": "object",
         "properties": {
-          "id": { "type": "integer", "example": 401 },
-          "filename": { "type": "string", "example": "report_draft.pdf" },
+          "id": {
+            "type": "integer",
+            "example": 401
+          },
+          "filename": {
+            "type": "string",
+            "example": "report_draft.pdf"
+          },
           "url": {
             "type": "string",
             "format": "uri",
             "example": "https://example.com/files/report_draft.pdf"
           },
-          "task_id": { "type": "integer", "example": 101 }
+          "task_id": {
+            "type": "integer",
+            "example": 101
+          }
         }
       },
       "Project": {
@@ -1020,7 +1419,65 @@
             "example": "Error message describing the issue."
           }
         }
+      },
+      "DeadlineReminder": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "example": 1
+          },
+          "task_id": {
+            "type": "integer",
+            "example": 123
+          },
+          "days_before": {
+            "type": "integer",
+            "enum": [
+              1,
+              3,
+              7
+            ],
+            "example": 7,
+            "description": "Days before deadline when reminder was sent"
+          },
+          "sent_at": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2025-10-06T09:00:00+08:00"
+          }
+        }
+      },
+      "OverdueAlert": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "example": 1
+          },
+          "task_id": {
+            "type": "integer",
+            "example": 123
+          },
+          "alert_date": {
+            "type": "string",
+            "format": "date",
+            "example": "2025-10-14",
+            "description": "The date when the alert was sent"
+          },
+          "days_overdue": {
+            "type": "integer",
+            "example": 3,
+            "description": "Number of days the task has been overdue"
+          },
+          "sent_at": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2025-10-14T09:00:00+08:00"
+          }
+        }
       }
+    
     },
     "securitySchemes": {
       "bearerAuth": {
