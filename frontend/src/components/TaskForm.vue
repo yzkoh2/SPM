@@ -1,5 +1,5 @@
 <template>
-  <div class="bg-white rounded-lg shadow-md p-6">
+  <div class="bg-white rounded-lg shadow-md p-6 m-8">
     <h2 class="text-xl font-semibold text-gray-900 mb-4">{{ formTitle }}</h2>
     <form @submit.prevent="handleSubmit" class="space-y-6">
       <div>
