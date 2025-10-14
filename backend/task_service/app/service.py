@@ -344,8 +344,8 @@ def delete_task(task_id, user_id):
         if not task:
             return False, "Task not found"
 
-        if len(task.subtasks) != 0:
-            return False, "Cannot delete a task that has subtasks. Please delete or reassign subtasks first."
+        if not all(subtask.status == TaskStatusEnum.COMPLETED for subtask in task.subtasks):
+            return False, "Cannot delete task. All subtasks must be completed first."
     
         is_owner = (task.owner_id == user_id)
 
