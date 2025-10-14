@@ -650,6 +650,96 @@ class TestDeleteTask(TestTaskRoutes):
         self.assertEqual(response.status_code, 200)
 
 
+# ==================== GET /tasks/<int:task_id>/collaborators TESTS ====================
+
+class TestGetTaskCollaborators(TestTaskRoutes):
+    """Test cases for GET /tasks/<int:task_id>/collaborators route"""
+    
+    @patch('app.routes.service.get_task_collaborators')
+    def test_get_task_collaborators_success(self, mock_get_collaborators):
+        """Test successfully retrieving task collaborators"""
+        mock_collaborators = [
+            {'user_id': 2, 'name': 'John Doe', 'email': 'john@example.com'},
+            {'user_id': 3, 'name': 'Jane Smith', 'email': 'jane@example.com'}
+        ]
+        mock_get_collaborators.return_value = mock_collaborators
+        
+        response = self.client.get('/api/tasks/1/collaborators')
+        
+        self.assertEqual(response.status_code, 200)
+        data = json.loads(response.data)
+        self.assertEqual(len(data), 2)
+        self.assertEqual(data[0]['user_id'], 2)
+        self.assertEqual(data[1]['user_id'], 3)
+        mock_get_collaborators.assert_called_once_with(1)
+    
+    @patch('app.routes.service.get_task_collaborators')
+    def test_get_task_collaborators_empty_list(self, mock_get_collaborators):
+        """Test get collaborators when task has no collaborators"""
+        mock_get_collaborators.return_value = []
+        
+        response = self.client.get('/api/tasks/1/collaborators')
+        
+        self.assertEqual(response.status_code, 200)
+        data = json.loads(response.data)
+        self.assertEqual(len(data), 0)
+    
+    @patch('app.routes.service.get_task_collaborators')
+    def test_get_task_collaborators_single_collaborator(self, mock_get_collaborators):
+        """Test get collaborators with a single collaborator"""
+        mock_collaborators = [
+            {'user_id': 2, 'name': 'John Doe', 'email': 'john@example.com'}
+        ]
+        mock_get_collaborators.return_value = mock_collaborators
+        
+        response = self.client.get('/api/tasks/1/collaborators')
+        
+        self.assertEqual(response.status_code, 200)
+        data = json.loads(response.data)
+        self.assertEqual(len(data), 1)
+        self.assertEqual(data[0]['user_id'], 2)
+    
+    @patch('app.routes.service.get_task_collaborators')
+    def test_get_task_collaborators_negative_task_id(self, mock_get_collaborators):
+        """Test get collaborators with negative task_id"""
+        mock_get_collaborators.return_value = None
+        
+        response = self.client.get('/api/tasks/-1/collaborators')
+        
+        self.assertEqual(response.status_code, 404)
+    
+    @patch('app.routes.service.get_task_collaborators')
+    def test_get_task_collaborators_service_exception(self, mock_get_collaborators):
+        """Test get collaborators when service raises exception"""
+        mock_get_collaborators.side_effect = Exception("Database error")
+        
+        response = self.client.get('/api/tasks/1/collaborators')
+        
+        self.assertEqual(response.status_code, 500)
+        data = json.loads(response.data)
+        self.assertIn('error', data)
+        self.assertEqual(data['error'], 'Database error')
+    
+    @patch('app.routes.service.get_task_collaborators')
+    def test_get_task_collaborators_multiple_collaborators(self, mock_get_collaborators):
+        """Test get collaborators with multiple collaborators"""
+        mock_collaborators = [
+            {'user_id': 2, 'name': 'John Doe', 'email': 'john@example.com'},
+            {'user_id': 3, 'name': 'Jane Smith', 'email': 'jane@example.com'},
+            {'user_id': 4, 'name': 'Bob Johnson', 'email': 'bob@example.com'}
+        ]
+        mock_get_collaborators.return_value = mock_collaborators
+        
+        response = self.client.get('/api/tasks/1/collaborators')
+        
+        self.assertEqual(response.status_code, 200)
+        data = json.loads(response.data)
+        self.assertEqual(len(data), 3)
+        self.assertEqual(data[0]['name'], 'John Doe')
+        self.assertEqual(data[1]['name'], 'Jane Smith')
+        self.assertEqual(data[2]['name'], 'Bob Johnson')
+
+
 # ==================== RUN TESTS ====================
 
 if __name__ == '__main__':
