@@ -1137,6 +1137,106 @@
           }
         }
       }
+    },
+    "/alerts/overdue/{task_id}": {
+      "get": {
+        "tags": [
+          "Notification"
+        ],
+        "summary": "Get overdue alerts for a task",
+        "description": "Retrieve all overdue alerts sent for a specific task",
+        "parameters": [
+          {
+            "name": "task_id",
+            "in": "path",
+            "required": true,
+            "description": "The unique identifier of the task",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Task overdue alerts retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "task_id": {
+                      "type": "integer",
+                      "example": 123
+                    },
+                    "alerts": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/OverdueAlert"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No alerts found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/scheduler/trigger-overdue": {
+      "post": {
+        "tags": [
+          "Notification"
+        ],
+        "summary": "Manually trigger overdue task check",
+        "description": "Manually trigger the overdue task scheduler to check for overdue tasks and send alerts. Useful for testing.",
+        "responses": {
+          "200": {
+            "description": "Overdue check triggered successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "example": "Overdue task check completed"
+                    },
+                    "alerts_sent": {
+                      "type": "integer",
+                      "example": 3
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "format": "date-time",
+                      "example": "2025-10-13T14:30:00+08:00"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -1347,7 +1447,37 @@
             "example": "2025-10-06T09:00:00+08:00"
           }
         }
+      },
+      "OverdueAlert": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "example": 1
+          },
+          "task_id": {
+            "type": "integer",
+            "example": 123
+          },
+          "alert_date": {
+            "type": "string",
+            "format": "date",
+            "example": "2025-10-14",
+            "description": "The date when the alert was sent"
+          },
+          "days_overdue": {
+            "type": "integer",
+            "example": 3,
+            "description": "Number of days the task has been overdue"
+          },
+          "sent_at": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2025-10-14T09:00:00+08:00"
+          }
+        }
       }
+    
     },
     "securitySchemes": {
       "bearerAuth": {
