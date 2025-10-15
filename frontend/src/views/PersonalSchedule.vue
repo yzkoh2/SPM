@@ -9,6 +9,7 @@
       <TaskCalendar
         :tasks="filteredTasks"
         :loading="loading"
+        :is-personal="true"
         subtitle="Your personal tasks this month"
         @view-task="viewTaskDetails"
       >

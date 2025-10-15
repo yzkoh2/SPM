@@ -20,21 +20,14 @@
     <StatusUpdateModal v-if="task && showStatusModal" :show="showStatusModal" :task="task"
       @close="showStatusModal = false" @update-status="handleStatusUpdate" />
 
-    <div v-if="showEditForm" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 flex items-start justify-center">
-        <div class="relative w-full max-w-2xl">
-          <TaskForm
-            :task-to-edit="taskToEdit"
-            :all-users="allUsers"
-            :is-subtask="isSubtask"
-            :is-submitting="isUpdating"
-            :current-collaborators="collaboratorDetails"
-            submit-button-text="Update Task"
-            submit-button-loading-text="Updating..."
-            @submit="updateTask"
-            @cancel="closeEditModal"
-          />
-        </div>
+    <div v-if="showEditForm"
+      class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 flex items-start justify-center">
+      <div class="relative w-full max-w-2xl">
+        <TaskForm :task-to-edit="taskToEdit" :all-users="allUsers" :is-subtask="isSubtask" :is-submitting="isUpdating"
+          :current-collaborators="collaboratorDetails" submit-button-text="Update Task"
+          submit-button-loading-text="Updating..." @submit="updateTask" @cancel="closeEditModal" />
       </div>
+    </div>
 
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <div v-if="loading" class="flex justify-center items-center py-12">
@@ -53,7 +46,8 @@
           </div>
         </div>
         <div class="mt-4">
-          <button @click="fetchTaskDetails" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md text-sm cursor-pointer">
+          <button @click="fetchTaskDetails"
+            class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md text-sm cursor-pointer">
             Try Again
           </button>
         </div>
@@ -127,7 +121,7 @@
             </div>
             <div>
               <h4 class="text-sm font-medium text-gray-500 uppercase tracking-wide">Owner</h4>
-              <p class="mt-1 text-lg text-gray-900">ID: {{ task.owner_id }}</p>
+              <p class="mt-1 text-lg text-gray-900"> {{ ownerDetails.name }} ID: {{ task.owner_id }}</p>
             </div>
             <div v-if="!isSubtask">
               <h4 class="text-sm font-medium text-gray-500 uppercase tracking-wide">Progress</h4>
@@ -254,26 +248,21 @@
           <div class="mb-6 border-b border-gray-200 pb-6">
             <label class="block text-sm font-medium text-gray-700 mb-2">Add a Comment</label>
 
-            <Mentionable
-              :keys="['@']"
+            <Mentionable :keys="['@']"
               :items="collaboratorDetails.map(c => ({ value: c.username, label: c.name, user_id: c.user_id, role: c.role }))"
-              offset="6"
-              insert-space
-            >
-              <textarea
-                v-model="newComment"
-                rows="3"
+              offset="6" insert-space>
+              <textarea v-model="newComment" rows="3"
                 class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                placeholder="Write a comment... Use @ to mention collaborators"
-                @keydown.meta.enter="addComment"
-                @keydown.ctrl.enter="addComment"
-              ></textarea>
+                placeholder="Write a comment... Use @ to mention collaborators" @keydown.meta.enter="addComment"
+                @keydown.ctrl.enter="addComment"></textarea>
 
               <template #item-@="{ item, isSelected }">
-                <div 
-                  :class="['flex items-center p-2 space-x-3 cursor-pointer rounded-md transition-colors duration-150 ease-in-out', isSelected ? 'bg-indigo-100' : 'hover:bg-gray-50']"
-                >
-                  <svg class="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
+                <div
+                  :class="['flex items-center p-2 space-x-3 cursor-pointer rounded-md transition-colors duration-150 ease-in-out', isSelected ? 'bg-indigo-100' : 'hover:bg-gray-50']">
+                  <svg class="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+                  </svg>
                   <div class="flex-1">
                     <div class="font-medium text-gray-800">{{ item.label }}</div>
                     <div class="text-sm text-gray-500">{{ item.role }}</div>
@@ -287,7 +276,7 @@
             </Mentionable>
 
             <div v-if="isCollaborator" class="mt-2 flex justify-end">
-              <button @click="addComment({ body: newComment})" :disabled="!newComment.trim() || addingComment"
+              <button @click="addComment({ body: newComment })" :disabled="!newComment.trim() || addingComment"
                 class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-md text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer">
                 <span v-if="addingComment">Adding...</span>
                 <span v-else>Add Comment</span>
@@ -296,16 +285,11 @@
           </div>
 
           <div v-if="topLevelComments.length > 0" class="space-y-6">
-            <CommentItem
-              v-for="comment in topLevelComments"
-              :key="comment.id"
-              :comment="comment"
-              :current-user-id="authStore.user?.id"
-              :collaborator-details="collaboratorDetails"
-              @reply="addComment"
+            <CommentItem v-for="comment in topLevelComments" :key="comment.id" :comment="comment"
+              :current-user-id="authStore.user?.id" :collaborator-details="collaboratorDetails" @reply="addComment"
               @delete="handleDeleteComment" />
           </div>
-          
+
           <div v-else v-if="isCollaborator" class="text-center py-8 text-gray-500">
             <svg class="mx-auto h-12 w-12 text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -316,20 +300,14 @@
           </div>
         </div>
 
-        <AttachmentModal 
-            :show="showAttachmentModal" 
-            :task-id="task.id" 
-            :is-uploading="isUploadingAttachment"
-            @close="showAttachmentModal = false" 
-            @upload="addAttachment" 
-            v-if="task"
-        />
+        <AttachmentModal :show="showAttachmentModal" :task-id="task.id" :is-uploading="isUploadingAttachment"
+          @close="showAttachmentModal = false" @upload="addAttachment" v-if="task" />
         <div class="bg-white rounded-lg shadow-md p-6">
           <div class="flex justify-between items-center mb-6">
             <h3 class="text-xl font-semibold text-gray-900">
               Attachments ({{ task.attachments?.length || 0 }})
             </h3>
-            
+
             <button v-if="isOwner" @click="showAttachmentModal = true"
               class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-md text-sm font-medium disabled:opacity-50 cursor-pointer">
               <span>Add Attachment</span>
@@ -413,6 +391,8 @@ const addingComment = ref(false)
 const collaborators = ref([])
 const collaboratorDetails = ref([])
 const allUsers = ref([])
+const ownerDetails = ref(null)
+
 
 // Modal States
 const showAttachmentModal = ref(false)
@@ -434,7 +414,7 @@ const canEditTask = computed(() => {
 
 const isOwner = computed(() => {
   return authStore.user.id === task.value.owner_id
-})  
+})
 
 const isCollaborator = computed(() => {
   // Ensure we have the necessary data before checking
@@ -484,6 +464,10 @@ const fetchTaskDetails = async () => {
 
     if (response.ok) {
       task.value = await response.json()
+      if (task.value?.owner_id) {
+        ownerDetails.value = await fetchUserDetails(task.value.owner_id)
+      }
+
       comments.value = task.value.comments || []
       if (task.value.attachments) {
         const urlPromises = task.value.attachments.map(async (attachment) => {
@@ -603,7 +587,7 @@ const getS3URL = async (taskId, attachmentId) => {
   }
 }
 
-const addAttachment = async ({file, name, taskId}) => {
+const addAttachment = async ({ file, name, taskId }) => {
   isUploadingAttachment.value = true
   const formData = new FormData()
   formData.append('file', file)
@@ -701,12 +685,12 @@ const handleStatusUpdate = async ({ newStatus, comment }) => {
 }
 
 // Add comment (top-level)
-const addComment = async ({body, parentCommentId = null}) => {
+const addComment = async ({ body, parentCommentId = null }) => {
   if (!body.trim()) return
 
   try {
     addingComment.value = true
-    
+
     const mentionRegex = /@(\w+)/g;
     const matches = [...body.matchAll(mentionRegex)];
     const mentionedUsernames = matches.map(match => match[1]);
@@ -733,7 +717,7 @@ const addComment = async ({body, parentCommentId = null}) => {
       // Refresh task details to get updated comments with nested structure
       await fetchTaskDetails()
       if (!parentCommentId) {
-          newComment.value = ''
+        newComment.value = ''
       }
     } else {
       const errorData = await response.json()

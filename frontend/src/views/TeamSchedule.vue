@@ -6,7 +6,7 @@
         <p class="text-gray-600 mt-2">View all team tasks in calendar format</p>
       </div>
 
-      <TaskCalendar :tasks="filteredTasks" :loading="loading" subtitle="Team tasks scheduled this month"
+      <TaskCalendar :tasks="filteredTasks" :is-personal="false" :loading="loading" subtitle="Team tasks scheduled this month"
         @view-task="viewTaskDetails">
         <template #filters>
           <select v-model="filters.memberName"
@@ -104,6 +104,22 @@ const fetchCollaboratorsForTask = async (taskId) => {
   }
 }
 
+const fetchUserDetails = async (userId) => {
+  try {
+    const response = await fetch(`${KONG_API_URL}/user/${userId}`)
+
+    if (response.ok) {
+      return await response.json()
+    } else {
+      console.warn(`Failed to load user details for ID ${userId}`)
+      return null
+    }
+  } catch (err) {
+    console.error(`Error fetching user ${userId}:`, err)
+    return null
+  }
+}
+
 const fetchTasks = async () => {
   loading.value = true
 
@@ -158,8 +174,26 @@ const fetchTasks = async () => {
     const relevantTasks = Array.from(taskMap.values()).filter(task => {
       return memberIds.includes(task.owner_id) || task.has_team_collaborator
     })
+    // Fetch user details for all unique owner IDs
+    const uniqueOwnerIds = [...new Set(relevantTasks.map(task => task.owner_id).filter(id => id))]
+    const userCache = {}
+    
+    await Promise.all(
+      uniqueOwnerIds.map(async (ownerId) => {
+        const userDetails = await fetchUserDetails(ownerId)
+        if (userDetails) {
+          userCache[ownerId] = userDetails.name || `User ${ownerId}`
+        }
+      })
+    )
 
-    tasks.value = relevantTasks
+    // Append owner names to tasks
+    const relevantTasksWithOwners = relevantTasks.map(task => ({
+      ...task,
+      owner_name: task.owner_id ? userCache[task.owner_id] || 'Unknown' : 'Unassigned'
+    }))
+
+    tasks.value = relevantTasksWithOwners
 
   } catch (err) {
     console.error('Error fetching team tasks:', err)
