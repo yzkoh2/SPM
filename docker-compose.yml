@@ -238,3 +238,17 @@ services:
       timeout: 5s
       retries: 5
       start_period: 30s
+
+  swagger:
+    build: 
+      context: ./documentation
+      dockerfile: Dockerfile
+    image: spm/swagger:1.0
+    container_name: spm-swagger
+    restart: always
+    ports:
+      - "6008:6008"
+    volumes:
+      - ./swagger:/usr/src/app/swagger
+    networks:
+      - spm-net
