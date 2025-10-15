@@ -134,3 +134,12 @@ INSERT INTO comments (body, author_id, task_id) VALUES
 -- Comment for a subtask (task_id 5: 'Define API endpoints')
 INSERT INTO comments (body, author_id, task_id) VALUES
 ('Should we include a route for collaborators or handle that within the main task endpoint?', 3, 5);
+
+-- Task 3 main task with collaborator John
+WITH inserted_task AS (
+  INSERT INTO tasks (title, description, deadline, status, owner_id, project_id)
+  VALUES ('Frontend Development', 'Develop the frontend using Vue.js', '2025-10-30', 'UNASSIGNED', 3, 1)
+  RETURNING id
+)
+INSERT INTO task_collaborators (task_id, user_id)
+SELECT id, 1 FROM inserted_task;
