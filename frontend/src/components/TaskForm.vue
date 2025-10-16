@@ -340,7 +340,12 @@ const minDeadline = computed(() => {
 });
 
 const minRecurrenceEndDate = computed(() => {
-  return localData.value.deadline || minDeadline.value;
+  const baseDate = localData.value.deadline || minDeadline.value;
+
+  const date = new Date(baseDate);
+  date.setDate(date.getDate() + 1);
+
+  return formatDateForInput(date);
 });
 
 // --- Watchers ---
