@@ -1,10 +1,10 @@
-DROP TABLE IF EXISTS attachments;
-DROP TABLE IF EXISTS task_collaborators;
-DROP TABLE IF EXISTS project_collaborators;
-DROP TABLE IF EXISTS comment_mentions;
-DROP TABLE IF EXISTS tasks;
-DROP TABLE IF EXISTS projects;
-DROP TABLE IF EXISTS comments;
+DROP TABLE IF EXISTS attachments CASCADE;
+DROP TABLE IF EXISTS task_collaborators CASCADE;
+DROP TABLE IF EXISTS project_collaborators CASCADE;
+DROP TABLE IF EXISTS comment_mentions CASCADE;
+DROP TABLE IF EXISTS tasks CASCADE;
+DROP TABLE IF EXISTS projects CASCADE;
+DROP TABLE IF EXISTS comments CASCADE;
 
 
 ALTER DATABASE task_db SET timezone TO 'UTC';

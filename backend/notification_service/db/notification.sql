@@ -1,3 +1,12 @@
+DROP TABLE IF EXISTS deadline_reminders CASCADE;
+DROP TABLE IF EXISTS overdue_alerts CASCADE;
+DROP INDEX IF EXISTS idx_deadline_reminders_task;
+DROP INDEX IF EXISTS idx_deadline_reminders_days;
+DROP INDEX IF EXISTS idx_deadline_reminders_sent_at;
+DROP INDEX IF EXISTS idx_overdue_alerts_task;
+DROP INDEX IF EXISTS idx_overdue_alerts_date;
+DROP INDEX IF EXISTS idx_overdue_alerts_sent_at;
+
 -- Tracks which deadline reminders have been sent to prevent duplicates
 CREATE TABLE deadline_reminders (
     id SERIAL PRIMARY KEY,
