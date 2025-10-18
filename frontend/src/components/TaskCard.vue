@@ -16,6 +16,11 @@
           >
             {{ task.status }}
           </span>
+          <RecurringIcon 
+  :isRecurring="task.is_recurring"
+  :recurrenceInterval="task.recurrence_interval"
+  :recurrenceDays="task.recurrence_days"
+/>
         </div>
 
         <div class="flex items-center space-x-1 ml-4">
@@ -67,8 +72,9 @@
 </template>
 
 <script setup>
-import { computed } from 'vue';
+import { computed,onMounted } from 'vue';
 import { useAuthStore } from '@/stores/auth';
+import RecurringIcon from '@/components/RecurringIcon.vue';
 
 const authStore = useAuthStore();
 

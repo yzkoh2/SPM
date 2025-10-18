@@ -75,6 +75,13 @@
                   :class="getStatusBadgeColor(task.status)">
                   {{ task.status }}
                 </span>
+
+                <RecurringIcon 
+                  :is-recurring="task.is_recurring"
+                  :recurrence-interval="task.recurrence_interval"
+                  :recurrence-days="task.recurrence_days"
+                />
+
                 <span v-if="canEditTask" class="text-xs text-gray-500 flex items-center">
                   <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -148,6 +155,93 @@
               </div>
             </div>
           </div>
+
+          <!-- Recurring Task Details Section -->
+          <div v-if="task.is_recurring" class="mt-6 pt-6 border-t border-gray-200">
+            <div class="flex items-center mb-4">
+              <svg class="w-5 h-5 text-purple-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15">
+                </path>
+              </svg>
+              <h4 class="text-sm font-medium text-gray-500 uppercase tracking-wide">Recurring Task Information</h4>
+            </div>
+            
+            <div class="bg-purple-50 border border-purple-200 rounded-lg p-4">
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <!-- Recurrence Interval -->
+                <div>
+                  <p class="text-xs font-medium text-purple-700 mb-1">Recurrence Pattern</p>
+                  <div class="flex items-center">
+                    <svg class="w-4 h-4 text-purple-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                        d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z">
+                      </path>
+                    </svg>
+                    <p class="text-sm font-semibold text-gray-900">
+                      {{ formatRecurrenceInterval(task.recurrence_interval, task.recurrence_days) }}
+                    </p>
+                  </div>
+                </div>
+
+                <!-- Next Instance Date -->
+                <div>
+                  <p class="text-xs font-medium text-purple-700 mb-1">Next Scheduled Instance</p>
+                  <div class="flex items-center">
+                    <svg class="w-4 h-4 text-purple-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                        d="M13 7l5 5m0 0l-5 5m5-5H6">
+                      </path>
+                    </svg>
+                    <p class="text-sm font-semibold text-gray-900">
+                      {{ calculateNextInstanceDate(task.deadline, task.recurrence_interval, task.recurrence_days) }}
+                    </p>
+                  </div>
+                </div>
+
+                <!-- Recurrence End Date -->
+                <div>
+                  <p class="text-xs font-medium text-purple-700 mb-1">Recurrence Ends</p>
+                  <div class="flex items-center">
+                    <svg class="w-4 h-4 text-purple-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                        d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z">
+                      </path>
+                    </svg>
+                    <p class="text-sm font-semibold text-gray-900">
+                      {{ formatRecurrenceEndDate(task.recurrence_end_date) }}
+                    </p>
+                  </div>
+                </div>
+
+                <!-- Status Badge -->
+                <div>
+                  <p class="text-xs font-medium text-purple-700 mb-1">Task Type</p>
+                  <div class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-purple-600 text-white">
+                    <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                        d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z">
+                      </path>
+                    </svg>
+                    Active Recurring Task
+                  </div>
+                </div>
+              </div>
+
+              <!-- Additional Info -->
+              <div class="mt-3 pt-3 border-t border-purple-200">
+                <p class="text-xs text-purple-800">
+                  <svg class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                      d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z">
+                    </path>
+                  </svg>
+                  This task will automatically create a new instance when completed.
+                </p>
+              </div>
+            </div>
+          </div>
+
         </div>
 
         <div class="grid grid-cols-1 gap-6" :class="isSubtask ? 'md:grid-cols-2' : 'md:grid-cols-3'">
@@ -217,10 +311,17 @@
                 <div class="w-2 h-2 rounded-full" :class="getSubtaskStatusColor(subtask.status)"></div>
                 <span class="text-gray-900">{{ subtask.title }}</span>
               </div>
-              <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium"
-                :class="getStatusBadgeColor(subtask.status)">
-                {{ subtask.status }}
-              </span>
+              <div class="flex items-center space-x-2">
+                <RecurringIcon 
+                  :is-recurring="subtask.is_recurring"
+                  :recurrence-interval="subtask.recurrence_interval"
+                  :recurrence-days="subtask.recurrence_days"
+                />
+                <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium"
+                  :class="getStatusBadgeColor(subtask.status)">
+                  {{ subtask.status }}
+                </span>
+              </div>
             </div>
             <div v-if="task.subtasks.length > 5" class="text-center pt-4">
               <router-link :to="`/tasks/${task.id}/subtasks`"
@@ -342,7 +443,7 @@
           <div v-else class="text-center py-8 text-gray-500">
             <svg class="mx-auto h-12 w-12 text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13">
+                d="M15.172 7l6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13">
               </path>
             </svg>
             <p>No attachments</p>
@@ -363,6 +464,7 @@ import StatusUpdateModal from '@/components/StatusUpdateModal.vue'
 import CommentItem from '@/components/CommentItem.vue'
 import TaskForm from '@/components/TaskForm.vue'
 import AttachmentModal from '@/components/AttachmentModal.vue'
+import RecurringIcon from '@/components/RecurringIcon.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -913,6 +1015,55 @@ const formatDeadline = (deadline) => {
   const date = new Date(deadline)
   return date.toLocaleDateString('en-US', {
     weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
+  })
+}
+
+// Recurring task helper functions
+const formatRecurrenceInterval = (interval, days) => {
+  if (interval === 'custom' && days) {
+    return `Every ${days} day${days > 1 ? 's' : ''}`
+  }
+  
+  const intervalMap = {
+    'daily': 'Daily',
+    'weekly': 'Weekly',
+    'monthly': 'Monthly'
+  }
+  
+  return intervalMap[interval] || 'Unknown'
+}
+
+const calculateNextInstanceDate = (deadline, interval, days) => {
+  if (!deadline) return 'Not set'
+  
+  const currentDeadline = new Date(deadline)
+  let nextDate = new Date(currentDeadline)
+  
+  if (interval === 'daily') {
+    nextDate.setDate(nextDate.getDate() + 1)
+  } else if (interval === 'weekly') {
+    nextDate.setDate(nextDate.getDate() + 7)
+  } else if (interval === 'monthly') {
+    nextDate.setMonth(nextDate.getMonth() + 1)
+  } else if (interval === 'custom' && days) {
+    nextDate.setDate(nextDate.getDate() + days)
+  }
+  
+  return nextDate.toLocaleDateString('en-US', {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
+  })
+}
+
+const formatRecurrenceEndDate = (endDate) => {
+  if (!endDate) return 'No end date'
+  const date = new Date(endDate)
+  return date.toLocaleDateString('en-US', {
     year: 'numeric',
     month: 'long',
     day: 'numeric'
