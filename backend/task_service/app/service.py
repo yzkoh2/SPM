@@ -311,11 +311,14 @@ def _add_collaborators_to_parents(task, collaborator_ids):
     if not collaborator_ids:
         return
 
+    updated_project_ids = set()
+
     current_task_node = task
     while current_task_node:
         result = db.session.execute(
-            task_collaborators.select().with_only_columns(task_collaborators.c.user_id)
-            .where(task_collaborators.c.task_id == current_task_node.id)
+            db.select(task_collaborators.c.user_id).where(
+                task_collaborators.c.task_id == current_task_node.id
+            )
         )
         existing_collab_ids = {row.user_id for row in result}
         
@@ -326,6 +329,22 @@ def _add_collaborators_to_parents(task, collaborator_ids):
                 {'task_id': current_task_node.id, 'user_id': collab_id} for collab_id in new_for_this_task
             ])
         
+        project_id = current_task_node.project_id
+
+        if project_id and project_id not in updated_project_ids:
+            result = db.session.execute(
+                db.select(project_collaborators.c.user_id).where(
+                    project_collaborators.c.project_id == project_id
+                )
+            )
+            existing_project_collab_ids = {row.user_id for row in result}
+            new_for_this_project = collaborator_ids - existing_project_collab_ids
+
+            if new_for_this_project:
+                db.session.execute(project_collaborators.insert(), [
+                    {'project_id': project_id, 'user_id': collab_id} for collab_id in new_for_this_project
+                ])
+            updated_project_ids.add(project_id)
         if current_task_node.parent_task_id:
             current_task_node = Task.query.get(current_task_node.parent_task_id)
         else:
@@ -693,6 +712,25 @@ def create_project(project_data):
         )
         
         db.session.add(new_project)
+        db.session.flush()
+
+        collaborators_to_add = set(project_data.get('collaborator_ids', []))
+        collaborators_to_add.add(new_project.owner_id)
+
+        result = db.session.execute(
+            db.select(project_collaborators.c.user_id).where(
+                project_collaborators.c.project_id == new_project.id
+            )
+        )
+        existing_collaborators = {row.user_id for row in result}
+        new_collaborators_for_project = collaborators_to_add - existing_collaborators
+        if new_collaborators_for_project:
+            new_collaborator_entries = [
+                {'project_id': new_project.id, 'user_id': collab_id}
+                for collab_id in new_collaborators_for_project
+            ]
+            db.session.execute(project_collaborators.insert(), new_collaborator_entries)
+
         db.session.commit()
         
         return new_project.to_json()

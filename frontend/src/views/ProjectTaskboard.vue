@@ -20,7 +20,7 @@
         <form @submit.prevent="createProject">
           <div class="grid grid-cols-1 gap-4">
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Title *</label>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Project Title *</label>
               <input v-model="newProject.title" type="text" required
                      class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
                      placeholder="Enter project title">
@@ -33,9 +33,63 @@
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">Deadline</label>
-              <input v-model="newProject.deadline" type="datetime-local"
+              <input v-model="newProject.deadline" type="datetime-local" :min="minDeadline"
                      class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
             </div>
+
+            <!-- Collaborator Management Section -->
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">Manage Collaborators</label>
+              
+              <!-- Added Collaborators List -->
+              <div class="space-y-2 mb-4 max-h-40 overflow-y-auto p-2 border border-gray-200 rounded-md bg-gray-50">
+                <div v-if="localCollaborators.length === 0" class="text-sm text-gray-500 text-center py-2">No collaborators added yet.</div>
+                <div v-for="collaborator in localCollaborators" :key="collaborator.user_id" class="flex items-center justify-between p-2 bg-white rounded-md shadow-sm border border-gray-100">
+                  <span class="text-sm font-medium text-gray-800">{{ collaborator.name }} ({{ collaborator.role }})</span>
+                  <button @click="removeCollaborator(collaborator.user_id)" type="button" title="Remove Collaborator" class="text-red-500 hover:text-red-700 text-xs font-semibold p-1 rounded-full hover:bg-red-50 transition">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                  </button>
+                </div>
+              </div>
+              
+              <!-- Collaborator Filters -->
+              <div class="grid grid-cols-2 gap-4 mb-3">
+                <div>
+                  <label class="block text-xs text-gray-500">Filter by Department</label>
+                  <select v-model="collaboratorDepartmentFilter" class="w-full mt-1 border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm px-3 py-2 border">
+                    <option value="">All Departments</option>
+                    <option v-for="dept in collaboratorDepartments" :key="dept" :value="dept">
+                      {{ dept }}
+                    </option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block text-xs text-gray-500">Filter by Role</label>
+                  <select v-model="collaboratorRoleFilter" class="w-full mt-1 border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm px-3 py-2 border">
+                    <option value="">All Roles</option>
+                    <option v-for="role in collaboratorRoles" :key="role" :value="role">
+                      {{ role }}
+                    </option>
+                  </select>
+                </div>
+              </div>
+
+              <!-- Collaborator Add Input -->
+              <div class="flex items-center space-x-2">
+                <select v-model="selectedCollaboratorId" class="flex-grow border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm px-3 py-2 border">
+                  <option :value="null" disabled>Select a user to add ({{ availableCollaborators.length }} available)...</option>
+                  <option v-for="user in availableCollaborators" :key="user.id" :value="user.id">
+                    {{ user.name }} ({{ user.department }} - {{ user.role }})
+                  </option>
+                </select>
+                <button @click="addCollaborator" type="button" :disabled="!selectedCollaboratorId" class="flex-shrink-0 px-4 py-2 bg-indigo-500 hover:bg-indigo-600 text-white rounded-md text-sm font-medium disabled:opacity-50 transition duration-150">
+                  Add
+                </button>
+              </div>             
+            </div>
+            
           </div>
           <div class="mt-4 flex justify-end space-x-3">
             <button type="button" @click="showCreateForm = false"
@@ -163,7 +217,7 @@
                   <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
                   </svg>
-                  {{ (project.collaborator_ids?.length || 0) + 1 }} members
+                  {{ (project.collaborator_ids?.length || 0)}} members
                 </div>
               </div>
             </div>
@@ -199,6 +253,7 @@ import { useAuthStore } from '@/stores/auth'
 
 const router = useRouter()
 const authStore = useAuthStore()
+
 const KONG_API_URL = "http://localhost:8000"
 
 // Reactive data
@@ -214,7 +269,16 @@ const newProject = ref({
   deadline: ''
 })
 
-// Computed properties
+// --- Collaborator Management State (NEW) ---
+const selectedCollaboratorId = ref(null)
+const localCollaborators = ref([]) // Collaborators currently selected for the new project
+const collaboratorDepartmentFilter = ref('')
+const collaboratorRoleFilter = ref('')
+
+// Mock User Data (Replace with real API fetch if available)
+const allUsers = ref([])
+
+// --- Computed properties ---
 const myProjectsCount = computed(() => {
   return projects.value.filter(p => p.user_role === 'owner').length
 })
@@ -227,7 +291,43 @@ const totalTasksCount = computed(() => {
   return projects.value.reduce((sum, p) => sum + (p.task_count || 0), 0)
 })
 
-// Helper functions
+const collaboratorDepartments = computed(() => [
+    ...new Set(allUsers.value.map(u => u.department).filter(Boolean))
+])
+
+const collaboratorRoles = computed(() => [
+    ...new Set(allUsers.value.map(u => u.role).filter(Boolean))
+])
+
+const availableCollaborators = computed(() => {
+    const currentCollaboratorIds = localCollaborators.value.map(c => c.user_id)
+    const currentUserId = authStore.currentUserId 
+    
+    return allUsers.value
+        .filter(user => user.id !== currentUserId) // Exclude owner
+        .filter(user => !currentCollaboratorIds.includes(user.id)) // Exclude already added
+        .filter(user => !collaboratorDepartmentFilter.value || user.department === collaboratorDepartmentFilter.value)
+        .filter(user => !collaboratorRoleFilter.value || user.role === collaboratorRoleFilter.value)
+})
+
+// Date and Time helpers
+const formatDateForInput = (dateString) => {
+  if (!dateString) return '';
+  const date = new Date(dateString);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  const hours = String(date.getHours()).padStart(2, '0');
+  const minutes = String(date.getMinutes()).padStart(2, '0');
+  return `${year}-${month}-${day}T${hours}:${minutes}`;
+};
+
+const minDeadline = computed(() => {
+  // Always set minimum deadline to the current time for new project creation
+  return formatDateForInput(new Date());
+})  
+
+// --- Helper functions ---
 const getUserRoleBadgeColor = (role) => {
   return role === 'owner' 
     ? 'bg-indigo-100 text-indigo-800' 
@@ -254,6 +354,28 @@ const formatDeadline = (deadline) => {
     day: 'numeric'
   })
 }
+
+// --- Collaborator Methods (NEW) ---
+const addCollaborator = () => {
+    if (!selectedCollaboratorId.value) return
+
+    const userToAdd = allUsers.value.find(u => u.id === selectedCollaboratorId.value)
+    if (userToAdd) {
+        // Add the collaborator object to the local list
+        localCollaborators.value.push({
+            user_id: userToAdd.id,
+            name: userToAdd.name,
+            role: userToAdd.role,
+        })
+        selectedCollaboratorId.value = null // Reset selection
+    }
+}
+
+const removeCollaborator = (userId) => {
+    localCollaborators.value = localCollaborators.value.filter(c => c.user_id !== userId)
+}
+// --- End Collaborator Methods ---
+
 
 // API functions
 const fetchProjects = async () => {
@@ -290,11 +412,15 @@ const createProject = async () => {
     isCreating.value = true
     error.value = null
     
+    // Get collaborator IDs for the payload
+    const collaboratorIds = localCollaborators.value.map(c => c.user_id)
+    console.log(collaboratorIds)
     const projectData = {
       title: newProject.value.title,
       description: newProject.value.description || null,
       deadline: newProject.value.deadline || null,
-      owner_id: authStore.currentUserId
+      owner_id: authStore.currentUserId,
+      collaborator_ids: collaboratorIds // INCLUDED COLLABORATORS
     }
     
     const response = await fetch(`${KONG_API_URL}/projects`, {
@@ -325,6 +451,8 @@ const createProject = async () => {
       description: '',
       deadline: ''
     }
+    localCollaborators.value = [] // Reset collaborators
+    selectedCollaboratorId.value = null
     showCreateForm.value = false
     
   } catch (err) {
@@ -339,9 +467,24 @@ const viewProjectDetails = (projectId) => {
   router.push(`/projects/${projectId}`)
 }
 
+const fetchAllUsers = async () => {
+  try {
+    // Assume you have an endpoint that returns all users
+    const response = await fetch(`${KONG_API_URL}/user`);
+    if (response.ok) {
+      allUsers.value = await response.json();
+    } else {
+      console.error("Failed to fetch all users.");
+    }
+  } catch (err) {
+    console.error("Error fetching all users:", err);
+  }
+};
+
 // Lifecycle
 onMounted(() => {
   fetchProjects()
+  fetchAllUsers()
 })
 </script>
 
