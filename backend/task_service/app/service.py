@@ -143,6 +143,7 @@ def update_task(task_id, user_id, task_data):
 
             if field == 'deadline' and data:
                 task.deadline = datetime.fromisoformat(data)
+                _cascade_parent_deadline_to_subtasks(task, task.deadline)
             elif field == 'recurring_end_date' and data:
                 task.recurrence_end_date = datetime.fromisoformat(data)
             elif field == 'status':
@@ -364,6 +365,13 @@ def _are_all_subtasks_completed(task):
         if subtask.status != TaskStatusEnum.COMPLETED:
             return False
     return True
+
+def _cascade_parent_deadline_to_subtasks(task, new_deadline):
+    """Recursively update subtasks' deadlines if they exceed the new parent deadline"""
+    for subtask in task.subtasks:
+        if subtask.deadline and new_deadline and subtask.deadline > new_deadline:
+            subtask.deadline = new_deadline
+        _cascade_parent_deadline_to_subtasks(subtask, new_deadline)
 
 def delete_task(task_id, user_id):
     #Delete a task by ID

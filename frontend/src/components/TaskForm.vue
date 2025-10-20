@@ -12,8 +12,17 @@
 
       <div>
         <label class="block text-sm font-medium text-gray-700 mb-2">Deadline</label>
-        <input v-model="localData.deadline" type="datetime-local" :min="minDeadline"
-          class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+        <input v-model="localData.deadline" type="datetime-local" :min="minDeadline" :max="maxDeadline"
+          class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent" required>
+        <p v-if="isSubtask && maxDeadline && localData.deadline > maxDeadline"
+          class="mt-2 text-sm text-red-600">
+          ⚠️ The subtask deadline cannot be past the parent task's deadline.
+        </p>
+
+        <p v-if="localData.deadline && localData.deadline < minDeadline"
+          class="mt-2 text-sm text-red-600">
+          ⚠️ The task deadline cannot be earlier than the current date and time.
+        </p>
       </div>
       
       <div>
@@ -182,7 +191,8 @@ const props = defineProps({
   submitButtonLoadingText: { type: String, default: 'Creating...' },
   taskToEdit: { type: Object, default: null },
   allUsers: { type: Array, default: () => [] },
-  currentCollaborators: { type: Array, default: () => [] }
+  currentCollaborators: { type: Array, default: () => [] },
+  parentDeadline: { type: String, default: null },
 })
 
 const emit = defineEmits(['submit', 'cancel'])
@@ -333,9 +343,9 @@ const formatDateForInput = (dateString) => {
 };
 
 const minDeadline = computed(() => {
-  if (isEditMode.value && localData.value.deadline) {
-    return localData.value.deadline;
-  }
+  // if (isEditMode.value && localData.value.deadline) {
+  //   return localData.value.deadline;
+  // }
   return formatDateForInput(new Date());
 });
 
@@ -347,6 +357,13 @@ const minRecurrenceEndDate = computed(() => {
 
   return formatDateForInput(date);
 });
+
+const maxDeadline = computed(() => {
+  if (props.isSubtask && props.parentDeadline) {
+    return props.parentDeadline;
+  }
+  return null;
+})
 
 // --- Watchers ---
 

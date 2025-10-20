@@ -41,11 +41,12 @@
           :is-subtask="true" 
           :is-submitting="isCreating"
           :all-users="allUsers"
+          :parent-deadline="parentTask.deadline" 
           submit-button-text="Create Subtask" submit-button-loading-text="Creating..." @submit="createSubtask"
           @cancel="showCreateForm = false" />
       </div>
 
-      <div v-if="showEditForm" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 flex items-center justify-center">
+      <div v-if="showEditForm" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 flex items-start justify-center">
         <div class="relative w-full max-w-2xl">
           <TaskForm
             :task-to-edit="subtaskToEdit"
@@ -53,6 +54,7 @@
             :is-submitting="isUpdating"
             :all-users="allUsers"
             :current-collaborators="collaboratorDetails"
+            :parent-deadline="parentTask.deadline" 
             submit-button-text="Update Subtask"
             submit-button-loading-text="Updating..."
             @submit="updateSubtask"

@@ -24,8 +24,11 @@
       class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 flex items-start justify-center">
       <div class="relative w-full max-w-2xl">
         <TaskForm :task-to-edit="taskToEdit" :all-users="allUsers" :is-subtask="isSubtask" :is-submitting="isUpdating"
-          :current-collaborators="collaboratorDetails" submit-button-text="Update Task"
-          submit-button-loading-text="Updating..." @submit="updateTask" @cancel="closeEditModal" />
+        :current-collaborators="collaboratorDetails"
+        :parent-deadline="parentTask ? parentTask.deadline : null" 
+        submit-button-text="Update Task"
+        submit-button-loading-text="Updating..." 
+        @submit="updateTask" @cancel="closeEditModal" />
       </div>
     </div>
 
