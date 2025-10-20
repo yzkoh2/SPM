@@ -78,12 +78,12 @@ VALUES ('Website Redesign', 'A project to overhaul the company homepage.', '2025
 
 -- Task 1: Design Homepage (and its subtasks)
 INSERT INTO tasks (title, description, deadline, status, owner_id, project_id)
-VALUES ('Design Homepage', 'Create wireframes and UI for homepage', '2025-10-01', 'ONGOING', 1, 1);
+VALUES ('Design Homepage', 'Create wireframes and UI for homepage', '2025-10-02', 'ONGOING', 1, 1);
 
 -- Subtasks for Task 1
-INSERT INTO tasks (title, description, status, owner_id, project_id, parent_task_id) VALUES
-('Wireframe layout', 'Create wireframes', 'ONGOING', 1, 1, 1),
-('Define color scheme', 'Design UI', 'ONGOING', 1, 1, 1);
+INSERT INTO tasks (title, description, deadline, status, owner_id, project_id, parent_task_id) VALUES
+('Wireframe layout', 'Create wireframes', '2025-10-01', 'ONGOING', 1, 1, 1),
+('Define color scheme', 'Design UI', '2025-10-01', 'ONGOING', 1, 1, 1);
 
 -- Attachment for Task 1
 INSERT INTO attachments (filename, url, task_id) VALUES

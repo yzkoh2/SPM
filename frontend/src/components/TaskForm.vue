@@ -342,10 +342,24 @@ const formatDateForInput = (dateString) => {
   return `${year}-${month}-${day}T${hours}:${minutes}`;
 };
 
+const isOverdue = computed(() => {
+    if (!isEditMode.value || !localData.value.deadline) {
+        return false;
+    }
+    const currentDeadline = new Date(localData.value.deadline).getTime();
+    const now = new Date().getTime();
+    // Use an hour buffer for comparison, in case of small time drift
+    return currentDeadline < now - (60 * 60 * 1000); 
+});
+
 const minDeadline = computed(() => {
   // if (isEditMode.value && localData.value.deadline) {
   //   return localData.value.deadline;
   // }
+  if (isEditMode.value && isOverdue.value) {
+        // Allow the user to keep the existing (past) deadline.
+        return localData.value.deadline;
+  }
   return formatDateForInput(new Date());
 });
 
