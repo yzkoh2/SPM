@@ -143,3 +143,12 @@ WITH inserted_task AS (
 )
 INSERT INTO task_collaborators (task_id, user_id)
 SELECT id, 1 FROM inserted_task;
+
+-- Project 2 with Susan as Owner and Jane as Collaborator
+with inserted_project AS (
+  INSERT INTO projects (title, description, deadline, owner_id)
+  VALUES ('Marketing Campaign', 'Plan and execute the fall marketing campaign.', '2025-12-01', 3)
+  RETURNING id
+)
+insert into project_collaborators (project_id, user_id)
+SELECT id, 2 FROM inserted_project
