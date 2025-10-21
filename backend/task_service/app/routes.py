@@ -374,30 +374,38 @@ def get_user_projects(user_id):
         return jsonify({"error": str(e)}), 500
 
 
+# In backend/task_service/app/routes.py
+
 @task_bp.route("/projects/<int:project_id>", methods=["PUT"])
 def update_project(project_id):
-    """Update a project (only owner can update)"""
+    """Update a project (title, description, deadline, owner, collaborators)"""
     try:
         data = request.get_json()
         print(f"Updating project {project_id} with data: {data}")
-        
-        user_id = data.get('user_id')
-        
+
+        # Use data.pop() to get user_id AND remove it from the data dict
+        user_id = data.pop('user_id', None)
+
         if not user_id:
-            return jsonify({"error": "User ID is required"}), 400
-        
-        updated_project, error = service.update_project(project_id, user_id, data)
-        
-        if error:
-            if "not found" in error:
-                return jsonify({"error": error}), 404
+            return jsonify({"error": "User ID is required in the request body"}), 400
+
+        # Pass the remaining data (without user_id) to the service
+        updated_project, message = service.update_project(project_id, user_id, data)
+
+        # *** THE CORRECT CHECK ***
+        if updated_project is None:
+            if "not found" in message:
+                return jsonify({"error": message}), 404
+            elif "Forbidden" in message:
+                return jsonify({"error": message}), 403
             else:
-                return jsonify({"error": error}), 403
-        
+                return jsonify({"error": message}), 400
+
+        # On success, return the project
         return jsonify(updated_project), 200
-        
+
     except Exception as e:
-        print(f"Error in update_project: {e}")
+        print(f"Error in update_project route: {e}")
         return jsonify({"error": str(e)}), 500
 
 

@@ -941,6 +941,8 @@ def get_user_projects(user_id, role_filter=None):
         raise
 
 
+# In backend/task_service/app/service.py
+
 def update_project(project_id, user_id, project_data):
     """Update a project (title, description, deadline, owner, collaborators)"""
     try:
@@ -968,7 +970,6 @@ def update_project(project_id, user_id, project_data):
                             if 'T' in deadline_str:
                                 deadline = datetime.fromisoformat(deadline_str)
                             else:
-                                # Try common formats
                                 try:
                                     deadline = datetime.strptime(deadline_str, '%Y-%m-%d %H:%M:%S')
                                 except ValueError:
@@ -979,45 +980,16 @@ def update_project(project_id, user_id, project_data):
                         print(f"Error parsing deadline: {e}")
                 
                 project.deadline = deadline
-                # Call the cascade helper function
                 _cascade_project_deadline_to_tasks(project.id, deadline)
             
             elif hasattr(project, field):
                 # This will update 'title' and 'description'
                 setattr(project, field, data)
-        
-        # --- Handle Owner Transfer ---
-        new_owner_id_str = project_data.get('owner_id')
-        if new_owner_id_str:
-            new_owner_id = int(new_owner_id_str)
-            if new_owner_id != project.owner_id:
-                print(f"Transferring project {project_id} ownership to user {new_owner_id}")
-                
-                # 1. Add the new owner as a collaborator (so they have access)
-                #    The user_id (current owner) is making the request.
-                try:
-                    add_project_collaborator(project_id, user_id, new_owner_id)
-                except Exception as e:
-                     if "already" not in str(e): # Don't error if they are already a collaborator
-                        print(f"Warning: could not add new owner as collaborator: {e}")
-
-                # 2. Change the owner
-                project.owner_id = new_owner_id
-                
-                # 3. Add the old owner (user_id) as a collaborator
-                #    The new owner (project.owner_id) is now making the request.
-                try:
-                    add_project_collaborator(project_id, project.owner_id, user_id)
-                except Exception as e:
-                     if "already" not in str(e):
-                        print(f"Warning: could not add old owner as collaborator: {e}")
 
         # --- Handle Collaborator Changes ---
-        # The requester (user_id) is the original owner
         collaborators_to_add = project_data.get('collaborators_to_add', [])
         if collaborators_to_add:
             for collab_id in collaborators_to_add:
-                # Don't add the owner as a collaborator
                 if int(collab_id) != project.owner_id:
                     try:
                         add_project_collaborator(project_id, user_id, int(collab_id))
@@ -1027,21 +999,21 @@ def update_project(project_id, user_id, project_data):
         collaborators_to_remove = project_data.get('collaborators_to_remove', [])
         if collaborators_to_remove:
             for collab_id in collaborators_to_remove:
-                # Don't allow owner to remove themselves from the project
                 if int(collab_id) != user_id:
                     try:
-                        # Use the existing function
                         remove_project_collaborator(project_id, user_id, int(collab_id))
                     except Exception as remove_err:
                         print(f"Warning: Failed to remove collaborator {collab_id}: {remove_err}")
         
         db.session.commit()
+        # Return the updated project and a success message
         return project.to_json(), "Project updated successfully"
         
     except Exception as e:
         print(f"Error updating project: {e}")
         db.session.rollback()
-        raise e
+        # On failure, return None and an error message
+        return None, f"An internal error occurred: {str(e)}"
 
 def _cascade_project_deadline_to_tasks(project_id, new_project_deadline):
     """

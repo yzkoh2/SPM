@@ -1,6 +1,5 @@
 <template>
   <div class="min-h-screen bg-gray-50">
-    <!-- Modals -->
     <EditProjectModal 
       :show="showEditModal" 
       :project="project"
@@ -13,7 +12,6 @@
       @close="showManageTasksModal = false"
       @taskAdded="handleTaskAdded" />
 
-    <!-- Page Header -->
     <div class="bg-white shadow-sm border-b border-gray-200">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         <div class="flex items-center">
@@ -29,14 +27,11 @@
       </div>
     </div>
 
-    <!-- Main Content -->
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <!-- Loading State -->
       <div v-if="loading" class="flex justify-center items-center py-12">
         <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
       </div>
 
-      <!-- Error State -->
       <div v-else-if="error" class="bg-red-50 border border-red-200 rounded-md p-6">
         <div class="flex items-center">
           <svg class="w-6 h-6 text-red-600 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -52,9 +47,7 @@
         </button>
       </div>
 
-      <!-- Dashboard Content -->
       <div v-else-if="project">
-        <!-- Project Info Card - Similar to Task Detail -->
         <div class="bg-white rounded-lg shadow-md p-6 mb-6 border-l-4 border-yellow-400">
           <div class="flex items-center justify-between mb-4">
             <div class="flex-1">
@@ -72,7 +65,6 @@
               </div>
             </div>
             
-            <!-- Action Buttons -->
             <div class="flex items-center space-x-3">
               <button v-if="isProjectOwner" @click="showEditModal = true"
                       class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-gray-600 hover:bg-gray-700">
@@ -86,15 +78,12 @@
             </div>
           </div>
 
-          <!-- Description -->
           <div class="mb-6">
             <h3 class="text-sm font-semibold text-gray-700 mb-2">Description</h3>
             <p class="text-gray-700">{{ project.description || 'No description provided' }}</p>
           </div>
 
-          <!-- Project Details Grid -->
           <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-            <!-- Deadline -->
             <div>
               <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">DEADLINE</h3>
               <p v-if="project.deadline" :class="['text-lg font-semibold', isDeadlinePassed ? 'text-red-600' : 'text-gray-900']">
@@ -103,16 +92,15 @@
               <p v-else class="text-lg text-gray-400">No deadline set</p>
             </div>
 
-            <!-- Owner -->
             <div>
               <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">OWNER</h3>
               <div v-if="ownerDetails">
-                <p class="text-lg font-semibold text-gray-900">{{ ownerDetails.name }} ID: {{ project.owner_id }}</p>
+                <p class="text-lg font-semibold text-gray-900">{{ ownerDetails.name }}</p>
+                <p class="text-sm text-gray-500">{{ ownerDetails.role }}</p>
               </div>
               <p v-else class="text-lg text-gray-400">Loading...</p>
             </div>
 
-            <!-- Progress -->
             <div>
               <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">PROGRESS</h3>
               <div class="flex items-center">
@@ -127,13 +115,11 @@
             </div>
           </div>
 
-          <!-- Collaborators Section -->
           <div>
             <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">COLLABORATORS</h3>
 
-            <!-- Collaborators List -->
-            <div v-if="allCollaboratorDetails.length > 0" class="flex flex-wrap gap-2">
-              <div v-for="collab in allCollaboratorDetails" :key="collab.user_id" 
+            <div v-if="projectCollaboratorDetails.length > 0" class="flex flex-wrap gap-2">
+              <div v-for="collab in projectCollaboratorDetails" :key="collab.user_id" 
                    class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-indigo-100 text-indigo-800">
                 <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
@@ -141,11 +127,10 @@
                 {{ collab.name }}
               </div>
             </div>
-            <p v-else class="text-sm text-gray-500">No collaborators yet</p>
+            <p v-else class="text-sm text-gray-500">No project collaborators</p>
           </div>
         </div>
 
-        <!-- Stats Row - Similar to Subtasks/Comments/Attachments -->
         <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
           <div class="bg-white rounded-lg shadow-md p-6">
             <div class="flex items-center">
@@ -204,7 +189,6 @@
           </div>
         </div>
 
-        <!-- Tasks Section - Similar to Subtasks Section -->
         <div class="bg-white rounded-lg shadow-md p-6">
           <div class="flex items-center justify-between mb-6">
             <h3 class="text-xl font-semibold text-gray-900">Tasks ({{ filteredTasks.length }})</h3>
@@ -214,9 +198,7 @@
             </button>
           </div>
 
-          <!-- Filters -->
           <div class="mb-6 grid grid-cols-1 md:grid-cols-3 gap-4">
-            <!-- Status Filter -->
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-2">Filter by Status</label>
               <div class="flex flex-wrap gap-2">
@@ -228,7 +210,6 @@
               </div>
             </div>
 
-            <!-- Role Filter -->
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-2">Filter by Role</label>
               <select v-model="filters.role" @change="applyFilters"
@@ -239,7 +220,6 @@
               </select>
             </div>
 
-            <!-- Sort -->
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-2">Sort By</label>
               <select v-model="filters.sortBy" @change="applyFilters"
@@ -251,7 +231,6 @@
             </div>
           </div>
 
-          <!-- Tasks List -->
           <div v-if="filteredTasks.length === 0" class="text-center py-12 text-gray-500">
             <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
@@ -309,9 +288,9 @@ const loading = ref(false)
 const error = ref(null)
 const project = ref(null)
 const tasks = ref([])
-const collaborators = ref([])
+const collaborators = ref([]) // This holds the *project* collaborator IDs
 const ownerDetails = ref(null)
-const allCollaboratorDetails = ref([])
+const allUsers = ref([]) // *** NEW: Store all users here ***
 const showEditModal = ref(false)
 const showManageTasksModal = ref(false)
 
@@ -341,6 +320,22 @@ const projectProgress = computed(() => {
 const isDeadlinePassed = computed(() => {
   if (!project.value?.deadline) return false
   return new Date(project.value.deadline) < new Date()
+})
+
+// *** NEW: Correctly find project collaborators ***
+const projectCollaboratorDetails = computed(() => {
+  if (!collaborators.value || allUsers.value.length === 0) {
+    return []
+  }
+  // Map the IDs from collaborators.value to the full user objects
+  return collaborators.value.map(id => {
+    const user = allUsers.value.find(u => u.id === id)
+    return {
+      user_id: id,
+      name: user?.name || `User ${id}`,
+      role: user?.role || 'N/A'
+    }
+  })
 })
 
 const filteredTasks = computed(() => {
@@ -409,63 +404,24 @@ const formatTaskDate = (dateString) => {
 }
 
 // API calls
-const fetchUserDetails = async (userId) => {
+
+// *** NEW: Fetch ALL users once ***
+const fetchAllUsers = async () => {
   try {
-    const response = await fetch(`${KONG_API_URL}/user/${userId}`)
+    const response = await fetch(`${KONG_API_URL}/user`)
     if (response.ok) {
-      return await response.json()
+      allUsers.value = await response.json()
     } else {
-      console.warn(`Failed to load user details for ID ${userId}`)
-      return null
+      console.warn(`Failed to load all users`)
+      allUsers.value = []
     }
   } catch (err) {
-    console.error(`Error fetching user ${userId}:`, err)
-    return null
+    console.error(`Error fetching all users:`, err)
+    allUsers.value = []
   }
 }
 
-const fetchAllCollaborators = async () => {
-  try {
-    const uniqueUserIds = new Set()
-    
-    if (collaborators.value && Array.isArray(collaborators.value)) {
-      collaborators.value.forEach(collab => {
-        if (collab.user_id) {
-          uniqueUserIds.add(collab.user_id)
-        }
-      })
-    }
-    
-    tasks.value.forEach(task => {
-      if (task.owner_id) {
-        uniqueUserIds.add(task.owner_id)
-      }
-      
-      if (task.collaborator_ids && Array.isArray(task.collaborator_ids)) {
-        task.collaborator_ids.forEach(collabId => uniqueUserIds.add(collabId))
-      }
-    })
-    
-    const userDetailsPromises = Array.from(uniqueUserIds).map(userId => 
-      fetchUserDetails(userId)
-    )
-    
-    const userDetailsResults = await Promise.all(userDetailsPromises)
-    
-    allCollaboratorDetails.value = userDetailsResults
-      .filter(details => details !== null)
-      .map(details => ({
-        user_id: details.id,
-        name: details.name,
-        username: details.username,
-        role: details.role
-      }))
-    
-  } catch (err) {
-    console.error('Error fetching collaborators:', err)
-    allCollaboratorDetails.value = []
-  }
-}
+// *** REMOVED fetchUserDetails and fetchAllCollaborators ***
 
 const loadDashboard = async () => {
   try {
@@ -475,29 +431,39 @@ const loadDashboard = async () => {
     const projectId = route.params.id
     const userId = authStore.currentUserId
 
+    // *** MODIFIED: Fetch all users FIRST ***
+    await fetchAllUsers()
+
+    // Fetch Project
     const projectResponse = await fetch(`${KONG_API_URL}/projects/${projectId}?user_id=${userId}`)
     if (!projectResponse.ok) {
-      throw new Error('Failed to load project')
+      const errorData = await projectResponse.json()
+      throw new Error(errorData.error || 'Failed to load project')
     }
     const projectData = await projectResponse.json()
     
     project.value = projectData.project || projectData
 
+    // *** MODIFIED: Set owner details synchronously ***
     if (project.value.owner_id) {
-      ownerDetails.value = await fetchUserDetails(project.value.owner_id)
+      const owner = allUsers.value.find(u => u.id === project.value.owner_id)
+      ownerDetails.value = owner || { name: `User ${project.value.owner_id}`, role: 'Unknown' }
     }
 
+    // Fetch Dashboard (Tasks & Collaborator IDs)
     const tasksResponse = await fetch(`${KONG_API_URL}/projects/${projectId}/dashboard?user_id=${userId}`)
     if (tasksResponse.ok) {
       const dashboardData = await tasksResponse.json()
       tasks.value = dashboardData.tasks || []
+      // This correctly assigns the array of IDs [1, 2, 3]
       collaborators.value = dashboardData.collaborators || []
     } else {
       tasks.value = []
       collaborators.value = []
     }
     
-    await fetchAllCollaborators()
+    // *** REMOVED: await fetchAllCollaborators() ***
+    // The new computed property 'projectCollaboratorDetails' handles this.
 
   } catch (err) {
     console.error('Error loading dashboard:', err)
