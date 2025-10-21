@@ -1,13 +1,10 @@
 <template>
   <div v-if="show" class="fixed inset-0 z-50 overflow-y-auto" @click.self="$emit('close')">
     <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
-      <!-- Background overlay with animation -->
       <div class="fixed inset-0 transition-opacity bg-gray-500 bg-opacity-75 backdrop-blur-sm" @click="$emit('close')"></div>
 
-      <!-- Modal panel -->
       <div class="inline-block w-full max-w-3xl my-8 overflow-hidden text-left align-middle transition-all transform bg-white shadow-2xl rounded-2xl relative z-10">
         
-        <!-- Header -->
         <div class="bg-gradient-to-r from-indigo-600 to-indigo-700 px-6 py-5">
           <div class="flex justify-between items-center">
             <div>
@@ -22,9 +19,7 @@
           </div>
         </div>
 
-        <!-- Content Area -->
         <div class="p-6">
-          <!-- Error Display -->
           <div v-if="error" class="mb-4 p-4 bg-red-50 border-l-4 border-red-400 rounded-r-lg">
             <div class="flex items-center">
               <svg class="w-5 h-5 text-red-400 mr-2" fill="currentColor" viewBox="0 0 20 20">
@@ -34,7 +29,6 @@
             </div>
           </div>
 
-          <!-- Success Message -->
           <div v-if="successMessage" class="mb-4 p-4 bg-green-50 border-l-4 border-green-400 rounded-r-lg">
             <div class="flex items-center">
               <svg class="w-5 h-5 text-green-400 mr-2" fill="currentColor" viewBox="0 0 20 20">
@@ -44,7 +38,6 @@
             </div>
           </div>
 
-          <!-- Tabs -->
           <div class="border-b border-gray-200 mb-6">
             <nav class="-mb-px flex space-x-8">
               <button @click="activeTab = 'create'"
@@ -64,16 +57,11 @@
             </nav>
           </div>
 
-          <!-- Create New Task Tab -->
-          <div v-if="activeTab === 'create'">
+          <div v-if="activeTab === 'create'" class="max-h-[60vh] overflow-y-auto pr-2">
             <form @submit.prevent="createTask" class="space-y-6">
               
-              <!-- Task Title -->
               <div>
                 <label class="flex items-center text-sm font-semibold text-gray-700 mb-2">
-                  <svg class="w-4 h-4 mr-2 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-                  </svg>
                   Task Title
                   <span class="text-red-500 ml-1">*</span>
                 </label>
@@ -84,80 +72,164 @@
                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all">
               </div>
 
-              <!-- Description -->
               <div>
                 <label class="flex items-center text-sm font-semibold text-gray-700 mb-2">
-                  <svg class="w-4 h-4 mr-2 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h7"></path>
-                  </svg>
+                  Deadline
+                </label>
+                <input v-model="newTask.deadline" 
+                       type="datetime-local"
+                       :min="minDeadline"
+                       placeholder="dd/mm/yyyy, --:-- --"
+                       class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all">
+              </div>
+
+              <div>
+                <label class="flex items-center text-sm font-semibold text-gray-700 mb-2">
                   Description
                 </label>
                 <textarea v-model="newTask.description" 
                           rows="4"
-                          placeholder="Provide additional details about this task..."
+                          placeholder="Describe the task in detail..."
                           class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all resize-none"></textarea>
-                <p class="text-xs text-gray-500 mt-1">Optional: Add any relevant details or context</p>
               </div>
 
-              <!-- Deadline and Status Row -->
-              <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <!-- Deadline -->
-                <div>
-                  <label class="flex items-center text-sm font-semibold text-gray-700 mb-2">
-                    <svg class="w-4 h-4 mr-2 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
-                    </svg>
-                    Deadline
-                  </label>
-                  <input v-model="newTask.deadline" 
-                         type="datetime-local"
-                         class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all">
-                </div>
-
-                <!-- Status -->
-                <div>
-                  <label class="flex items-center text-sm font-semibold text-gray-700 mb-2">
-                    <svg class="w-4 h-4 mr-2 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                    </svg>
-                    Status
-                  </label>
-                  <select v-model="newTask.status"
-                          class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all bg-white">
-                    <option value="Unassigned">Unassigned</option>
-                    <option value="Ongoing">Ongoing</option>
-                    <option value="Under Review">Under Review</option>
-                    <option value="Completed">Completed</option>
-                  </select>
-                </div>
-              </div>
-
-              <!-- Priority -->
               <div>
                 <label class="flex items-center text-sm font-semibold text-gray-700 mb-2">
-                  <svg class="w-4 h-4 mr-2 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 11l5-5m0 0l5 5m-5-5v12"></path>
-                  </svg>
-                  Priority (1-10)
+                  Status
                 </label>
-                <div class="flex items-center space-x-4">
+                <select v-model="newTask.status"
+                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all bg-white">
+                  <option value="Unassigned">Unassigned</option>
+                  <option value="Ongoing">Ongoing</option>
+                  <option value="Under Review">Under Review</option>
+                  <option value="Completed">Completed</option>
+                </select>
+              </div>
+
+              <div>
+                <label class="flex items-center text-sm font-semibold text-gray-700 mb-2">
+                  Priority
+                </label>
+                <div class="relative">
                   <input v-model.number="newTask.priority" 
                          type="range" 
                          min="1" 
                          max="10"
-                         class="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-indigo-600">
-                  <span class="flex items-center justify-center w-12 h-12 text-lg font-bold text-white bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-lg shadow-md">
-                    {{ newTask.priority }}
-                  </span>
-                </div>
-                <div class="flex justify-between text-xs text-gray-500 mt-2">
-                  <span>Low</span>
-                  <span>Medium</span>
-                  <span>High</span>
+                         class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-indigo-600">
+                  <div class="flex justify-between text-xs text-gray-500 mt-2 px-1">
+                    <span>1</span>
+                    <span>2</span>
+                    <span>3</span>
+                    <span>4</span>
+                    <span>5</span>
+                    <span>6</span>
+                    <span>7</span>
+                    <span>8</span>
+                    <span>9</span>
+                    <span>10</span>
+                  </div>
                 </div>
               </div>
 
-              <!-- Action Buttons -->
+              <div class="border-t border-gray-200 pt-6">
+                <label class="flex items-center text-sm text-gray-700 cursor-pointer">
+                  <input v-model="newTask.is_recurring" 
+                         type="checkbox"
+                         class="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500 cursor-pointer mr-2">
+                  Is this a recurring task?
+                </label>
+              </div>
+
+              <div v-if="newTask.is_recurring" class="space-y-6 bg-gray-50 p-5 rounded-lg border border-gray-200">
+                
+                <div>
+                  <label class="block text-sm font-semibold text-gray-700 mb-2">Recurrence Interval</label>
+                  <select v-model="newTask.recurrence_interval"
+                    class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all bg-white">
+                    <option value="daily">Daily</option>
+                    <option value="weekly">Weekly</option>
+                    <option value="monthly">Monthly</option>
+                    <option value="custom">Custom</option>
+                  </select>
+                </div>
+                
+                <div v-if="newTask.recurrence_interval === 'custom'">
+                  <label class="block text-sm font-semibold text-gray-700 mb-2">Recurrence Days</label>
+                  <input v-model.number="newTask.recurrence_days" type="number" min="1" required
+                    class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+                    placeholder="Enter number of days (e.g., 3)">
+                </div>
+                
+                <div>
+                  <label class="block text-sm font-semibold text-gray-700 mb-2">Recurrence End Date</label>
+                  <input v-model="newTask.recurrence_end_date" type="datetime-local" :min="minRecurrenceEndDate"
+                    class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all">
+                  <p class="text-xs text-gray-500 mt-1">Optional. If not set, the task will recur indefinitely.</p>
+                </div>
+
+              </div>
+              <div class="border-t border-gray-200 pt-6">
+                <h3 class="text-base font-semibold text-gray-900 mb-1">Manage Collaborators</h3>
+                <p class="text-sm text-gray-500 mb-4">
+                  {{ collaborators.length === 0 ? 'No collaborators added yet.' : `${collaborators.length} collaborator(s) added.` }}
+                </p>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                  <div>
+                    <label class="text-xs text-gray-600 mb-1 block">Filter by Department</label>
+                    <select v-model="selectedDepartment"
+                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all bg-white text-sm">
+                      <option value="All Departments">All Departments</option>
+                      <option value="Engineering">Engineering</option>
+                      <option value="Design">Design</option>
+                      <option value="Marketing">Marketing</option>
+                      <option value="Sales">Sales</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label class="text-xs text-gray-600 mb-1 block">Filter by Team</label>
+                    <select v-model="selectedTeam"
+                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all bg-white text-sm">
+                      <option value="All Teams">All Teams</option>
+                      <option value="Frontend">Frontend</option>
+                      <option value="Backend">Backend</option>
+                      <option value="DevOps">DevOps</option>
+                      <option value="QA">QA</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div class="flex gap-3">
+                  <select v-model="selectedUser"
+                          class="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all bg-white text-sm">
+                    <option value="">Select a user to add...</option>
+                    <option value="John Doe">John Doe</option>
+                    <option value="Jane Smith">Jane Smith</option>
+                    <option value="Bob Johnson">Bob Johnson</option>
+                    <option value="Alice Williams">Alice Williams</option>
+                  </select>
+                  <button type="button"
+                          @click="addCollaborator"
+                          :disabled="!selectedUser"
+                          class="px-5 py-2 bg-purple-600 text-white text-sm font-medium rounded-lg hover:bg-purple-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-all whitespace-nowrap">
+                    Add
+                  </button>
+                </div>
+
+                <div v-if="collaborators.length > 0" class="flex flex-wrap gap-2 mt-4">
+                  <div v-for="(collaborator, index) in collaborators" 
+                       :key="index"
+                       class="flex items-center gap-2 px-3 py-1.5 bg-purple-100 text-purple-700 rounded-full text-sm">
+                    {{ collaborator }}
+                    <button type="button"
+                            @click="removeCollaborator(index)"
+                            class="text-purple-700 hover:text-purple-900 font-bold">
+                      ×
+                    </button>
+                  </div>
+                </div>
+              </div>
               <div class="flex justify-end space-x-3 pt-4 border-t border-gray-200">
                 <button type="button" 
                         @click="$emit('close')"
@@ -180,16 +252,13 @@
             </form>
           </div>
 
-          <!-- Add Existing Task Tab -->
           <div v-if="activeTab === 'add'">
             <div class="space-y-4">
-              <!-- Loading -->
               <div v-if="loadingStandaloneTasks" class="text-center py-12">
                 <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
                 <p class="text-sm text-gray-500 mt-4">Loading your tasks...</p>
               </div>
 
-              <!-- Standalone Tasks List -->
               <div v-else-if="standaloneTasks.length > 0" class="space-y-3 max-h-96 overflow-y-auto pr-2">
                 <div v-for="task in standaloneTasks" :key="task.id"
                      class="bg-gradient-to-r from-gray-50 to-white border border-gray-200 rounded-xl p-5 hover:border-indigo-400 hover:shadow-md transition-all">
@@ -221,7 +290,6 @@
                 </div>
               </div>
 
-              <!-- No Tasks -->
               <div v-else class="text-center py-16">
                 <div class="bg-gray-100 rounded-full w-20 h-20 flex items-center justify-center mx-auto mb-4">
                   <svg class="w-10 h-10 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -246,7 +314,7 @@
 </template>
 
 <script setup>
-import { ref, watch } from 'vue'
+import { ref, watch, computed } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 
 const props = defineProps({
@@ -266,20 +334,69 @@ const loadingStandaloneTasks = ref(false)
 const error = ref(null)
 const successMessage = ref(null)
 
+// New task form data - now includes all fields
 const newTask = ref({
   title: '',
   description: '',
   deadline: '',
   status: 'Unassigned',
-  priority: 5
+  priority: 5,
+  is_recurring: false, // Standardized name
+  recurrence_interval: 'daily',
+  recurrence_days: null,
+  recurrence_end_date: null,
 })
 
+// Collaborator management
+const collaborators = ref([])
+const selectedDepartment = ref('All Departments')
+const selectedTeam = ref('All Teams')
+const selectedUser = ref('')
+
 const standaloneTasks = ref([])
+
+// --- START: Date Formatting and Logic ---
+
+const formatDateForInput = (dateString) => {
+  if (!dateString) return '';
+  const date = new Date(dateString);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  const hours = String(date.getHours()).padStart(2, '0');
+  const minutes = String(date.getMinutes()).padStart(2, '0');
+  return `${year}-${month}-${day}T${hours}:${minutes}`;
+};
+
+const minDeadline = computed(() => {
+  return formatDateForInput(new Date());
+});
+
+const minRecurrenceEndDate = computed(() => {
+  const baseDate = newTask.value.deadline || minDeadline.value;
+  const date = new Date(baseDate);
+  date.setDate(date.getDate() + 1);
+  return formatDateForInput(date);
+});
+
+// Watch for deadline changes to update recurrence end date if needed
+watch(() => newTask.value.deadline, (newDeadline) => {
+  if (newTask.value.recurrence_end_date && newDeadline > newTask.value.recurrence_end_date) {
+    newTask.value.recurrence_end_date = newDeadline;
+  }
+});
+
+// --- END: Date Formatting and Logic ---
+
 
 // Watch for modal open
 watch(() => props.show, (isOpen) => {
   if (isOpen && activeTab.value === 'add') {
     loadStandaloneTasks()
+  }
+  if (isOpen) {
+    // Reset form when modal opens
+    resetForm()
   }
 })
 
@@ -289,6 +406,37 @@ watch(activeTab, (newTab) => {
     loadStandaloneTasks()
   }
 })
+
+const addCollaborator = () => {
+  if (selectedUser.value && !collaborators.value.includes(selectedUser.value)) {
+    collaborators.value.push(selectedUser.value)
+    selectedUser.value = ''
+  }
+}
+
+const removeCollaborator = (index) => {
+  collaborators.value.splice(index, 1)
+}
+
+const resetForm = () => {
+  newTask.value = {
+    title: '',
+    description: '',
+    deadline: '',
+    status: 'Unassigned',
+    priority: 5,
+    is_recurring: false,
+    recurrence_interval: 'daily',
+    recurrence_days: null,
+    recurrence_end_date: null,
+  }
+  collaborators.value = []
+  selectedDepartment.value = 'All Departments'
+  selectedTeam.value = 'All Teams'
+  selectedUser.value = ''
+  error.value = null
+  successMessage.value = null
+}
 
 const createTask = async () => {
   try {
@@ -302,7 +450,8 @@ const createTask = async () => {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        ...newTask.value,
+        ...newTask.value, // Includes base fields AND recurrence fields
+        collaborators: collaborators.value, // Includes collaborators
         owner_id: authStore.currentUserId,
         user_id: authStore.currentUserId
       })
@@ -316,13 +465,7 @@ const createTask = async () => {
     successMessage.value = 'Task created successfully!'
     
     // Reset form
-    newTask.value = {
-      title: '',
-      description: '',
-      deadline: '',
-      status: 'Unassigned',
-      priority: 5
-    }
+    resetForm()
 
     setTimeout(() => {
       emit('taskAdded')
@@ -421,5 +564,24 @@ const formatDate = (dateString) => {
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
+}
+
+/* Custom scrollbar styling */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #c7c7c7;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
 }
 </style>
