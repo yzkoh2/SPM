@@ -36,7 +36,7 @@
 
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Deadline</label>
-            <input v-model="editedProject.deadline" type="datetime-local"
+            <input v-model="editedProject.deadline" type="datetime-local" :min="minDeadline"
                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
           </div>
 
@@ -400,6 +400,49 @@ const removeCollaborator = (collaboratorIdToRemove) => {
   error.value = null;
   successMessage.value = null;
 };
+
+const formatDateForInput = (date) => {
+  if (!date) return '';
+  const d = date instanceof Date ? date : new Date(date);
+  if (isNaN(d.getTime())) {
+    return '';
+  }
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  const hours = String(d.getHours()).padStart(2, '0');
+  const minutes = String(d.getMinutes()).padStart(2, '0');
+  return `${year}-${month}-${day}T${hours}:${minutes}`;
+};
+
+// --- *** NEW: isOverdue computed property *** ---
+// Checks if the *original* project deadline is in the past
+const isOverdue = computed(() => {
+  // Use props.project.deadline, NOT editedProject.deadline
+  if (!props.project?.deadline) {
+      return false;
+  }
+  const originalDeadline = new Date(props.project.deadline);
+  const now = new Date();
+  // Add a small buffer (e.g., 1 minute) to avoid issues with exact time comparison
+  return originalDeadline.getTime() < now.getTime() - 60000;
+});
+
+
+// --- *** CORRECTED minDeadline *** ---
+const minDeadline = computed(() => {
+  const now = new Date();
+  // Optional: Add a small buffer like 1 minute
+  // now.setMinutes(now.getMinutes() + 1);
+
+  if (isOverdue.value && props.project?.deadline) {
+    // If the original deadline is overdue, the minimum is that overdue date
+    return formatDateForInput(props.project.deadline);
+  } else {
+    // Otherwise, the minimum is the current time
+    return formatDateForInput(now);
+  }
+});
 
 // Lifecycle Hooks
 onMounted(() => {
