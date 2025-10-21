@@ -756,7 +756,6 @@ def get_project_by_id(project_id, user_id):
         print(f"Error getting project: {e}")
         raise
 
-
 def get_project_dashboard(project_id, user_id, status_filter=None, sort_by='deadline', 
                           collaborator_filter=None, owner_filter=None):
     """
@@ -837,7 +836,6 @@ def get_project_dashboard(project_id, user_id, status_filter=None, sort_by='dead
     except Exception as e:
         print(f"Error getting project dashboard: {e}")
         raise
-
 
 def get_user_projects(user_id, role_filter=None):
     """
@@ -940,9 +938,7 @@ def get_user_projects(user_id, role_filter=None):
         print(f"Error getting user projects: {e}")
         raise
 
-
-# In backend/task_service/app/service.py
-
+# Done update
 def update_project(project_id, user_id, project_data):
     """Update a project (title, description, deadline, owner, collaborators)"""
     try:
@@ -1074,7 +1070,6 @@ def delete_project(project_id, user_id):
         db.session.rollback()
         raise
 
-
 def add_project_collaborator(project_id, user_id, collaborator_user_id):
     """Add a collaborator to a project (only owner can add)"""
     try:
@@ -1113,7 +1108,6 @@ def add_project_collaborator(project_id, user_id, collaborator_user_id):
         print(f"Error adding collaborator: {e}")
         db.session.rollback()
         raise
-
 
 def remove_project_collaborator(project_id, user_id, collaborator_user_id):
     """Remove a collaborator from a project (only owner can remove)"""
@@ -1188,7 +1182,6 @@ def remove_collaborator_from_project_tasks(project_id, user_id):
         db.session.rollback()
         raise
 
-
 def add_existing_task_to_project(task_id, project_id, user_id):
     """
     Add an existing standalone task to a project
@@ -1229,7 +1222,6 @@ def add_existing_task_to_project(task_id, project_id, user_id):
         db.session.rollback()
         raise
 
-
 def remove_task_from_project(task_id, user_id):
     """
     Unassign a task from its project
@@ -1260,7 +1252,6 @@ def remove_task_from_project(task_id, user_id):
         db.session.rollback()
         raise
 
-
 def create_task_in_project(task_data, project_id, user_id):
     """
     Create a new task directly within a project
@@ -1289,7 +1280,6 @@ def create_task_in_project(task_data, project_id, user_id):
         db.session.rollback()
         raise
 
-
 def get_standalone_tasks_for_user(user_id):
     """
     Get all tasks owned by user that are not assigned to any project (standalone tasks)
@@ -1306,7 +1296,6 @@ def get_standalone_tasks_for_user(user_id):
     except Exception as e:
         print(f"Error getting standalone tasks: {e}")
         raise
-
 
 # Update the existing remove_project_collaborator function to cascade removal
 def remove_project_collaborator(project_id, user_id, collaborator_user_id):

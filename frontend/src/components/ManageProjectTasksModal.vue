@@ -75,17 +75,24 @@
               <div>
                 <label class="flex items-center text-sm font-semibold text-gray-700 mb-2">
                   Deadline
+                  <span class="text-red-500 ml-1">*</span>
                 </label>
                 <input v-model="newTask.deadline" 
                        type="datetime-local"
                        :min="minDeadline"
+                       :max="maxDeadline"
                        placeholder="dd/mm/yyyy, --:-- --"
+                       required
                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all">
+                <p v-if="projectDeadline && newTask.deadline > formatDateForInput(projectDeadline)" class="text-xs text-red-600 mt-1">
+                 ⚠️ The task deadline cannot be later than the project deadline.
+                </p>
               </div>
 
               <div>
                 <label class="flex items-center text-sm font-semibold text-gray-700 mb-2">
                   Description
+                  <span class="text-red-500 ml-1">*</span>
                 </label>
                 <textarea v-model="newTask.description" 
                           rows="4"
@@ -162,9 +169,9 @@
                 
                 <div>
                   <label class="block text-sm font-semibold text-gray-700 mb-2">Recurrence End Date</label>
-                  <input v-model="newTask.recurrence_end_date" type="datetime-local" :min="minRecurrenceEndDate"
+                  <input v-model="newTask.recurrence_end_date" type="datetime-local" :min="minRecurrenceEndDate" :max="maxDeadline"
                     class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all">
-                  <p class="text-xs text-gray-500 mt-1">Optional. If not set, the task will recur indefinitely.</p>
+                  <p class="text-xs text-gray-500 mt-1">Optional. If not set, the recurrance end date will be the project deadline.</p>
                 </div>
 
               </div>
@@ -319,7 +326,11 @@ import { useAuthStore } from '@/stores/auth'
 
 const props = defineProps({
   show: Boolean,
-  projectId: Number
+  projectId: Number,
+  projectDeadline: {
+    type: String,
+    default: null
+  }
 })
 
 const emit = defineEmits(['close', 'taskAdded'])
@@ -377,6 +388,16 @@ const minRecurrenceEndDate = computed(() => {
   const date = new Date(baseDate);
   date.setDate(date.getDate() + 1);
   return formatDateForInput(date);
+});
+
+const maxDeadline = computed(() => {
+  if (props.projectDeadline) {
+      return formatDateForInput(props.projectDeadline);
+  }
+  if (newTask.value.recurrence_end_date) {
+    return formatDateForInput(newTask.value.recurrence_end_date);
+  }
+  return null;
 });
 
 // Watch for deadline changes to update recurrence end date if needed
@@ -444,13 +465,25 @@ const createTask = async () => {
     error.value = null
     successMessage.value = null
 
+    if (props.projectDeadline && newTask.value.deadline && newTask.value.deadline > formatDateForInput(props.projectDeadline)) {
+       throw new Error(`Task deadline cannot be later than the project deadline (${formatDate(props.projectDeadline)}).`);
+    }
+
+    // --- Default Recurrence End Date Logic *** ---
+    let payloadData = { ...newTask.value }; // Create a copy to modify
+
+    if (payloadData.is_recurring && !payloadData.recurrence_end_date && props.projectDeadline) {
+      payloadData.recurrence_end_date = formatDateForInput(props.projectDeadline);
+      console.log("Defaulting recurrence end date to project deadline:", payloadData.recurrence_end_date); // Optional: for debugging
+    }
+
     const response = await fetch(`${KONG_API_URL}/projects/${props.projectId}/tasks`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        ...newTask.value, // Includes base fields AND recurrence fields
+        ...payloadData, // Includes base fields AND recurrence fields
         collaborators: collaborators.value, // Includes collaborators
         owner_id: authStore.currentUserId,
         user_id: authStore.currentUserId
