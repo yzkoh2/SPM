@@ -222,6 +222,7 @@ const selectedCollaboratorId = ref(null)
 watchEffect(() => {
   if (isEditMode.value) {
     localCollaborators.value = JSON.parse(JSON.stringify(props.currentCollaborators || []))
+    localCollaborators.value = localCollaborators.value.filter(c => c.user_id !== props.taskToEdit.owner_id)
   } else {
     localCollaborators.value = []
   }

@@ -678,7 +678,6 @@ def delete_attachment_url(task_id, attachment_id):
         db.session.rollback()
         print(f"Error deleting attachment: {e}")
         return False, "Error deleting attachment"
-# Add these functions to your existing task_service/app/service.py file
 
 # ==================== PROJECT FUNCTIONS ====================
 
@@ -738,7 +737,6 @@ def create_project(project_data):
         print(f"Error creating project: {e}")
         db.session.rollback()
         raise
-
 
 def get_project_by_id(project_id, user_id):
     #Get a project by ID with authorization check
@@ -944,7 +942,7 @@ def get_user_projects(user_id, role_filter=None):
 
 
 def update_project(project_id, user_id, project_data):
-    """Update a project (only owner can update)"""
+    """Update a project (title, description, deadline, owner, collaborators)"""
     try:
         project = Project.query.get(project_id)
         
@@ -955,37 +953,133 @@ def update_project(project_id, user_id, project_data):
         if project.owner_id != user_id:
             return None, "Forbidden: Only the project owner can update the project"
         
-        # Update fields
-        if 'title' in project_data:
-            project.title = project_data['title']
+        # --- Handle standard field updates ---
+        for field, data in project_data.items():
+            # Skip fields that are handled manually below
+            if field in ['id', 'owner_id', 'collaborators_to_add', 'collaborators_to_remove']:
+                continue
+
+            if field == 'deadline':
+                deadline = None
+                if data:  # 'data' is the value of project_data['deadline']
+                    try:
+                        if isinstance(data, str):
+                            deadline_str = data
+                            if 'T' in deadline_str:
+                                deadline = datetime.fromisoformat(deadline_str)
+                            else:
+                                # Try common formats
+                                try:
+                                    deadline = datetime.strptime(deadline_str, '%Y-%m-%d %H:%M:%S')
+                                except ValueError:
+                                     deadline = datetime.strptime(deadline_str, '%Y-%m-%d')
+                        elif isinstance(data, datetime):
+                            deadline = data
+                    except ValueError as e:
+                        print(f"Error parsing deadline: {e}")
+                
+                project.deadline = deadline
+                # Call the cascade helper function
+                _cascade_project_deadline_to_tasks(project.id, deadline)
+            
+            elif hasattr(project, field):
+                # This will update 'title' and 'description'
+                setattr(project, field, data)
         
-        if 'description' in project_data:
-            project.description = project_data['description']
-        
-        if 'deadline' in project_data:
-            deadline = None
-            if project_data['deadline']:
+        # --- Handle Owner Transfer ---
+        new_owner_id_str = project_data.get('owner_id')
+        if new_owner_id_str:
+            new_owner_id = int(new_owner_id_str)
+            if new_owner_id != project.owner_id:
+                print(f"Transferring project {project_id} ownership to user {new_owner_id}")
+                
+                # 1. Add the new owner as a collaborator (so they have access)
+                #    The user_id (current owner) is making the request.
                 try:
-                    if isinstance(project_data['deadline'], str):
-                        deadline_str = project_data['deadline']
-                        if 'T' in deadline_str:
-                            deadline = datetime.fromisoformat(deadline_str)
-                        else:
-                            deadline = datetime.strptime(deadline_str, '%Y-%m-%d %H:%M:%S')
-                    elif isinstance(project_data['deadline'], datetime):
-                        deadline = project_data['deadline']
-                except ValueError as e:
-                    print(f"Error parsing deadline: {e}")
-            project.deadline = deadline
+                    add_project_collaborator(project_id, user_id, new_owner_id)
+                except Exception as e:
+                     if "already" not in str(e): # Don't error if they are already a collaborator
+                        print(f"Warning: could not add new owner as collaborator: {e}")
+
+                # 2. Change the owner
+                project.owner_id = new_owner_id
+                
+                # 3. Add the old owner (user_id) as a collaborator
+                #    The new owner (project.owner_id) is now making the request.
+                try:
+                    add_project_collaborator(project_id, project.owner_id, user_id)
+                except Exception as e:
+                     if "already" not in str(e):
+                        print(f"Warning: could not add old owner as collaborator: {e}")
+
+        # --- Handle Collaborator Changes ---
+        # The requester (user_id) is the original owner
+        collaborators_to_add = project_data.get('collaborators_to_add', [])
+        if collaborators_to_add:
+            for collab_id in collaborators_to_add:
+                # Don't add the owner as a collaborator
+                if int(collab_id) != project.owner_id:
+                    try:
+                        add_project_collaborator(project_id, user_id, int(collab_id))
+                    except Exception as add_err:
+                        print(f"Warning: Failed to add collaborator {collab_id}: {add_err}")
+
+        collaborators_to_remove = project_data.get('collaborators_to_remove', [])
+        if collaborators_to_remove:
+            for collab_id in collaborators_to_remove:
+                # Don't allow owner to remove themselves from the project
+                if int(collab_id) != user_id:
+                    try:
+                        # Use the existing function
+                        remove_project_collaborator(project_id, user_id, int(collab_id))
+                    except Exception as remove_err:
+                        print(f"Warning: Failed to remove collaborator {collab_id}: {remove_err}")
         
         db.session.commit()
-        return project.to_json(), None
+        return project.to_json(), "Project updated successfully"
         
     except Exception as e:
         print(f"Error updating project: {e}")
         db.session.rollback()
-        raise
+        raise e
 
+def _cascade_project_deadline_to_tasks(project_id, new_project_deadline):
+    """
+    Updates deadlines for all parent tasks in a project and recursively cascades
+    to their subtasks by calling _cascade_parent_deadline_to_subtasks.
+    """
+    # Do nothing if the new project deadline is cleared (set to None)
+    if not new_project_deadline:
+        print("Project deadline cleared, not cascading.")
+        return
+
+    try:
+        # Step 1: Get only the PARENT tasks in the project
+        parent_tasks = Task.query.filter(
+            Task.project_id == project_id,
+            Task.parent_task_id.is_(None)
+        ).all()
+
+        if not parent_tasks:
+            return  # No parent tasks in this project
+
+        updated_parent_count = 0
+        for task in parent_tasks:
+            # Step 2: Update the parent task itself if its deadline is later
+            if task.deadline and task.deadline > new_project_deadline:
+                task.deadline = new_project_deadline
+                updated_parent_count += 1
+            
+            # Step 3: Call the *existing* recursive helper for its subtasks
+            # This will check all children, grandchildren, etc.
+            _cascade_parent_deadline_to_subtasks(task, new_project_deadline)
+
+        if updated_parent_count > 0:
+            print(f"Cascaded new project deadline to {updated_parent_count} parent tasks (and their subtasks).")
+
+    except Exception as e:
+        # Log the error but don't block the main update
+        print(f"Error cascading project deadline: {e}")
 
 def delete_project(project_id, user_id):
     """Delete a project (only owner can delete)"""
