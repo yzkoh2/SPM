@@ -241,20 +241,30 @@
 
           <div v-else class="space-y-3">
             <div v-for="task in filteredTasks" :key="task.id"
-                 class="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors"
-                 @click="viewTaskDetails(task.id)">
-              <div class="flex items-center flex-1">
-                <div class="w-2 h-2 rounded-full mr-3" 
-                     :class="getStatusDotColor(task.status)"></div>
-                <div class="flex-1">
-                  <h4 class="text-base font-medium text-gray-900">{{ task.title }}</h4>
-                  <div class="flex items-center space-x-4 mt-1 text-xs text-gray-500">
-                    <span class="flex items-center">
-                      <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
-                      </svg>
-                      {{ formatTaskDate(task.deadline) }}
-                    </span>
+  class="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors"
+  @click="viewTaskDetails(task.id)">
+  <div class="flex items-center space-x-4 flex-1">
+    <div class="w-2 h-2 rounded-full" :class="getTaskStatusColor(task.status)"></div>
+    <div class="flex-1">
+      <div class="flex items-center space-x-2 mb-1">
+        <h4 class="font-medium text-gray-900">{{ task.title }}</h4>
+        <!-- Priority Badge -->
+        <div 
+          class="inline-flex items-center px-2 py-0.5 rounded-md font-bold text-xs"
+          :class="getPriorityColorClass(task.priority)"
+        >
+          Priority: {{ task.priority || 'N/A' }}
+        </div>
+      </div>
+      <div class="flex items-center space-x-4 mt-1 text-xs text-gray-500">
+        <span v-if="task.deadline" class="flex items-center">
+          <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z">
+            </path>
+          </svg>
+          {{ formatDate(task.deadline) }}
+        </span>
                     <span v-if="task.subtask_count > 0">📋 {{ task.subtask_count }} subtasks</span>
                     <span v-if="task.comment_count > 0">💬 {{ task.comment_count }} comments</span>
                     <span>👥 {{ task.collaborator_ids?.length || 0 }}</span>
@@ -490,6 +500,41 @@ const handleProjectUpdated = () => {
 const handleTaskAdded = () => {
   loadDashboard()
 }
+
+const getPriorityColorClass = (priority) => {
+  if (!priority) return 'bg-gray-100 text-gray-700 border border-gray-300';
+  
+  if (priority >= 8 && priority <= 10) {
+    return 'bg-red-100 text-red-800 border border-red-300';
+  } else if (priority >= 4 && priority <= 7) {
+    return 'bg-yellow-100 text-yellow-800 border border-yellow-300';
+  } else if (priority >= 1 && priority <= 3) {
+    return 'bg-green-100 text-green-800 border border-green-300';
+  }
+  return 'bg-gray-100 text-gray-700 border border-gray-300';
+};
+
+const getTaskStatusColor = (status) => {
+  const colors = {
+    'Unassigned': 'bg-gray-400',
+    'Ongoing': 'bg-yellow-400',
+    'Under Review': 'bg-orange-400',
+    'Completed': 'bg-green-400'
+  }
+  return colors[status] || 'bg-gray-400'
+}
+
+const formatDate = (dateString) => {
+  if (!dateString) return 'No deadline';
+  const date = new Date(dateString);
+  return date.toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric'
+  });
+};
+
+
 
 // Lifecycle
 onMounted(() => {
