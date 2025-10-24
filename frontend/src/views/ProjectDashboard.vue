@@ -485,7 +485,7 @@ const loadDashboard = async () => {
 }
 
 const viewTaskDetails = (taskId) => {
-  router.push(`/tasks/${taskId}`)
+  router.push(`/tasks/${taskId}?fromProject=${route.params.id}`)
 }
 
 const applyFilters = () => {
