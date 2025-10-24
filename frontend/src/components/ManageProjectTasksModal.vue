@@ -175,10 +175,10 @@
                 </div>
 
               </div>
-              <div class="border-t border-gray-200 pt-6">
+<div class="border-t border-gray-200 pt-6">
                 <h3 class="text-base font-semibold text-gray-900 mb-1">Manage Collaborators</h3>
                 <p class="text-sm text-gray-500 mb-4">
-                  {{ collaborators.length === 0 ? 'No collaborators added yet.' : `${collaborators.length} collaborator(s) added.` }}
+                  {{ collaboratorDetails.length === 0 ? 'No collaborators added yet.' : `${collaboratorDetails.length} collaborator(s) added.` }}
                 </p>
 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
@@ -186,11 +186,7 @@
                     <label class="text-xs text-gray-600 mb-1 block">Filter by Department</label>
                     <select v-model="selectedDepartment"
                             class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all bg-white text-sm">
-                      <option value="All Departments">All Departments</option>
-                      <option value="Engineering">Engineering</option>
-                      <option value="Design">Design</option>
-                      <option value="Marketing">Marketing</option>
-                      <option value="Sales">Sales</option>
+                      <option v-for="dept in availableDepartments" :key="dept" :value="dept">{{ dept }}</option>
                     </select>
                   </div>
 
@@ -198,11 +194,7 @@
                     <label class="text-xs text-gray-600 mb-1 block">Filter by Team</label>
                     <select v-model="selectedTeam"
                             class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all bg-white text-sm">
-                      <option value="All Teams">All Teams</option>
-                      <option value="Frontend">Frontend</option>
-                      <option value="Backend">Backend</option>
-                      <option value="DevOps">DevOps</option>
-                      <option value="QA">QA</option>
+                      <option v-for="team in availableTeams" :key="team" :value="team">{{ team }}</option>
                     </select>
                   </div>
                 </div>
@@ -211,10 +203,9 @@
                   <select v-model="selectedUser"
                           class="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all bg-white text-sm">
                     <option value="">Select a user to add...</option>
-                    <option value="John Doe">John Doe</option>
-                    <option value="Jane Smith">Jane Smith</option>
-                    <option value="Bob Johnson">Bob Johnson</option>
-                    <option value="Alice Williams">Alice Williams</option>
+                    <option v-for="user in filteredUsers" :key="user.id" :value="user.id">
+                      {{ user.name }} ({{ user.role }})
+                    </option>
                   </select>
                   <button type="button"
                           @click="addCollaborator"
@@ -224,13 +215,13 @@
                   </button>
                 </div>
 
-                <div v-if="collaborators.length > 0" class="flex flex-wrap gap-2 mt-4">
-                  <div v-for="(collaborator, index) in collaborators" 
-                       :key="index"
+                <div v-if="collaboratorDetails.length > 0" class="flex flex-wrap gap-2 mt-4">
+                  <div v-for="collaborator in collaboratorDetails" 
+                       :key="collaborator.id"
                        class="flex items-center gap-2 px-3 py-1.5 bg-purple-100 text-purple-700 rounded-full text-sm">
-                    {{ collaborator }}
+                    {{ collaborator.name }}
                     <button type="button"
-                            @click="removeCollaborator(index)"
+                            @click="removeCollaborator(collaborator.id)"
                             class="text-purple-700 hover:text-purple-900 font-bold">
                       ×
                     </button>
@@ -321,7 +312,7 @@
 </template>
 
 <script setup>
-import { ref, watch, computed } from 'vue'
+import { ref, watch, computed, onMounted } from 'vue' // <-- Import onMounted
 import { useAuthStore } from '@/stores/auth'
 
 const props = defineProps({
@@ -345,29 +336,87 @@ const loadingStandaloneTasks = ref(false)
 const error = ref(null)
 const successMessage = ref(null)
 
-// New task form data - now includes all fields
+// New task form data
 const newTask = ref({
   title: '',
   description: '',
   deadline: '',
   status: 'Unassigned',
   priority: 5,
-  is_recurring: false, // Standardized name
+  is_recurring: false,
   recurrence_interval: 'daily',
   recurrence_days: null,
   recurrence_end_date: null,
 })
 
-// Collaborator management
-const collaborators = ref([])
+// --- START: New Collaborator Logic ---
+const allUsers = ref([])
+const collaboratorIds = ref([]) // Use IDs instead of names
 const selectedDepartment = ref('All Departments')
 const selectedTeam = ref('All Teams')
-const selectedUser = ref('')
+const selectedUser = ref('') // This will hold the selected user ID
 
 const standaloneTasks = ref([])
 
-// --- START: Date Formatting and Logic ---
+// Fetch all users from the API
+const fetchAllUsers = async () => {
+  try {
+    const response = await fetch(`${KONG_API_URL}/user`)
+    if (response.ok) {
+      allUsers.value = await response.json()
+    } else {
+      console.error("Failed to fetch all users.")
+      error.value = "Failed to load user list."
+    }
+  } catch (err) {
+    console.error("Error fetching all users:", err)
+    error.value = "Error connecting to user service."
+  }
+}
 
+// Computed: Get unique departments from all users
+const availableDepartments = computed(() => {
+  const depts = allUsers.value.map(user => user.department).filter(Boolean);
+  return ['All Departments', ...new Set(depts)];
+});
+
+// Computed: Get unique teams, filtered by selected department
+const availableTeams = computed(() => {
+  let usersInDept = allUsers.value;
+  if (selectedDepartment.value !== 'All Departments') {
+    usersInDept = allUsers.value.filter(user => user.department === selectedDepartment.value);
+  }
+  const teams = usersInDept.map(user => user.team).filter(Boolean);
+  return ['All Teams', ...new Set(teams)];
+});
+
+// Computed: Filter users for the dropdown
+const filteredUsers = computed(() => {
+  return allUsers.value.filter(user => {
+    // Filter out the owner (current user, since they are creating the task)
+    const isOwner = user.id === authStore.currentUserId;
+    // Filter out users already added
+    const alreadyAdded = collaboratorIds.value.includes(user.id);
+    
+    if (isOwner || alreadyAdded) return false;
+
+    const matchesDept = selectedDepartment.value === 'All Departments' || user.department === selectedDepartment.value;
+    const matchesTeam = selectedTeam.value === 'All Teams' || user.team === selectedTeam.value;
+
+    return matchesDept && matchesTeam;
+  });
+});
+
+// Computed: Get full user objects for the "pills" display
+const collaboratorDetails = computed(() => {
+  return collaboratorIds.value.map(id => {
+    return allUsers.value.find(user => user.id === id);
+  }).filter(Boolean); // Filter out undefined users
+});
+// --- END: New Collaborator Logic ---
+
+
+// --- START: Date Formatting and Logic ---
 const formatDateForInput = (dateString) => {
   if (!dateString) return '';
   const date = new Date(dateString);
@@ -400,24 +449,24 @@ const maxDeadline = computed(() => {
   return null;
 });
 
-// Watch for deadline changes to update recurrence end date if needed
 watch(() => newTask.value.deadline, (newDeadline) => {
   if (newTask.value.recurrence_end_date && newDeadline > newTask.value.recurrence_end_date) {
     newTask.value.recurrence_end_date = newDeadline;
   }
 });
-
 // --- END: Date Formatting and Logic ---
 
 
 // Watch for modal open
 watch(() => props.show, (isOpen) => {
+  if (isOpen) {
+    resetForm()
+    if (allUsers.value.length === 0) { // Only fetch if we don't have users
+      fetchAllUsers()
+    }
+  }
   if (isOpen && activeTab.value === 'add') {
     loadStandaloneTasks()
-  }
-  if (isOpen) {
-    // Reset form when modal opens
-    resetForm()
   }
 })
 
@@ -428,15 +477,17 @@ watch(activeTab, (newTab) => {
   }
 })
 
+// --- START: Updated Functions ---
 const addCollaborator = () => {
-  if (selectedUser.value && !collaborators.value.includes(selectedUser.value)) {
-    collaborators.value.push(selectedUser.value)
-    selectedUser.value = ''
+  const userId = parseInt(selectedUser.value); // selectedUser is now an ID
+  if (userId && !collaboratorIds.value.includes(userId)) {
+    collaboratorIds.value.push(userId)
+    selectedUser.value = '' // Reset dropdown
   }
 }
 
-const removeCollaborator = (index) => {
-  collaborators.value.splice(index, 1)
+const removeCollaborator = (userId) => { // Receive ID, not index
+  collaboratorIds.value = collaboratorIds.value.filter(id => id !== userId)
 }
 
 const resetForm = () => {
@@ -451,7 +502,7 @@ const resetForm = () => {
     recurrence_days: null,
     recurrence_end_date: null,
   }
-  collaborators.value = []
+  collaboratorIds.value = [] // Reset IDs
   selectedDepartment.value = 'All Departments'
   selectedTeam.value = 'All Teams'
   selectedUser.value = ''
@@ -469,12 +520,10 @@ const createTask = async () => {
        throw new Error(`Task deadline cannot be later than the project deadline (${formatDate(props.projectDeadline)}).`);
     }
 
-    // --- Default Recurrence End Date Logic *** ---
-    let payloadData = { ...newTask.value }; // Create a copy to modify
+    let payloadData = { ...newTask.value };
 
     if (payloadData.is_recurring && !payloadData.recurrence_end_date && props.projectDeadline) {
       payloadData.recurrence_end_date = formatDateForInput(props.projectDeadline);
-      console.log("Defaulting recurrence end date to project deadline:", payloadData.recurrence_end_date); // Optional: for debugging
     }
 
     const response = await fetch(`${KONG_API_URL}/projects/${props.projectId}/tasks`, {
@@ -483,8 +532,8 @@ const createTask = async () => {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        ...payloadData, // Includes base fields AND recurrence fields
-        collaborators: collaborators.value, // Includes collaborators
+        ...payloadData,
+        collaborators_to_add: collaboratorIds.value, // Send IDs
         owner_id: authStore.currentUserId,
         user_id: authStore.currentUserId
       })
@@ -496,8 +545,6 @@ const createTask = async () => {
     }
 
     successMessage.value = 'Task created successfully!'
-    
-    // Reset form
     resetForm()
 
     setTimeout(() => {
@@ -512,6 +559,7 @@ const createTask = async () => {
     creating.value = false
   }
 }
+// --- END: Updated Functions ---
 
 const loadStandaloneTasks = async () => {
   try {

@@ -56,6 +56,12 @@ class Project(db.Model):
         )
         return [row.user_id for row in result]
 
+    def get_task(self):
+        result = db.session.execute(
+            db.select(Task).where(Task.project_id == self.id)
+        )
+        return [row.Task for row in result]
+
     def to_json(self):
         return {
             'id': self.id,
@@ -64,7 +70,8 @@ class Project(db.Model):
             'deadline': self.deadline.isoformat() if self.deadline else None,
             'owner_id': self.owner_id,
             'collaborator_ids': self.collaborator_ids(),
-            'created_at': self.created_at.isoformat() if self.created_at else None
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'tasks': [task.to_json() for task in self.tasks]
         }
 
 

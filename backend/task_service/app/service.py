@@ -1272,6 +1272,12 @@ def create_task_in_project(task_data, project_id, user_id):
         
         # Create the task using existing function
         new_task = create_task(task_data)
+
+        for collab_id in task_data.get('collaborators_to_add', []):
+            try:
+                add_project_collaborator(project_id, project.owner_id, collab_id)
+            except Exception as add_err:
+                print(f"Warning: Failed to add collaborator {collab_id} to task {new_task.id}: {add_err}")
         
         return new_task, None
         
