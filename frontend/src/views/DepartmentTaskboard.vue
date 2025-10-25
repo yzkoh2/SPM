@@ -73,6 +73,18 @@
                 </select>
               </div>
 
+              <!-- Filter by Priority -->
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Filter by Priority</label>
+                <select v-model="filters.priority" @change="applyFilters"
+                  class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                  <option value="">All Priorities</option>
+                  <option value="high">High (8-10)</option>
+                  <option value="medium">Medium (4-7)</option>
+                  <option value="low">Low (1-3)</option>
+                </select>
+              </div>              
+
               <!-- Sort by Deadline -->
               <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Sort by Deadline</label>
@@ -83,6 +95,17 @@
                   <option value="deadline-desc">Deadline (Latest First)</option>
                 </select>
               </div>
+
+              <!-- Sort by Priority -->
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Sort by Priority</label>
+                <select v-model="prioritySort" @change="applyFilters"
+                  class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                  <option value="default">Default Order</option>
+                  <option value="priority-high">Highest First</option>
+                  <option value="priority-low">Lowest First</option>
+                </select>
+              </div>             
             </div>
 
             <div class="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-4">
@@ -193,10 +216,12 @@ const error = ref(null)
 // Filters
 const filters = ref({
   departmentMember: '',
-  status: ''
+  status: '',
+  priority: ''
 })
 
 const sortBy = ref('default')
+const prioritySort = ref('default')  // For priority sorting
 
 // Computed properties
 const filteredAndSortedTasks = computed(() => {
@@ -221,6 +246,23 @@ const filteredAndSortedTasks = computed(() => {
     filtered = filtered.filter(task => task.status === filters.value.status)
   }
 
+  // Filter by priority
+  if (filters.value.priority) {
+    filtered = filtered.filter(task => {
+      const priority = task.priority || 5
+      
+      switch (filters.value.priority) {
+        case 'high':
+          return priority >= 8 && priority <= 10
+        case 'medium':
+          return priority >= 4 && priority <= 7
+        case 'low':
+          return priority >= 1 && priority <= 3
+        default:
+          return true
+      }
+    })
+  }
   
   if (sortBy.value === 'deadline-asc') {
     filtered.sort((a, b) => {
@@ -233,6 +275,21 @@ const filteredAndSortedTasks = computed(() => {
       if (!a.deadline) return 1
       if (!b.deadline) return -1
       return new Date(b.deadline) - new Date(a.deadline)
+    })
+  }
+
+  // Apply priority sorting
+  else if (prioritySort.value === 'priority-high') {
+    filtered.sort((a, b) => {
+      const priorityA = a.priority || 5
+      const priorityB = b.priority || 5
+      return priorityB - priorityA
+    })
+  } else if (prioritySort.value === 'priority-low') {
+    filtered.sort((a, b) => {
+      const priorityA = a.priority || 5
+      const priorityB = b.priority || 5
+      return priorityA - priorityB
     })
   }
 
@@ -250,7 +307,9 @@ const applyFilters = () => {
 const clearFilters = () => {
   filters.value.departmentMember = ''
   filters.value.status = ''
+  filters.value.priority = ''
   sortBy.value = 'default'
+  prioritySort.value = 'default'
 }
 
 const viewTaskDetails = (taskId) => {

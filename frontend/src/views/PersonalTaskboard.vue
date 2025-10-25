@@ -69,6 +69,26 @@
                 <option value="month">Due This Month</option>
               </select>
             </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Filter by Priority</label>
+              <select v-model="filters.priority" @change="applyFilters"
+                class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                <option value="">All Priorities</option>
+                <option value="high">High (8-10)</option>
+                <option value="medium">Medium (4-7)</option>
+                <option value="low">Low (1-3)</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Sort by Priority</label>
+              <select v-model="sortBy" @change="applyFilters"
+                class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                <option value="default">Default Order</option>
+                <option value="priority-high">Priority (Highest First)</option>
+                <option value="priority-low">Priority (Lowest First)</option>
+              </select>
+            </div>
+
           </div>
 
           <div class="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-4">
@@ -213,8 +233,11 @@ const taskToEdit = ref(null)
 // Filters
 const filters = ref({
   status: '',
-  deadline: ''
+  deadline: '',
+  priority: ''
 })
+
+const sortBy = ref('default')
 
 // API configuration
 const KONG_API_URL = "http://localhost:8000"
@@ -249,7 +272,38 @@ const filteredTasks = computed(() => {
       }
     })
   }
+  // PRIORITY FILTER 
+  if (filters.value.priority) {
+    filtered = filtered.filter(task => {
+      const priority = task.priority || 5
+      
+      switch (filters.value.priority) {
+        case 'high':
+          return priority >= 8 && priority <= 10
+        case 'medium':
+          return priority >= 4 && priority <= 7
+        case 'low':
+          return priority >= 1 && priority <= 3
+        default:
+          return true
+      }
+    })
+  }
 
+  // ADD SORTING LOGIC HERE
+  if (sortBy.value === 'priority-high') {
+    filtered.sort((a, b) => {
+      const priorityA = a.priority || 5
+      const priorityB = b.priority || 5
+      return priorityB - priorityA // Highest first (10 to 1)
+    })
+  } else if (sortBy.value === 'priority-low') {
+    filtered.sort((a, b) => {
+      const priorityA = a.priority || 5
+      const priorityB = b.priority || 5
+      return priorityA - priorityB // Lowest first (1 to 10)
+    })
+  }
   return filtered
 })
 
@@ -478,6 +532,8 @@ const fetchCollaboratorsForTask = async (taskId) => {
 const clearFilters = () => {
   filters.value.status = ''
   filters.value.deadline = ''
+  filters.value.priority = ''
+  sortBy.value = 'default'
 }
 
 const getTaskCountByStatus = (status) => {
