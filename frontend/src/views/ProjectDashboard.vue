@@ -10,6 +10,7 @@
       :show="showManageTasksModal" 
       :project-id="parseInt(route.params.id)"
       :project-deadline="project?.deadline"
+      :project-owner-id="project?.owner_id"
       @close="showManageTasksModal = false"
       @taskAdded="handleTaskAdded" />
 

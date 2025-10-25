@@ -1254,14 +1254,21 @@ def remove_task_from_project(task_id, user_id):
         if not task:
             return None, "Task not found"
         
-        # Check if user is the task owner
-        if task.owner_id != user_id:
-            return None, "Forbidden: Only the task owner can remove it from a project"
-        
         # Check if task belongs to a project
         if task.project_id is None:
             return None, "Task is not assigned to any project"
         
+        # Get Project
+        project = Project.query.get(task.project_id)
+        if not project:
+            return None, "Project not found"
+        
+        is_task_owner = (task.owner_id == user_id)
+        is_project_owner = (user_id == project.owner_id)
+
+        if not is_task_owner and not is_project_owner:
+            return None, "Forbidden: You don't have permission to remove this task from the project"
+
         # Remove from project
         task.project_id = None
         db.session.commit()

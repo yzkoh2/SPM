@@ -38,6 +38,7 @@
             </div>
           </div>
 
+          <!-- Tab Headers -->
           <div class="border-b border-gray-200 mb-6">
             <nav class="-mb-px flex space-x-8">
               <button @click="activeTab = 'create'"
@@ -53,6 +54,13 @@
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
                 </svg>
                 Add Existing Task
+              </button>
+              <button @click="activeTab = 'remove'"
+                      :class="[activeTab === 'remove' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300', 'whitespace-nowrap py-4 px-1 border-b-2 font-semibold text-sm transition-colors flex items-center']">
+                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                </svg>
+                Remove Task from Project
               </button>
             </nav>
           </div>
@@ -175,7 +183,7 @@
                 </div>
 
               </div>
-<div class="border-t border-gray-200 pt-6">
+              <div class="border-t border-gray-200 pt-6">
                 <h3 class="text-base font-semibold text-gray-900 mb-1">Manage Collaborators</h3>
                 <p class="text-sm text-gray-500 mb-4">
                   {{ collaboratorDetails.length === 0 ? 'No collaborators added yet.' : `${collaboratorDetails.length} collaborator(s) added.` }}
@@ -305,6 +313,59 @@
               </div>
             </div>
           </div>
+
+          <div v-if="activeTab === 'remove'" class="max-h-[60vh] overflow-y-auto pr-2">
+            <div class="space-y-4">
+              <div v-if="loadingProjectTasks" class="text-center py-12">
+                <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
+                <p class="text-sm text-gray-500 mt-4">Loading project tasks...</p>
+              </div>
+
+              <div v-else-if="projectTasks.length > 0" class="space-y-3">
+                <template v-for="task in projectTasks" :key="task.id">
+                  <div  v-if="isTaskOwner(task.id) || isProjectOwner"
+                       class="bg-gradient-to-r from-gray-50 to-white border border-gray-200 rounded-xl p-5 hover:border-red-400 hover:shadow-md transition-all">
+                    <div class="flex justify-between items-start">
+                      <div class="flex-1">
+                        <h4 class="font-semibold text-gray-900 text-lg">{{ task.title }}</h4>
+                        <p v-if="task.description" class="text-sm text-gray-600 mt-2 line-clamp-2">{{ task.description }}</p>
+                        <div class="flex items-center space-x-4 mt-3">
+                          <span :class="['px-3 py-1 rounded-full text-xs font-semibold', getStatusColor(task.status)]">
+                            {{ task.status }}
+                          </span>
+                          <span v-if="task.deadline" class="text-xs text-gray-500 flex items-center">
+                            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                            </svg>
+                            {{ formatDate(task.deadline) }}
+                          </span>
+                        </div>
+                      </div>
+                      <button  
+                              @click="removeTaskFromProject(task.id)" 
+                              :disabled="removingTask === task.id"
+                              class="ml-4 px-4 py-2 bg-gradient-to-r from-red-600 to-red-700 text-white text-sm font-semibold rounded-lg hover:from-red-700 hover:to-red-800 disabled:from-gray-400 disabled:to-gray-400 transition-all shadow-md hover:shadow-lg flex items-center whitespace-nowrap">
+                        <svg v-if="removingTask !== task.id" class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                        </svg>
+                        {{ removingTask === task.id ? 'Removing...' : 'Remove' }}
+                      </button>
+                    </div>
+                  </div>
+                </template>
+              </div>
+
+              <div v-else class="text-center py-16">
+                <div class="bg-gray-100 rounded-full w-20 h-20 flex items-center justify-center mx-auto mb-4">
+                  <svg class="w-10 h-10 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+                  </svg>
+                </div>
+                <h3 class="text-lg font-semibold text-gray-900 mb-2">No tasks in this project</h3>
+                <p class="text-sm text-gray-500">All project tasks have been removed.</p>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -321,7 +382,8 @@ const props = defineProps({
   projectDeadline: {
     type: String,
     default: null
-  }
+  },
+  projectOwnerId: Number
 })
 
 const emit = defineEmits(['close', 'taskAdded'])
@@ -475,6 +537,9 @@ watch(activeTab, (newTab) => {
   if (newTab === 'add' && props.show) {
     loadStandaloneTasks()
   }
+  if (newTab === 'remove' && props.show) {
+    loadProjectTasks()
+  }
 })
 
 // --- START: Updated Functions ---
@@ -619,6 +684,80 @@ const addTaskToProject = async (taskId) => {
     error.value = err.message
   } finally {
     addingTask.value = null
+  }
+}
+
+// Remove task from project
+const removingTask = ref(null)
+const loadingProjectTasks = ref(false)
+const projectTasks = ref([])
+
+const isProjectOwner = computed(() => {
+  return props.projectOwnerId === authStore.currentUserId
+})
+const isTaskOwner = (taskId) => {
+  const task = projectTasks.value.find(t => t.id === taskId)
+  return task && task.owner_id === authStore.currentUserId
+}
+// Load project tasks
+const loadProjectTasks = async () => {
+  try {
+    loadingProjectTasks.value = true
+    error.value = null
+
+    const response = await fetch(`${KONG_API_URL}/projects/${props.projectId}/tasks`)
+
+    if (!response.ok) {
+      throw new Error('Failed to load project tasks')
+    }
+
+    projectTasks.value = await response.json()
+
+  } catch (err) {
+    console.error('Error loading project tasks:', err)
+    error.value = err.message
+  } finally {
+    loadingProjectTasks.value = false
+  }
+}
+// Remove task from project
+const removeTaskFromProject = async (taskId) => {
+  if (!confirm('Remove this task from the project?')) {
+    return
+  }
+
+  try {
+    removingTask.value = taskId
+    error.value = null
+    successMessage.value = null
+
+    const response = await fetch(`${KONG_API_URL}/tasks/${taskId}/remove-from-project`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        user_id: authStore.currentUserId
+      })
+    })
+
+    if (!response.ok) {
+      const errorData = await response.json()
+      throw new Error(errorData.error || 'Failed to remove task from project')
+    }
+
+    successMessage.value = 'Task removed from project!'
+    projectTasks.value = projectTasks.value.filter(t => t.id !== taskId)
+
+    setTimeout(() => {
+      emit('taskAdded')
+    }, 1000)
+
+  } catch (err) {
+    console.error('Error removing task from project:', err)
+    error.value = err.message
+  } finally {
+    removingTask.value = null
   }
 }
 
