@@ -1194,7 +1194,7 @@ def add_existing_task_to_project(task_id, project_id, user_id):
         if not task:
             return None, "Task not found"
         
-        # Check if user is the task owner
+        # Check if user adding task is the task owner
         if task.owner_id != user_id:
             return None, "Forbidden: Only the task owner can add it to a project"
         
@@ -1207,10 +1207,31 @@ def add_existing_task_to_project(task_id, project_id, user_id):
         if not project:
             return None, "Project not found"
         
-        collaborator_ids = project.collaborator_ids()
-        if user_id != project.owner_id and user_id not in collaborator_ids:
+        project_collaborators = set(project.collaborator_ids())
+        is_project_owner = (user_id == project.owner_id)
+        is_project_member = (user_id in project_collaborators)
+
+        if not is_project_owner and not is_project_member:
             return None, "Forbidden: You don't have access to this project"
-        
+
+        task_collaborators = set(task.collaborator_ids())
+        missing_collaborators = [
+            collab_id for collab_id in task_collaborators
+            if collab_id not in project_collaborators
+        ]
+
+        if missing_collaborators:
+            if not is_project_owner:
+                # Reject adding the task if user is not project owner (given task has collaborators outside project collaborators)
+                return None, "Forbidden: Task has collaborators not in the project"
+            else:
+                # Add missing collaborators to the project
+                for collab_id in missing_collaborators:
+                    try:
+                        add_project_collaborator(project_id, project.owner_id, collab_id)
+                    except Exception as add_err:
+                        print(f"Warning: Failed to add collaborator {collab_id} to project {project_id}: {add_err}")
+
         # Assign task to project
         task.project_id = project_id
         db.session.commit()

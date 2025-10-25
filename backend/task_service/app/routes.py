@@ -516,6 +516,7 @@ def get_project_tasks(project_id):
         print(f"Error in get_project_tasks: {e}")
         return jsonify({"error": str(e)}), 500
 
+# Done
 @task_bp.route("/projects/<int:project_id>/tasks", methods=["POST"])
 def create_task_in_project(project_id):
     """
