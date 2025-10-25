@@ -3,6 +3,7 @@ from flask_cors import CORS
 from config import Config
 from .models import db
 from .routes import task_bp
+from .report import routes as reports_routes
 import boto3
 
 def create_app():

@@ -49,6 +49,7 @@ services:
         paths:
           - /tasks
           - /projects 
+          - /reports
         strip_path: false
         methods:
           - GET
