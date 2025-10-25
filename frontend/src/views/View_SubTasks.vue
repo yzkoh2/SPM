@@ -35,7 +35,47 @@
           {{ showCreateForm ? 'Cancel' : 'Create New Subtask' }}
         </button>
       </div>
+      <div class="mb-6 px-4 sm:px-0">
+        <div class="bg-white rounded-lg shadow-md p-6">
+          <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0">
+            <div class="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-4">
+              <!-- Filter by Priority -->
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Filter by Priority</label>
+                <select v-model="filters.priority" @change="applyFilters"
+                  class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                  <option value="">All Priorities</option>
+                  <option value="high">High (8-10)</option>
+                  <option value="medium">Medium (4-7)</option>
+                  <option value="low">Low (1-3)</option>
+                </select>
+              </div>
 
+              <!-- Sort by Priority -->
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Sort by Priority</label>
+                <select v-model="prioritySort" @change="applyFilters"
+                  class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                  <option value="default">Default Order</option>
+                  <option value="priority-high">Highest First</option>
+                  <option value="priority-low">Lowest First</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-4">
+              <button @click="clearFilters"
+                class="px-4 py-2 text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors">
+                Clear Filters
+              </button>
+              <button @click="fetchSubtasks"
+                class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors">
+                Refresh
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
       <div class="px-4 sm:px-0">
         <TaskForm v-if="showCreateForm" title="Create New Subtask" 
           :is-subtask="true" 
@@ -103,7 +143,9 @@
 
         <div v-else-if="subtasks.length > 0" class="space-y-3">
           <div class="flex justify-between items-center">
-            <h3 class="text-lg font-medium text-gray-900">Subtasks ({{ subtasks.length }})</h3>
+            <h3 class="text-lg font-medium text-gray-900">
+              Subtasks ({{ filteredSubtasks.length }}{{ filteredSubtasks.length !== subtasks.length ? ` of ${subtasks.length}` : '' }})
+            </h3>
             <div class="flex space-x-2">
               <span class="text-sm text-gray-500">
                 {{ completedCount }}/{{ subtasks.length }} completed
@@ -115,7 +157,7 @@
           </div>
 
           <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <div v-for="subtask in subtasks" :key="subtask.id" class="relative">
+            <div v-for="subtask in filteredSubtasks" :key="subtask.id" class="relative">
               <TaskCard :task="subtask" @view="viewSubtaskDetails" @edit="editSubtask" @delete="deleteSubtask" />
 
               <div v-if="updatingSubtaskId === subtask.id"
@@ -123,6 +165,14 @@
                 <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
               </div>
             </div>
+          </div>
+
+          <!-- Show message if filters hide all subtasks -->
+          <div v-if="filteredSubtasks.length === 0" class="text-center py-8 bg-gray-50 rounded-lg">
+            <p class="text-sm text-gray-600">No subtasks match the current filters.</p>
+            <button @click="clearFilters" class="mt-2 text-sm text-indigo-600 hover:text-indigo-500">
+              Clear filters
+            </button>
           </div>
         </div>
 
@@ -166,6 +216,12 @@ const subtaskToEdit = ref(null)
 const allUsers = ref([])
 const collaboratorDetails = ref([])
 
+const filters = ref({
+  priority: ''
+})
+
+const prioritySort = ref('default')
+
 const KONG_API_URL = "http://localhost:8000"
 
 // Computed properties for progress tracking
@@ -176,6 +232,45 @@ const completedCount = computed(() => {
 const progressPercentage = computed(() => {
   if (subtasks.value.length === 0) return 0
   return Math.round((completedCount.value / subtasks.value.length) * 100)
+})
+
+const filteredSubtasks = computed(() => {
+  let filtered = [...subtasks.value]
+
+  // Filter by priority
+  if (filters.value.priority) {
+    filtered = filtered.filter(subtask => {
+      const priority = subtask.priority || 5
+      
+      switch (filters.value.priority) {
+        case 'high':
+          return priority >= 8 && priority <= 10
+        case 'medium':
+          return priority >= 4 && priority <= 7
+        case 'low':
+          return priority >= 1 && priority <= 3
+        default:
+          return true
+      }
+    })
+  }
+
+  // Apply priority sorting
+  if (prioritySort.value === 'priority-high') {
+    filtered.sort((a, b) => {
+      const priorityA = a.priority || 5
+      const priorityB = b.priority || 5
+      return priorityB - priorityA
+    })
+  } else if (prioritySort.value === 'priority-low') {
+    filtered.sort((a, b) => {
+      const priorityA = a.priority || 5
+      const priorityB = b.priority || 5
+      return priorityA - priorityB
+    })
+  }
+
+  return filtered
 })
 
 const fetchAllUsers = async () => {
@@ -427,6 +522,14 @@ function getStatusBadgeColor(status) {
     'On Hold': 'bg-red-100 text-red-800'
   }
   return colors[status] || 'bg-gray-100 text-gray-800'
+}
+
+const applyFilters = () => {
+}
+
+const clearFilters = () => {
+  filters.value.priority = ''
+  prioritySort.value = 'default'
 }
 
 // Initialize component
