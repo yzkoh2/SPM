@@ -56,11 +56,14 @@ class User(db.Model):
             user_data['team'] = self.team.name
             if self.team.department:
                 user_data['department'] = self.team.department.name
+                user_data['department_id'] = self.team.department.id
             else:
                 user_data['department'] = None # Handle case where team has no department
+                user_data['department_id'] = None
         else:
             user_data['team'] = None
             user_data['department'] = None
+            user_data['department_id'] = None
 
         return user_data
 

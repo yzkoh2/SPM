@@ -144,6 +144,12 @@ const router = createRouter({
       name: 'department-taskboard',
       component: () => import('@/views/DepartmentTaskboard.vue'),
       meta: { requiresAuth: true }
+    },
+    {
+      path: '/reports',
+      name: 'reports',
+      component: () => import('@/views/ReportGeneration.vue'),
+      meta: { requiresAuth: true }
     }
   ]
 })

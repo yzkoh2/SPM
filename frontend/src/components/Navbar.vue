@@ -35,6 +35,14 @@
                   Schedule
                 </div>
               </router-link>
+              <router-link to="/reports" 
+                         class="px-3 py-2 rounded-md text-sm font-medium transition-colors"
+                         :class="isActiveRoute('/reports') ? 'bg-indigo-100 text-indigo-700' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'">
+                <div class="flex items-center">
+                  <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16h6m2 4H7a2 2 0 01-2-2V6a2 2 0 012-2h5l2 2h5a2 2 0 012 2v10a2 2 0 01-2 2z"></path></svg>
+                  Generate Report
+                </div>
+              </router-link>
             </div>
           </div>
         </div>
