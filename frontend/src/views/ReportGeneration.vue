@@ -296,6 +296,7 @@ const fetchCurrentUser = async () => {
     if (!response.ok) throw new Error('Failed to fetch user details')
     currentUser.value = await response.json()
     selectedUserId.value = currentUser.value.id
+    console.log('Current user details:', currentUser.value)
     
     // Fetch appropriate users based on role
     if (currentUser.value.role === 'Manager') {
@@ -324,6 +325,7 @@ const fetchTeamMembers = async () => {
 
 const fetchDepartmentMembers = async () => {
   try {
+    console.log('Fetching department members for department ID:', currentUser.value.department_id)
     const response = await fetch(`${KONG_API_URL}/user/department/${currentUser.value.department_id}`)
     if (!response.ok) throw new Error('Failed to fetch department members')
     availableUsers.value = await response.json()
