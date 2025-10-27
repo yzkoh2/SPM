@@ -47,7 +47,6 @@ def get_tasks_with_upcoming_deadlines():
         #Query all tasks (including subtasks) with deadlines
         tasks_with_deadlines = Task.query.filter(
             Task.deadline.isnot(None), 
-            Task.deadline >= now, 
             Task.status != 'Completed' 
         ).all()
         
