@@ -53,8 +53,34 @@ class OverdueAlert(db.Model):
     sent_at = db.Column(db.DateTime, default=datetime.utcnow)
     
     __table_args__ = (
-        db.UniqueConstraint('task_id', 'alert_date', name='uix_task_alert_date'),
+        db.UniqueConstraint('task_id', 'alert_date', name='unique_task_alert_date'),
     )
     
     def __repr__(self):
         return f'<OverdueAlert task_id={self.task_id} alert_date={self.alert_date} days_overdue={self.days_overdue}>'
+
+class MentionNotification(db.Model):
+    #Model to track mention alert notifications sent to prevents duplicate notifications for the same mention.
+    __tablename__ = 'mention_notifications'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    task_id = db.Column(db.Integer, nullable=False, index=True)
+    comment_id = db.Column(db.Integer, nullable=False, index=True)
+    mentioned_user_id = db.Column(db.Integer, nullable=False, index=True)
+    author_id = db.Column(db.Integer, nullable=False)
+    sent_at = db.Column(
+        db.DateTime, 
+        default=lambda: datetime.now(ZoneInfo('Asia/Singapore')),
+        nullable=False
+    )
+    
+    __table_args__ = (
+        db.UniqueConstraint(
+            'comment_id', 
+            'mentioned_user_id', 
+            name='unique_mention_notification'
+        ),
+    )
+    
+    def __repr__(self):
+        return f'<MentionNotification task_id={self.task_id} mentioned_user={self.mentioned_user_id}>'

@@ -431,17 +431,9 @@ def get_task_details(task_id):
         raise e
 
 def add_comment(task_id, data):
-    #Add a comment to a task
+    #Add a new comment to a task, trigger mention notification if necessary
     try:
-        task = Task.query.filter_by(id=task_id).first()
-        if not task:
-            return None, "Task not found"
-        
-        author_id = data.get('author_id')
-        collab_ids = task.collaborator_ids()
-        if task.owner_id != author_id and author_id not in collab_ids:
-            return None, "Forbidden: You do not have permission to comment on this task."
-
+        #Create new comment
         new_comment = Comment(
             body=data['body'],
             author_id=data['author_id'],
@@ -452,13 +444,37 @@ def add_comment(task_id, data):
         db.session.add(new_comment)
         db.session.flush()
 
+        #Process mentions (if any)
         mention_ids = data.get('mention_ids', [])
         if mention_ids:
+            #Save mention relationships to database
             mention_entries = [
                 {'comment_id': new_comment.id, 'user_id': user_id}
                 for user_id in set(mention_ids)
             ]
             db.session.execute(comment_mentions.insert(), mention_entries)
+            
+            #Publish mention alerts to RabbitMQ
+            from .rabbitmq_publisher import publish_mention_alert
+            
+            print(f"📝 Processing {len(set(mention_ids))} mention(s) for comment {new_comment.id}")
+            
+            for mentioned_user_id in set(mention_ids):
+                #Skip self-mentions
+                if mentioned_user_id == data['author_id']:
+                    print(f"⏭️  Skipping self-mention for user {mentioned_user_id}")
+                    continue
+                
+                try:
+                    publish_mention_alert(
+                        task_id=task_id,
+                        comment_id=new_comment.id,
+                        mentioned_user_id=mentioned_user_id,
+                        author_id=data['author_id'],
+                        comment_body=data['body']
+                    )
+                except Exception as publish_error:
+                    print(f"⚠️  Failed to publish mention alert: {publish_error}")
 
         db.session.commit()
         
