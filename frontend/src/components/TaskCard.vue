@@ -6,16 +6,29 @@
   >
     <div class="p-5">
       <div class="flex items-start justify-between">
-        <div class="flex-1">
-          <h3 class="text-lg font-semibold text-gray-900 mb-2 hover:text-indigo-600 transition-colors">
-            {{ task.title }}
-          </h3>
-          <span
-            class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
-            :class="statusBadgeColor"
-          >
-            {{ task.status }}
-          </span>
+  <div class="flex-1">
+    <!-- Priority Badge -->
+    <div class="flex items-center space-x-2 mb-2">
+      <div 
+        class="flex items-center px-2.5 py-1 rounded-md font-bold text-sm"
+        :class="getPriorityColorClass(task.priority)"
+      >
+        <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+          <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+        </svg>
+        Priority: {{ task.priority || 'N/A' }}
+      </div>
+      <span
+        class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
+        :class="statusBadgeColor"
+      >
+        {{ task.status }}
+      </span>
+    </div>
+
+    <h3 class="text-lg font-semibold text-gray-900 mb-2 hover:text-indigo-600 transition-colors">
+      {{ task.title }}
+    </h3>
           <RecurringIcon 
   :isRecurring="task.is_recurring"
   :recurrenceInterval="task.recurrence_interval"
@@ -128,6 +141,21 @@ const formatDeadline = (deadline) => {
     day: 'numeric'
   });
 };
+
+// Priority color classes based on priority level
+const getPriorityColorClass = (priority) => {
+  if (!priority) return 'bg-gray-100 text-gray-700 border border-gray-300';
+  
+  if (priority >= 8 && priority <= 10) {
+    return 'bg-red-100 text-red-800 border border-red-300'; // High
+  } else if (priority >= 4 && priority <= 7) {
+    return 'bg-yellow-100 text-yellow-800 border border-yellow-300'; // Medium
+  } else if (priority >= 1 && priority <= 3) {
+    return 'bg-green-100 text-green-800 border border-green-300'; // Low
+  }
+  return 'bg-gray-100 text-gray-700 border border-gray-300';
+};
+
 </script>
 
 <style scoped>

@@ -49,6 +49,7 @@ services:
         paths:
           - /tasks
           - /projects 
+          - /reports
         strip_path: false
         methods:
           - GET
@@ -57,22 +58,6 @@ services:
           - DELETE
           - OPTIONS
           - PATCH
-  
-  # # PROJECT SERVICE
-  # - name: project-service
-  #   url: http://spm_project_service:6002
-  #   routes:
-  #     - name: project-service-route
-  #       paths:
-  #         - /projects
-  #       strip_path: false
-  #       methods:
-  #         - GET
-  #         - POST
-  #         - PUT
-  #         - DELETE
-  #         - OPTIONS
-  #         - PATCH
 
   # DOCUMENTATION
   - name: swagger

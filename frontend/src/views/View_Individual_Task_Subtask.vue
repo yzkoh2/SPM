@@ -3,13 +3,13 @@
     <header class="bg-white shadow-sm border-b border-gray-200">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="flex items-center py-6">
-          <router-link :to="isSubtask ? `/tasks/${parentTaskId}/subtasks` : '/'"
-            class="flex items-center text-indigo-600 hover:text-indigo-500 mr-6 text-sm font-medium">
-            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
-            </svg>
-            {{ isSubtask ? 'Back to Subtasks' : 'Back to Tasks' }}
-          </router-link>
+<router-link :to="backLink"
+  class="flex items-center text-indigo-600 hover:text-indigo-500 mr-6 text-sm font-medium">
+  <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+  </svg>
+  {{ backLinkText }}
+</router-link>
           <div class="flex-1">
             <h1 class="text-2xl font-bold text-gray-900">{{ isSubtask ? 'Subtask Details' : 'Task Details' }}</h1>
           </div>
@@ -24,8 +24,11 @@
       class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 flex items-start justify-center">
       <div class="relative w-full max-w-2xl">
         <TaskForm :task-to-edit="taskToEdit" :all-users="allUsers" :is-subtask="isSubtask" :is-submitting="isUpdating"
-          :current-collaborators="collaboratorDetails" submit-button-text="Update Task"
-          submit-button-loading-text="Updating..." @submit="updateTask" @cancel="closeEditModal" />
+        :current-collaborators="collaboratorDetails"
+        :parent-deadline="parentTask ? parentTask.deadline : null" 
+        submit-button-text="Update Task"
+        submit-button-loading-text="Updating..." 
+        @submit="updateTask" @cancel="closeEditModal" />
       </div>
     </div>
 
@@ -71,10 +74,26 @@
             <div class="flex-1">
               <h2 class="text-3xl font-bold text-gray-900 mb-2">{{ task.title }}</h2>
               <div class="flex items-center space-x-3">
-                <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium"
-                  :class="getStatusBadgeColor(task.status)">
-                  {{ task.status }}
-                </span>
+                <div class="flex items-center space-x-2">
+  <span
+    class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium"
+    :class="getStatusBadgeColor(task.status)"
+  >
+    {{ task.status }}
+  </span>
+  
+  <div 
+    class="inline-flex items-center px-3 py-1.5 rounded-md font-bold text-sm"
+    :class="getPriorityColorClass(task.priority)"
+  >
+    <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+      <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+    </svg>
+    Priority {{ task.priority || 'N/A' }}
+  </div>
+</div>
+
+                
 
                 <RecurringIcon 
                   :is-recurring="task.is_recurring"
@@ -119,28 +138,42 @@
             </p>
           </div>
 
-          <div class="mt-6 grid grid-cols-1 md:grid-cols-3 gap-6 pt-6 border-t border-gray-200">
-            <div>
-              <h4 class="text-sm font-medium text-gray-500 uppercase tracking-wide">Deadline</h4>
-              <p class="mt-1 text-lg" :class="getDeadlineColor(task.deadline)">
-                {{ formatDeadline(task.deadline) }}
-              </p>
-            </div>
-            <div>
-              <h4 class="text-sm font-medium text-gray-500 uppercase tracking-wide">Owner</h4>
-              <p class="mt-1 text-lg text-gray-900"> {{ ownerDetails.name }} ID: {{ task.owner_id }}</p>
-            </div>
-            <div v-if="!isSubtask">
-              <h4 class="text-sm font-medium text-gray-500 uppercase tracking-wide">Progress</h4>
-              <div class="mt-1 flex items-center">
-                <div class="flex-1 bg-gray-200 rounded-full h-2 mr-2">
-                  <div class="bg-indigo-600 h-2 rounded-full transition-all duration-300"
-                    :style="{ width: getTaskProgress() + '%' }"></div>
-                </div>
-                <span class="text-sm text-gray-600">{{ getTaskProgress() }}%</span>
-              </div>
-            </div>
-          </div>
+          <div class="mt-6 grid grid-cols-1 md:grid-cols-4 gap-6 pt-6 border-t border-gray-200">
+
+  <div>
+    <h4 class="text-sm font-medium text-gray-500 uppercase tracking-wide">Priority</h4>
+    <div class="mt-1">
+      <div 
+        class="inline-flex items-center px-3 py-1.5 rounded-md font-bold text-lg"
+        :class="getPriorityColorClass(task.priority)"
+      >
+        {{ task.priority || 'N/A' }}
+      </div>
+    </div>
+  </div>
+  
+  
+  <div>
+    <h4 class="text-sm font-medium text-gray-500 uppercase tracking-wide">Deadline</h4>
+    <p class="mt-1 text-lg" :class="getDeadlineColor(task.deadline)">
+      {{ formatDeadline(task.deadline) }}
+    </p>
+  </div>
+  <div>
+    <h4 class="text-sm font-medium text-gray-500 uppercase tracking-wide">Owner</h4>
+    <p class="mt-1 text-lg text-gray-900"> {{ ownerDetails.name }} ID: {{ task.owner_id }}</p>
+  </div>
+  <div v-if="!isSubtask">
+    <h4 class="text-sm font-medium text-gray-500 uppercase tracking-wide">Progress</h4>
+    <div class="mt-1 flex items-center">
+      <div class="flex-1 bg-gray-200 rounded-full h-2 mr-2">
+        <div class="bg-indigo-600 h-2 rounded-full transition-all duration-300"
+          :style="{ width: getTaskProgress() + '%' }"></div>
+      </div>
+      <span class="text-sm text-gray-600">{{ getTaskProgress() }}%</span>
+    </div>
+  </div>
+</div>
 
           <div v-if="collaboratorDetails.length > 0" class="mt-6 pt-6 border-t border-gray-200">
             <h4 class="text-sm font-medium text-gray-500 uppercase tracking-wide mb-3">Collaborators</h4>
@@ -305,24 +338,32 @@
 
           <div v-if="task.subtasks && task.subtasks.length > 0" class="space-y-3">
             <div v-for="subtask in task.subtasks.slice(0, 5)" :key="subtask.id"
-              class="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer"
-              @click="$router.push(`/tasks/${task.id}/subtasks/${subtask.id}`)">
-              <div class="flex items-center space-x-3">
-                <div class="w-2 h-2 rounded-full" :class="getSubtaskStatusColor(subtask.status)"></div>
-                <span class="text-gray-900">{{ subtask.title }}</span>
-              </div>
-              <div class="flex items-center space-x-2">
-                <RecurringIcon 
-                  :is-recurring="subtask.is_recurring"
-                  :recurrence-interval="subtask.recurrence_interval"
-                  :recurrence-days="subtask.recurrence_days"
-                />
-                <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium"
-                  :class="getStatusBadgeColor(subtask.status)">
-                  {{ subtask.status }}
-                </span>
-              </div>
-            </div>
+  class="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer"
+  @click="$router.push(`/tasks/${task.id}/subtasks/${subtask.id}`)">
+  <div class="flex items-center space-x-3">
+    <div class="w-2 h-2 rounded-full" :class="getSubtaskStatusColor(subtask.status)"></div>
+    <span class="text-gray-900">{{ subtask.title }}</span>
+  </div>
+  <div class="flex items-center space-x-2">
+    <!-- Priority Badge for Subtask -->
+    <div 
+      class="inline-flex items-center px-2 py-0.5 rounded-md font-bold text-xs"
+      :class="getPriorityColorClass(subtask.priority)"
+    >
+      Priority: {{ subtask.priority || 'N/A' }}
+    </div>
+    
+    <RecurringIcon 
+      :is-recurring="subtask.is_recurring"
+      :recurrence-interval="subtask.recurrence_interval"
+      :recurrence-days="subtask.recurrence_days"
+    />
+    <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium"
+      :class="getStatusBadgeColor(subtask.status)">
+      {{ subtask.status }}
+    </span>
+  </div>
+</div>
             <div v-if="task.subtasks.length > 5" class="text-center pt-4">
               <router-link :to="`/tasks/${task.id}/subtasks`"
                 class="text-indigo-600 hover:text-indigo-500 text-sm font-medium">
@@ -1069,6 +1110,42 @@ const formatRecurrenceEndDate = (endDate) => {
     day: 'numeric'
   })
 }
+
+const getPriorityColorClass = (priority) => {
+  if (!priority) return 'bg-gray-100 text-gray-700 border border-gray-300';
+  
+  if (priority >= 8 && priority <= 10) {
+    return 'bg-red-100 text-red-800 border border-red-300';
+  } else if (priority >= 4 && priority <= 7) {
+    return 'bg-yellow-100 text-yellow-800 border border-yellow-300';
+  } else if (priority >= 1 && priority <= 3) {
+    return 'bg-green-100 text-green-800 border border-green-300';
+  }
+  return 'bg-gray-100 text-gray-700 border border-gray-300';
+};
+
+// Add these new computed properties
+const backLink = computed(() => {
+  if (isSubtask.value) { //
+    return `/tasks/${parentTaskId.value}/subtasks` //
+  }
+  // Check if we came from a project
+  if (route.query.fromProject) {
+    return `/projects/${route.query.fromProject}`
+  }
+  // Fallback to the default personal taskboard
+  return '/' //
+})
+
+const backLinkText = computed(() => {
+  if (isSubtask.value) {
+    return 'Back to Subtasks' //
+  }
+  if (route.query.fromProject) {
+    return 'Back to Project'
+  }
+  return 'Back to Tasks' //
+})
 
 watch(
   () => [route.params.id, route.params.subtaskId],

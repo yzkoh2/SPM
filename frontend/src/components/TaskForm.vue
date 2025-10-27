@@ -12,8 +12,17 @@
 
       <div>
         <label class="block text-sm font-medium text-gray-700 mb-2">Deadline</label>
-        <input v-model="localData.deadline" type="datetime-local" :min="minDeadline"
-          class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+        <input v-model="localData.deadline" type="datetime-local" :min="minDeadline" :max="maxDeadline"
+          class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent" required>
+        <p v-if="isSubtask && maxDeadline && localData.deadline > maxDeadline"
+          class="mt-2 text-sm text-red-600">
+          ⚠️ The subtask deadline cannot be past the parent task's deadline.
+        </p>
+
+        <p v-if="localData.deadline && localData.deadline < minDeadline"
+          class="mt-2 text-sm text-red-600">
+          ⚠️ The task deadline cannot be earlier than the current date and time.
+        </p>
       </div>
       
       <div>
@@ -182,7 +191,8 @@ const props = defineProps({
   submitButtonLoadingText: { type: String, default: 'Creating...' },
   taskToEdit: { type: Object, default: null },
   allUsers: { type: Array, default: () => [] },
-  currentCollaborators: { type: Array, default: () => [] }
+  currentCollaborators: { type: Array, default: () => [] },
+  parentDeadline: { type: String, default: null },
 })
 
 const emit = defineEmits(['submit', 'cancel'])
@@ -212,6 +222,7 @@ const selectedCollaboratorId = ref(null)
 watchEffect(() => {
   if (isEditMode.value) {
     localCollaborators.value = JSON.parse(JSON.stringify(props.currentCollaborators || []))
+    localCollaborators.value = localCollaborators.value.filter(c => c.user_id !== props.taskToEdit.owner_id)
   } else {
     localCollaborators.value = []
   }
@@ -332,9 +343,23 @@ const formatDateForInput = (dateString) => {
   return `${year}-${month}-${day}T${hours}:${minutes}`;
 };
 
+const isOverdue = computed(() => {
+    if (!isEditMode.value || !localData.value.deadline) {
+        return false;
+    }
+    const currentDeadline = new Date(localData.value.deadline).getTime();
+    const now = new Date().getTime();
+    // Use an hour buffer for comparison, in case of small time drift
+    return currentDeadline < now - (60 * 60 * 1000); 
+});
+
 const minDeadline = computed(() => {
-  if (isEditMode.value && localData.value.deadline) {
-    return localData.value.deadline;
+  // if (isEditMode.value && localData.value.deadline) {
+  //   return localData.value.deadline;
+  // }
+  if (isEditMode.value && isOverdue.value) {
+        // Allow the user to keep the existing (past) deadline.
+        return localData.value.deadline;
   }
   return formatDateForInput(new Date());
 });
@@ -347,6 +372,13 @@ const minRecurrenceEndDate = computed(() => {
 
   return formatDateForInput(date);
 });
+
+const maxDeadline = computed(() => {
+  if (props.isSubtask && props.parentDeadline) {
+    return props.parentDeadline;
+  }
+  return null;
+})
 
 // --- Watchers ---
 

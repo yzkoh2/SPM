@@ -143,6 +143,7 @@ def update_task(task_id, user_id, task_data):
 
             if field == 'deadline' and data:
                 task.deadline = datetime.fromisoformat(data)
+                _cascade_parent_deadline_to_subtasks(task, task.deadline)
             elif field == 'recurring_end_date' and data:
                 task.recurrence_end_date = datetime.fromisoformat(data)
             elif field == 'status':
@@ -310,11 +311,14 @@ def _add_collaborators_to_parents(task, collaborator_ids):
     if not collaborator_ids:
         return
 
+    updated_project_ids = set()
+
     current_task_node = task
     while current_task_node:
         result = db.session.execute(
-            task_collaborators.select().with_only_columns(task_collaborators.c.user_id)
-            .where(task_collaborators.c.task_id == current_task_node.id)
+            db.select(task_collaborators.c.user_id).where(
+                task_collaborators.c.task_id == current_task_node.id
+            )
         )
         existing_collab_ids = {row.user_id for row in result}
         
@@ -325,6 +329,22 @@ def _add_collaborators_to_parents(task, collaborator_ids):
                 {'task_id': current_task_node.id, 'user_id': collab_id} for collab_id in new_for_this_task
             ])
         
+        project_id = current_task_node.project_id
+
+        if project_id and project_id not in updated_project_ids:
+            result = db.session.execute(
+                db.select(project_collaborators.c.user_id).where(
+                    project_collaborators.c.project_id == project_id
+                )
+            )
+            existing_project_collab_ids = {row.user_id for row in result}
+            new_for_this_project = collaborator_ids - existing_project_collab_ids
+
+            if new_for_this_project:
+                db.session.execute(project_collaborators.insert(), [
+                    {'project_id': project_id, 'user_id': collab_id} for collab_id in new_for_this_project
+                ])
+            updated_project_ids.add(project_id)
         if current_task_node.parent_task_id:
             current_task_node = Task.query.get(current_task_node.parent_task_id)
         else:
@@ -364,6 +384,13 @@ def _are_all_subtasks_completed(task):
         if subtask.status != TaskStatusEnum.COMPLETED:
             return False
     return True
+
+def _cascade_parent_deadline_to_subtasks(task, new_deadline):
+    """Recursively update subtasks' deadlines if they exceed the new parent deadline"""
+    for subtask in task.subtasks:
+        if subtask.deadline and new_deadline and subtask.deadline > new_deadline:
+            subtask.deadline = new_deadline
+        _cascade_parent_deadline_to_subtasks(subtask, new_deadline)
 
 def delete_task(task_id, user_id):
     #Delete a task by ID
@@ -651,7 +678,6 @@ def delete_attachment_url(task_id, attachment_id):
         db.session.rollback()
         print(f"Error deleting attachment: {e}")
         return False, "Error deleting attachment"
-# Add these functions to your existing task_service/app/service.py file
 
 # ==================== PROJECT FUNCTIONS ====================
 
@@ -685,6 +711,25 @@ def create_project(project_data):
         )
         
         db.session.add(new_project)
+        db.session.flush()
+
+        collaborators_to_add = set(project_data.get('collaborator_ids', []))
+        collaborators_to_add.add(new_project.owner_id)
+
+        result = db.session.execute(
+            db.select(project_collaborators.c.user_id).where(
+                project_collaborators.c.project_id == new_project.id
+            )
+        )
+        existing_collaborators = {row.user_id for row in result}
+        new_collaborators_for_project = collaborators_to_add - existing_collaborators
+        if new_collaborators_for_project:
+            new_collaborator_entries = [
+                {'project_id': new_project.id, 'user_id': collab_id}
+                for collab_id in new_collaborators_for_project
+            ]
+            db.session.execute(project_collaborators.insert(), new_collaborator_entries)
+
         db.session.commit()
         
         return new_project.to_json()
@@ -692,7 +737,6 @@ def create_project(project_data):
         print(f"Error creating project: {e}")
         db.session.rollback()
         raise
-
 
 def get_project_by_id(project_id, user_id):
     #Get a project by ID with authorization check
@@ -711,7 +755,6 @@ def get_project_by_id(project_id, user_id):
     except Exception as e:
         print(f"Error getting project: {e}")
         raise
-
 
 def get_project_dashboard(project_id, user_id, status_filter=None, sort_by='deadline', 
                           collaborator_filter=None, owner_filter=None):
@@ -793,7 +836,6 @@ def get_project_dashboard(project_id, user_id, status_filter=None, sort_by='dead
     except Exception as e:
         print(f"Error getting project dashboard: {e}")
         raise
-
 
 def get_user_projects(user_id, role_filter=None):
     """
@@ -896,9 +938,9 @@ def get_user_projects(user_id, role_filter=None):
         print(f"Error getting user projects: {e}")
         raise
 
-
+# Done update
 def update_project(project_id, user_id, project_data):
-    """Update a project (only owner can update)"""
+    """Update a project (title, description, deadline, owner, collaborators)"""
     try:
         project = Project.query.get(project_id)
         
@@ -909,37 +951,103 @@ def update_project(project_id, user_id, project_data):
         if project.owner_id != user_id:
             return None, "Forbidden: Only the project owner can update the project"
         
-        # Update fields
-        if 'title' in project_data:
-            project.title = project_data['title']
-        
-        if 'description' in project_data:
-            project.description = project_data['description']
-        
-        if 'deadline' in project_data:
-            deadline = None
-            if project_data['deadline']:
-                try:
-                    if isinstance(project_data['deadline'], str):
-                        deadline_str = project_data['deadline']
-                        if 'T' in deadline_str:
-                            deadline = datetime.fromisoformat(deadline_str)
-                        else:
-                            deadline = datetime.strptime(deadline_str, '%Y-%m-%d %H:%M:%S')
-                    elif isinstance(project_data['deadline'], datetime):
-                        deadline = project_data['deadline']
-                except ValueError as e:
-                    print(f"Error parsing deadline: {e}")
-            project.deadline = deadline
+        # --- Handle standard field updates ---
+        for field, data in project_data.items():
+            # Skip fields that are handled manually below
+            if field in ['id', 'owner_id', 'collaborators_to_add', 'collaborators_to_remove']:
+                continue
+
+            if field == 'deadline':
+                deadline = None
+                if data:  # 'data' is the value of project_data['deadline']
+                    try:
+                        if isinstance(data, str):
+                            deadline_str = data
+                            if 'T' in deadline_str:
+                                deadline = datetime.fromisoformat(deadline_str)
+                            else:
+                                try:
+                                    deadline = datetime.strptime(deadline_str, '%Y-%m-%d %H:%M:%S')
+                                except ValueError:
+                                     deadline = datetime.strptime(deadline_str, '%Y-%m-%d')
+                        elif isinstance(data, datetime):
+                            deadline = data
+                    except ValueError as e:
+                        print(f"Error parsing deadline: {e}")
+                
+                project.deadline = deadline
+                _cascade_project_deadline_to_tasks(project.id, deadline)
+            
+            elif hasattr(project, field):
+                # This will update 'title' and 'description'
+                setattr(project, field, data)
+
+        # --- Handle Collaborator Changes ---
+        collaborators_to_add = project_data.get('collaborators_to_add', [])
+        if collaborators_to_add:
+            for collab_id in collaborators_to_add:
+                if int(collab_id) != project.owner_id:
+                    try:
+                        add_project_collaborator(project_id, user_id, int(collab_id))
+                    except Exception as add_err:
+                        print(f"Warning: Failed to add collaborator {collab_id}: {add_err}")
+
+        collaborators_to_remove = project_data.get('collaborators_to_remove', [])
+        if collaborators_to_remove:
+            for collab_id in collaborators_to_remove:
+                if int(collab_id) != user_id:
+                    try:
+                        remove_project_collaborator(project_id, user_id, int(collab_id))
+                    except Exception as remove_err:
+                        print(f"Warning: Failed to remove collaborator {collab_id}: {remove_err}")
         
         db.session.commit()
-        return project.to_json(), None
+        # Return the updated project and a success message
+        return project.to_json(), "Project updated successfully"
         
     except Exception as e:
         print(f"Error updating project: {e}")
         db.session.rollback()
-        raise
+        # On failure, return None and an error message
+        return None, f"An internal error occurred: {str(e)}"
 
+def _cascade_project_deadline_to_tasks(project_id, new_project_deadline):
+    """
+    Updates deadlines for all parent tasks in a project and recursively cascades
+    to their subtasks by calling _cascade_parent_deadline_to_subtasks.
+    """
+    # Do nothing if the new project deadline is cleared (set to None)
+    if not new_project_deadline:
+        print("Project deadline cleared, not cascading.")
+        return
+
+    try:
+        # Step 1: Get only the PARENT tasks in the project
+        parent_tasks = Task.query.filter(
+            Task.project_id == project_id,
+            Task.parent_task_id.is_(None)
+        ).all()
+
+        if not parent_tasks:
+            return  # No parent tasks in this project
+
+        updated_parent_count = 0
+        for task in parent_tasks:
+            # Step 2: Update the parent task itself if its deadline is later
+            if task.deadline and task.deadline > new_project_deadline:
+                task.deadline = new_project_deadline
+                updated_parent_count += 1
+            
+            # Step 3: Call the *existing* recursive helper for its subtasks
+            # This will check all children, grandchildren, etc.
+            _cascade_parent_deadline_to_subtasks(task, new_project_deadline)
+
+        if updated_parent_count > 0:
+            print(f"Cascaded new project deadline to {updated_parent_count} parent tasks (and their subtasks).")
+
+    except Exception as e:
+        # Log the error but don't block the main update
+        print(f"Error cascading project deadline: {e}")
 
 def delete_project(project_id, user_id):
     """Delete a project (only owner can delete)"""
@@ -961,7 +1069,6 @@ def delete_project(project_id, user_id):
         print(f"Error deleting project: {e}")
         db.session.rollback()
         raise
-
 
 def add_project_collaborator(project_id, user_id, collaborator_user_id):
     """Add a collaborator to a project (only owner can add)"""
@@ -1001,7 +1108,6 @@ def add_project_collaborator(project_id, user_id, collaborator_user_id):
         print(f"Error adding collaborator: {e}")
         db.session.rollback()
         raise
-
 
 def remove_project_collaborator(project_id, user_id, collaborator_user_id):
     """Remove a collaborator from a project (only owner can remove)"""
@@ -1076,7 +1182,6 @@ def remove_collaborator_from_project_tasks(project_id, user_id):
         db.session.rollback()
         raise
 
-
 def add_existing_task_to_project(task_id, project_id, user_id):
     """
     Add an existing standalone task to a project
@@ -1089,7 +1194,7 @@ def add_existing_task_to_project(task_id, project_id, user_id):
         if not task:
             return None, "Task not found"
         
-        # Check if user is the task owner
+        # Check if user adding task is the task owner
         if task.owner_id != user_id:
             return None, "Forbidden: Only the task owner can add it to a project"
         
@@ -1102,10 +1207,31 @@ def add_existing_task_to_project(task_id, project_id, user_id):
         if not project:
             return None, "Project not found"
         
-        collaborator_ids = project.collaborator_ids()
-        if user_id != project.owner_id and user_id not in collaborator_ids:
+        project_collaborators = set(project.collaborator_ids())
+        is_project_owner = (user_id == project.owner_id)
+        is_project_member = (user_id in project_collaborators)
+
+        if not is_project_owner and not is_project_member:
             return None, "Forbidden: You don't have access to this project"
-        
+
+        task_collaborators = set(task.collaborator_ids())
+        missing_collaborators = [
+            collab_id for collab_id in task_collaborators
+            if collab_id not in project_collaborators
+        ]
+
+        if missing_collaborators:
+            if not is_project_owner:
+                # Reject adding the task if user is not project owner (given task has collaborators outside project collaborators)
+                return None, "Forbidden: Task has collaborators not in the project"
+            else:
+                # Add missing collaborators to the project
+                for collab_id in missing_collaborators:
+                    try:
+                        add_project_collaborator(project_id, project.owner_id, collab_id)
+                    except Exception as add_err:
+                        print(f"Warning: Failed to add collaborator {collab_id} to project {project_id}: {add_err}")
+
         # Assign task to project
         task.project_id = project_id
         db.session.commit()
@@ -1116,7 +1242,6 @@ def add_existing_task_to_project(task_id, project_id, user_id):
         print(f"Error adding task to project: {e}")
         db.session.rollback()
         raise
-
 
 def remove_task_from_project(task_id, user_id):
     """
@@ -1129,14 +1254,21 @@ def remove_task_from_project(task_id, user_id):
         if not task:
             return None, "Task not found"
         
-        # Check if user is the task owner
-        if task.owner_id != user_id:
-            return None, "Forbidden: Only the task owner can remove it from a project"
-        
         # Check if task belongs to a project
         if task.project_id is None:
             return None, "Task is not assigned to any project"
         
+        # Get Project
+        project = Project.query.get(task.project_id)
+        if not project:
+            return None, "Project not found"
+        
+        is_task_owner = (task.owner_id == user_id)
+        is_project_owner = (user_id == project.owner_id)
+
+        if not is_task_owner and not is_project_owner:
+            return None, "Forbidden: You don't have permission to remove this task from the project"
+
         # Remove from project
         task.project_id = None
         db.session.commit()
@@ -1147,7 +1279,6 @@ def remove_task_from_project(task_id, user_id):
         print(f"Error removing task from project: {e}")
         db.session.rollback()
         raise
-
 
 def create_task_in_project(task_data, project_id, user_id):
     """
@@ -1169,6 +1300,12 @@ def create_task_in_project(task_data, project_id, user_id):
         
         # Create the task using existing function
         new_task = create_task(task_data)
+
+        for collab_id in task_data.get('collaborators_to_add', []):
+            try:
+                add_project_collaborator(project_id, project.owner_id, collab_id)
+            except Exception as add_err:
+                print(f"Warning: Failed to add collaborator {collab_id} to task {new_task.id}: {add_err}")
         
         return new_task, None
         
@@ -1176,7 +1313,6 @@ def create_task_in_project(task_data, project_id, user_id):
         print(f"Error creating task in project: {e}")
         db.session.rollback()
         raise
-
 
 def get_standalone_tasks_for_user(user_id):
     """
@@ -1194,7 +1330,6 @@ def get_standalone_tasks_for_user(user_id):
     except Exception as e:
         print(f"Error getting standalone tasks: {e}")
         raise
-
 
 # Update the existing remove_project_collaborator function to cascade removal
 def remove_project_collaborator(project_id, user_id, collaborator_user_id):
