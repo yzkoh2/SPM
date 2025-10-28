@@ -147,9 +147,23 @@ const router = createRouter({
     },
     {
       path: '/reports',
-      name: 'reports',
-      component: () => import('@/views/ReportGeneration.vue'),
-      meta: { requiresAuth: true }
+      component: () => import('@/views/ReportsView.vue'),
+      meta: { requiresAuth: true },
+      redirect: '/reports/generate',
+      children: [
+        {
+          path: 'generate',
+          name: 'reports-generate',
+          component: () => import('@/views/ReportGeneration.vue'),
+          meta: { requiresAuth: true }
+        },
+        {
+          path: 'history',
+          name: 'reports-history',
+          component: () => import('@/views/PastReports.vue'),
+          meta: { requiresAuth: true }
+        }
+      ]
     }
   ]
 })
