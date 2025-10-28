@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>{{ report_title }}</title>
+    <style>
+        /* Basic styles can be embedded or linked via WeasyPrint */
+        .overdue { color: red; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <h1>{{ report_title }}</h1>
+    <p>Report generated on: {{ generation_date }}</p>
+
+    <div class="summary-section">
+        <h2>Project Summary</h2>
+        <ul>
+            <li><strong>Project Owner:</strong> {{ project_owner }}</li>
+            <li><strong>Collaborators:</strong> {{ project_collaborators }}</li>
+            <li><strong>Total Tasks:</strong> {{ total_tasks }}</li>
+            <li><strong>Tasks Unassigned:</strong> {{ status_counts['Unassigned'] }}</li>
+            <li><strong>Tasks Ongoing:</strong> {{ status_counts['Ongoing'] }}</li>
+            <li><strong>Tasks Under Review:</strong> {{ status_counts['Under Review'] }}</li>
+            <li><strong>Tasks Completed:</strong> {{ status_counts['Completed'] }}</li>
+            <li><strong>Tasks Overdue:</strong> <span class="overdue">{{ overdue_count }}</span></li>
+            </ul>
+    </div>
+
+    <div class="details-section">
+        <h2>Task Details</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Title</th>
+                    <th>Status</th>
+                    <th>Deadline</th>
+                    <th>Owner</th>
+                    <th>Collaborators</th>
+                    <th>Priority</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for task in tasks %}
+                <tr>
+                    <td>{{ task.title }}</td>
+                    <td>
+                        {% if task.is_overdue %}
+                            <span class="overdue">{{ task.status }} (Overdue)</span>
+                        {% else %}
+                            {{ task.status }}
+                        {% endif %}
+                    </td>
+                    <td>{{ task.deadline }}</td>
+                    <td>{{ task.owner_name }}</td>
+                    <td>{{ task.collaborator_names }}</td>
+                    <td>{{ task.priority }}</td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="6">No tasks found for this project.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+</body>
+</html>
