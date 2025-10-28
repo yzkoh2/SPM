@@ -199,3 +199,18 @@ class Comment(db.Model):
             'reply_count': len(self.replies),
             'mentions': self.get_mentions()
         }
+    
+class ReportHistory(db.Model):
+    """Represents a file attachment linked to a task."""
+    __tablename__ = 'attachments'
+
+    id = db.Column(db.Integer, primary_key=True)
+    filename = db.Column(db.String(255), nullable=False)
+    url = db.Column(db.String(500), nullable=False)
+
+    def to_json(self):
+        return {
+            'id': self.id,
+            'filename': self.filename,
+            'url': self.url,
+        }
