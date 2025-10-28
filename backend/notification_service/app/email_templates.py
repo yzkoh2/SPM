@@ -536,3 +536,138 @@ def get_overdue_task_email(task_title, deadline_str, days_overdue, description, 
     """
     
     return subject, body_html
+
+def get_mention_alert_email(task_title, comment_snippet, author_name, mentioned_username, is_subtask=False, comment_metadata=None):
+    #Generate rich HTML email template for mention alert notification.
+    if comment_metadata is None:
+        comment_metadata = {}
+    
+    timestamp = comment_metadata.get('timestamp', 'just now')
+    author_initials = comment_metadata.get('author_initials', author_name[0].upper() if author_name else '?')
+    
+    task_type = "SUBTASK" if is_subtask else "TASK"
+    primary_color = "#3b82f6"
+    secondary_color = "#1d4ed8"
+    bg_color = "#f9fafb"
+    
+    subject = f"💬 You were mentioned in {task_type.lower()}: {task_title}"
+    
+    if len(subject) > 78:
+        max_title_length = 78 - len(f"💬 You were mentioned in {task_type.lower()}: ...")
+        task_title_short = task_title[:max_title_length] + "..."
+        subject = f"💬 You were mentioned in {task_type.lower()}: {task_title_short}"
+    
+    body_html = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    </head>
+    <body style="margin: 0; padding: 0; font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif; background: linear-gradient(135deg, {primary_color} 0%, {secondary_color} 100%); padding: 40px 20px;">
+        
+        <table role="presentation" style="width: 100%; max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 16px; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3); overflow: hidden;">
+            
+            <!-- Header -->
+            <tr>
+                <td style="background: linear-gradient(135deg, {primary_color} 0%, {secondary_color} 100%); padding: 40px 32px; text-align: center;">
+                    <div style="font-size: 48px; margin-bottom: 10px; line-height: 1;">💬</div>
+                    <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: 700; text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2); line-height: 1.2;">
+                        You Were Mentioned
+                    </h1>
+                    <p style="margin: 12px 0 0 0; color: rgba(255, 255, 255, 0.9); font-size: 14px;">
+                        Someone needs your input
+                    </p>
+                </td>
+            </tr>
+            
+            <!-- Content -->
+            <tr>
+                <td style="padding: 32px;">
+                    
+                    <!-- Task Info -->
+                    <div style="margin-bottom: 24px;">
+                        <span style="display: inline-block; background: {primary_color}; color: #ffffff; padding: 6px 14px; border-radius: 6px; font-size: 11px; font-weight: 700; text-transform: uppercase;">
+                            {task_type}
+                        </span>
+                        <h2 style="margin: 12px 0 0 0; color: #111827; font-size: 22px; font-weight: 700; line-height: 1.3;">
+                            {task_title}
+                        </h2>
+                    </div>
+                    
+                    <!-- Comment Card -->
+                    <div style="background: {bg_color}; border: 1px solid #e5e7eb; border-radius: 12px; padding: 20px; margin-bottom: 24px; border-left: 4px solid {primary_color};">
+                        
+                        <!-- Author Header -->
+                        <table role="presentation" style="width: 100%; margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid #e5e7eb;">
+                            <tr>
+                                <td style="width: 40px; vertical-align: top; padding-right: 12px;">
+                                    <div style="width: 36px; height: 36px; border-radius: 50%; background: linear-gradient(135deg, {primary_color}, {secondary_color}); color: white; font-weight: 700; font-size: 14px; text-align: center; line-height: 36px;">
+                                        {author_initials}
+                                    </div>
+                                </td>
+                                <td style="vertical-align: middle;">
+                                    <div style="font-weight: 600; color: #111827; font-size: 14px;">
+                                        {author_name}
+                                    </div>
+                                    <div style="color: #6b7280; font-size: 12px;">
+                                        {timestamp}
+                                    </div>
+                                </td>
+                            </tr>
+                        </table>
+                        
+                        <!-- Comment Body -->
+                        <div style="color: #374151; font-size: 14px; line-height: 1.6; background: #ffffff; padding: 16px; border-radius: 8px; margin-bottom: 12px; border: 1px solid #e5e7eb;">
+                            {comment_snippet}
+                        </div>
+                        
+                        <!-- Hint -->
+                        <div style="padding-top: 12px; border-top: 1px dashed #e5e7eb;">
+                            <span style="color: #6b7280; font-size: 12px; font-style: italic;">
+                                💡 Click below to view the full comment and respond
+                            </span>
+                        </div>
+                    </div>
+                    
+                    <!-- CTA Button -->
+                    <div style="text-align: center; margin-bottom: 24px;">
+                        <a href="http://localhost:5173/login" style="display: inline-block; background: linear-gradient(135deg, {primary_color} 0%, {secondary_color} 100%); color: #ffffff; text-decoration: none; padding: 14px 32px; border-radius: 10px; font-weight: 600; font-size: 15px;">
+                            View Full Conversation →
+                        </a>
+                    </div>
+                    
+                    <!-- Tips -->
+                    <div style="background: #fffbeb; border: 1px solid #fde68a; border-radius: 10px; padding: 16px;">
+                        <div style="margin-bottom: 8px;">
+                            <span style="font-size: 16px;">⚡</span>
+                            <span style="color: #92400e; font-size: 13px; font-weight: 600;">Quick Response Tips</span>
+                        </div>
+                        <ul style="margin: 8px 0 0 0; padding-left: 20px; color: #78350f; font-size: 12px; line-height: 1.6;">
+                            <li>Review the comment and task context</li>
+                            <li>Respond promptly to keep collaboration flowing</li>
+                            <li>Use @mentions to notify others in your reply</li>
+                        </ul>
+                    </div>
+                    
+                </td>
+            </tr>
+            
+            <!-- Footer -->
+            <tr>
+                <td style="padding: 24px 32px; background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); border-top: 2px solid #e2e8f0; text-align: center;">
+                    <p style="margin: 0; color: #64748b; font-size: 12px;">
+                        <strong style="color: #475569;">Task Management System</strong><br>
+                        This is an automated notification.
+                    </p>
+                </td>
+            </tr>
+            
+        </table>
+        
+    </body>
+    </html>
+    """
+    
+    return subject, body_html

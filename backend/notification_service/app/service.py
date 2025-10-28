@@ -5,9 +5,8 @@ from flask import current_app
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 import requests
-from .email_templates import get_status_update_email, get_deadline_reminder_email, get_overdue_task_email
-from .models import db, DeadlineReminder, OverdueAlert
-
+from .email_templates import get_status_update_email, get_deadline_reminder_email, get_overdue_task_email, get_mention_alert_email  
+from .models import db, DeadlineReminder, OverdueAlert, MentionNotification 
 
 def send_email_via_smtp(to_email, subject, html_content):
     #Send email using SMTP (Brevo)
@@ -154,6 +153,108 @@ def format_deadline_for_email(deadline_str):
     except:
         return 'No deadline set'
 
+
+def extract_mention_context(comment_body, mentioned_username, context_chars=100):
+    #Extract a snippet of text around the @mention for email display.
+    mention_pattern = f"@{mentioned_username}"
+    mention_index = comment_body.find(mention_pattern)
+    
+    if mention_index == -1:
+        if len(comment_body) > 200:
+            return comment_body[:197] + "..."
+        return comment_body
+    
+    start = max(0, mention_index - context_chars)
+    end = min(len(comment_body), mention_index + len(mention_pattern) + context_chars)
+    snippet = comment_body[start:end]
+    
+    if start > 0:
+        first_space = snippet.find(' ')
+        if first_space > 0 and first_space < 15:
+            snippet = snippet[first_space + 1:]
+        snippet = "..." + snippet
+    
+    if end < len(comment_body):
+        last_space = snippet.rfind(' ')
+        if last_space > len(snippet) - 15:
+            snippet = snippet[:last_space]
+        snippet = snippet + "..."
+    
+    return snippet.strip()
+
+
+def highlight_mention_in_text(text, mentioned_username, primary_color="#3b82f6"):
+    #Add HTML highlighting to @mention in text for email display.
+    mention_pattern = f"@{mentioned_username}"
+    
+    highlighted_mention = (
+        f'<span style="'
+        f'color: {primary_color}; '
+        f'font-weight: 700; '
+        f'background: #dbeafe; '
+        f'padding: 2px 6px; '
+        f'border-radius: 4px; '
+        f'border: 1px solid {primary_color}; '
+        f'white-space: nowrap;'
+        f'">{mention_pattern}</span>'
+    )
+    
+    return text.replace(mention_pattern, highlighted_mention)
+
+
+def format_time_ago(timestamp):
+    #Format timestamp as relative time (e.g., '2 hours ago', 'just now').
+    singapore_tz = ZoneInfo('Asia/Singapore')
+    now = datetime.now(singapore_tz)
+    
+    if timestamp.tzinfo is None:
+        timestamp = timestamp.replace(tzinfo=singapore_tz)
+    
+    diff = now - timestamp
+    seconds = diff.total_seconds()
+    
+    if seconds < 60:
+        return "just now"
+    elif seconds < 3600:
+        minutes = int(seconds / 60)
+        return f"{minutes} minute{'s' if minutes != 1 else ''} ago"
+    elif seconds < 86400:
+        hours = int(seconds / 3600)
+        return f"{hours} hour{'s' if hours != 1 else ''} ago"
+    elif seconds < 604800:
+        days = int(seconds / 86400)
+        return f"{days} day{'s' if days != 1 else ''} ago"
+    else:
+        return timestamp.strftime('%B %d, %Y')
+
+
+def get_user_initials(name):
+    #Get initials from user's name for avatar display.
+    if not name:
+        return "?"
+    
+    parts = name.strip().split()
+    if len(parts) >= 2:
+        return (parts[0][0] + parts[-1][0]).upper()
+    elif len(parts) == 1:
+        return parts[0][0].upper()
+    else:
+        return "?"
+
+
+def get_user_details_for_mention(user_id):
+    #Helper function to fetch complete user details for mention notifications.
+    try:
+        user_service_url = current_app.config['USER_SERVICE_URL']
+        response = requests.get(f"{user_service_url}/user/{user_id}", timeout=5)
+        
+        if response.status_code == 200:
+            return response.json()
+        return {}
+            
+    except Exception as e:
+        print(f"❌ Failed to fetch user details for user {user_id}: {e}")
+        return {}
 
 # ==================== Status Update Notification ====================
 def send_status_update_notification(task_id, old_status, new_status, changed_by_id):
@@ -524,3 +625,119 @@ def check_and_send_overdue_alerts():
     except Exception as e:
         print(f"❌ Overdue check failed: {e}\n")
         return 0
+
+# ==================== Mention Alert Notification ====================
+def send_mention_alert_notification(task_id, comment_id, mentioned_user_id, author_id, comment_body):
+    #Send mention alert notification when a user is mentioned in a comment.
+    try:
+        singapore_tz = ZoneInfo('Asia/Singapore')
+        now = datetime.now(singapore_tz)
+        
+        print(f"\n{'='*70}")
+        print(f"📨 MENTION ALERT NOTIFICATION")
+        print(f"   Current Time: {now.strftime('%Y-%m-%d %H:%M:%S %Z')}")
+        print(f"{'='*70}")
+        
+        #Check if notification already sent for this comment and user
+        existing = MentionNotification.query.filter_by(
+            comment_id=comment_id,
+            mentioned_user_id=mentioned_user_id
+        ).first()
+        
+        if existing:
+            print(f"   ⚠️  Mention notification already sent")
+            print(f"   Comment ID: {comment_id}, User ID: {mentioned_user_id}")
+            print(f"{'='*70}\n")
+            return True  
+        
+        #Get task details
+        task = get_task_details(task_id)
+        if not task:
+            print(f"❌ Task not found: {task_id}")
+            print(f"{'='*70}\n")
+            return False
+        
+        task_title = task.get('title', 'Untitled Task')
+        is_subtask = task.get('parent_task_id') is not None
+        
+        print(f"📋 Task {task_id}: {task_title}")
+        print(f"   Type: {'Subtask' if is_subtask else 'Task'}")
+        print(f"   Comment ID: {comment_id}")
+        
+        #Get author details (person who wrote the comment)
+        author_details = get_user_details_for_mention(author_id)
+        author_name = author_details.get('name', 'Unknown User')
+        author_username = author_details.get('username', 'unknown')
+        
+        print(f"   Author: {author_name} (@{author_username})")
+        
+        #Get mentioned user details (person being notified)
+        mentioned_user = get_user_details_for_mention(mentioned_user_id)
+        mentioned_email = mentioned_user.get('email')
+        mentioned_username = mentioned_user.get('username', 'user')
+        mentioned_name = mentioned_user.get('name', 'User')
+        
+        if not mentioned_email:
+            print(f"❌ No email found for mentioned user {mentioned_user_id}")
+            print(f"{'='*70}\n")
+            return False
+        
+        print(f"   Mentioned: {mentioned_name} (@{mentioned_username})")
+        print(f"   Email: {mentioned_email}")
+        
+        #Extract comment snippet with context around the mention
+        comment_snippet = extract_mention_context(comment_body, mentioned_username)
+        
+        #Highlight the @mention in the snippet
+        highlighted_snippet = highlight_mention_in_text(comment_snippet, mentioned_username)
+        
+        #Prepare data for email template
+        author_initials = get_user_initials(author_name)
+        timestamp_relative = format_time_ago(now)
+        
+        comment_metadata = {
+            'timestamp': timestamp_relative,
+            'author_initials': author_initials,
+            'task_id': task_id,
+            'is_subtask': is_subtask
+        }
+        
+        #Generate email content
+        subject, body_html = get_mention_alert_email(
+            task_title=task_title,
+            comment_snippet=highlighted_snippet,
+            author_name=author_name,
+            mentioned_username=mentioned_username,
+            is_subtask=is_subtask,
+            comment_metadata=comment_metadata
+        )
+        
+        #Send email
+        print(f"   📧 Sending mention alert email...")
+        success, error = send_email_via_smtp(mentioned_email, subject, body_html)
+        
+        if success:
+            #Record notification in database
+            mention_notification = MentionNotification(
+                task_id=task_id,
+                comment_id=comment_id,
+                mentioned_user_id=mentioned_user_id,
+                author_id=author_id
+            )
+            db.session.add(mention_notification)
+            db.session.commit()
+            
+            print(f"   ✅ Mention alert sent successfully")
+            print(f"   ✅ Notification recorded in database (ID: {mention_notification.id})")
+            print(f"{'='*70}\n")
+            return True
+        else:
+            print(f"   ❌ Failed to send mention alert email: {error}")
+            print(f"{'='*70}\n")
+            return False
+            
+    except Exception as e:
+        print(f"❌ Error sending mention alert: {e}")
+        print(f"{'='*70}\n")
+        db.session.rollback()
+        return False

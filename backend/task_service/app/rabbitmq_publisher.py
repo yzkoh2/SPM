@@ -41,3 +41,22 @@ def publish_status_update(task_id, old_status, new_status, changed_by_id):
     }
     
     return publish_to_rabbitmq('task_status_updates', message)
+
+def publish_mention_alert(task_id, comment_id, mentioned_user_id, author_id, comment_body):
+    #Publish mention alert message to RabbitMQ for notification service.
+    message = {
+        'task_id': task_id,
+        'comment_id': comment_id,
+        'mentioned_user_id': mentioned_user_id,
+        'author_id': author_id,
+        'comment_body': comment_body
+    }
+    
+    success = publish_to_rabbitmq('mention_alerts', message)
+    
+    if success:
+        print(f"✅ Mention alert published to RabbitMQ for user {mentioned_user_id}")
+    else:
+        print(f"❌ Failed to publish mention alert for user {mentioned_user_id}")
+        
+    return success
