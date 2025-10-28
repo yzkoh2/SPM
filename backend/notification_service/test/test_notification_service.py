@@ -232,13 +232,6 @@ class TestNotificationService(unittest.TestCase):
             email = get_user_email(1)
             self.assertEqual(email, 'test@example.com')
 
-    # @mock.patch('requests.get')
-    # def test_get_user_email_not_found(self, mock_get):
-    #     """Test fetching user email when user not found"""
-    #     mock_response = mock.MagicMock()
-    #     mock_response.status_code = 404
-    #     mock_get.return_value = mock_response
-
         with self.app.app_context():
             email = get_user_email(999)
             self.assertIsNone(email)
@@ -322,17 +315,6 @@ class TestNotificationService(unittest.TestCase):
             self.assertEqual(task['id'], 1)
             self.assertEqual(task['title'], 'Test Task')
 
-    # @mock.patch('requests.get')
-    # def test_get_task_details_not_found(self, mock_get):
-    #     """Test fetching task details when task not found"""
-    #     mock_response = mock.MagicMock()
-    #     mock_response.status_code = 404
-    #     mock_get.return_value = mock_response
-
-    #     with self.app.app_context():
-    #         task = get_task_details(999)
-    #         self.assertIsNone(task)
-
     @mock.patch('requests.get')
     def test_get_task_details_exception(self, mock_get):
         """Test exception handling in get_task_details"""
@@ -378,14 +360,6 @@ class TestNotificationService(unittest.TestCase):
             collaborators = get_task_collaborators(1)
             self.assertEqual(len(collaborators), 0)
 
-    # @mock.patch('requests.get')
-    # def test_get_task_collaborators_exception(self, mock_get):
-    #     """Test exception handling in get_task_collaborators"""
-    #     with self.app.app_context():
-    #         mock_get.side_effect = Exception("Connection error")
-    #         collaborators = get_task_collaborators(1)
-    #         self.assertEqual(len(collaborators), 0)
-
     @mock.patch('requests.get')
     def test_get_all_tasks_with_deadlines_success(self, mock_get):
         """Test fetching all tasks with deadlines"""
@@ -408,14 +382,6 @@ class TestNotificationService(unittest.TestCase):
         with self.app.app_context():
             tasks = get_all_tasks_with_deadlines()
             self.assertEqual(len(tasks), 0)
-
-    # @mock.patch('requests.get')
-    # def test_get_all_tasks_with_deadlines_exception(self, mock_get):
-    #     """Test exception handling when fetching tasks"""
-    #     with self.app.app_context():
-    #         mock_get.side_effect = Exception("Connection error")
-    #         tasks = get_all_tasks_with_deadlines()
-    #         self.assertEqual(len(tasks), 0)
 
     # ==================== Test Helper Functions ====================
     
@@ -470,18 +436,6 @@ class TestNotificationService(unittest.TestCase):
         with self.app.app_context():
             result = format_deadline_for_email('No deadline set')
             self.assertEqual(result, 'No deadline set')
-
-    # def test_format_deadline_for_email_none(self):
-    #     """Test formatting when deadline is None"""
-    #     with self.app.app_context():
-    #         result = format_deadline_for_email(None)
-    #         self.assertEqual(result, 'No deadline set')
-
-    # def test_format_deadline_for_email_invalid(self):
-    #     """Test formatting invalid deadline"""
-    #     with self.app.app_context():
-    #         result = format_deadline_for_email('invalid-date')
-    #         self.assertEqual(result, 'No deadline set')
 
     # ==================== Test Status Update Notifications ====================
     
@@ -548,34 +502,6 @@ class TestNotificationService(unittest.TestCase):
             
             success = send_status_update_notification(2, 'Ongoing', 'Completed', 1)
             self.assertTrue(success)
-
-    # @mock.patch('smtplib.SMTP')
-    # @mock.patch('requests.get')
-    # def test_send_status_update_notification_no_recipients(self, mock_get, mock_smtp):
-    #     """Test status update with no valid recipients"""
-    #     with self.app.app_context():
-    #         task_no_owner = self.task_data.copy()
-    #         task_no_owner['owner_id'] = 999
-            
-    #         def mock_requests_get(url, **kwargs):
-    #             mock_resp = mock.MagicMock()
-                
-    #             if 'collaborators' in url:
-    #                 mock_resp.status_code = 200
-    #                 mock_resp.json.return_value = []
-    #             elif 'tasks/' in url:
-    #                 mock_resp.status_code = 200
-    #                 mock_resp.json.return_value = task_no_owner
-    #             elif '/user/' in url:
-    #                 mock_resp.status_code = 404
-    #             else:
-    #                 mock_resp.status_code = 404
-    #             return mock_resp
-            
-    #         mock_get.side_effect = mock_requests_get
-            
-    #         success = send_status_update_notification(1, 'Ongoing', 'Completed', 1)
-    #         self.assertFalse(success)  
 
     @mock.patch('smtplib.SMTP')
     @mock.patch('requests.get')
@@ -1155,48 +1081,6 @@ class TestNotificationService(unittest.TestCase):
 
             alerts_sent = check_and_send_overdue_alerts()
             self.assertEqual(alerts_sent, 1)
-
-    # @mock.patch('smtplib.SMTP')
-    # @mock.patch('requests.get')
-    # def test_check_and_send_overdue_alerts_same_day_overdue(self, mock_get, mock_smtp):
-    #     """Test overdue alerts for same-day deadline that passed"""
-    #     mock_server = mock.MagicMock()
-    #     mock_smtp.return_value.__enter__.return_value = mock_server
-        
-    #     singapore_tz = ZoneInfo('Asia/Singapore')
-    #     now = datetime.now(singapore_tz)
-        
-    #     # Create task that's overdue (deadline was at 8am today)
-    #     overdue_task = {
-    #         'id': 1,
-    #         'title': 'Overdue Task',
-    #         'deadline': now.replace(hour=8, minute=0).isoformat(),
-    #         'status': 'Ongoing',
-    #         'owner_id': 1,
-    #         'parent_task_id': None,
-    #         'description': 'Test'
-    #     }
-        
-    #     def mock_requests_get(url, **kwargs):
-    #         mock_resp = mock.MagicMock()
-    #         mock_resp.status_code = 200
-            
-    #         if 'with-deadlines' in url:
-    #             mock_resp.json.return_value = [overdue_task]
-    #         elif 'collaborators' in url:
-    #             mock_resp.json.return_value = []
-    #         elif 'tasks/1' in url:
-    #             mock_resp.json.return_value = overdue_task
-    #         elif '/user/' in url:
-    #             mock_resp.json.return_value = {'id': 1, 'name': 'Test', 'email': 'test@test.com'}
-    #         return mock_resp
-        
-    #     mock_get.side_effect = mock_requests_get
-
-    #     with self.app.app_context():
-    #         # Always run the check regardless of time
-    #         alerts_sent = check_and_send_overdue_alerts()
-    #         self.assertGreaterEqual(alerts_sent, 0)
 
     @mock.patch('requests.get')
     def test_check_and_send_overdue_alerts_no_tasks(self, mock_get):
@@ -2182,17 +2066,6 @@ class TestNotificationService(unittest.TestCase):
             
             self.assertEqual(result, comment)
 
-    # def test_highlight_mention_in_text(self):
-    #     """Test highlighting mention in text"""
-    #     with self.app.app_context():
-    #         from app.service import highlight_mention_in_text
-            
-    #         text = "Hello @username, can you help?"
-    #         result = highlight_mention_in_text(text, "username")
-            
-    #         self.assertIn("<strong", result)
-    #         self.assertIn("@username", result)
-
     def test_format_time_ago(self):
         """Test time ago formatting"""
         with self.app.app_context():
@@ -2455,27 +2328,6 @@ class TestNotificationService(unittest.TestCase):
             repr_str = repr(notification)
             self.assertIn('task_id=1', repr_str)
             self.assertIn('mentioned_user=2', repr_str)
-
-    # ==================== MENTION ALERT EMAIL TEMPLATE TESTS ====================
-
-    # def test_mention_alert_email_basic(self):
-    #     """Test mention alert email generation"""
-    #     with self.app.app_context():
-    #         from app.email_templates import get_mention_alert_email
-            
-    #         subject, body = get_mention_alert_email(
-    #             task_title='Test Task',
-    #             comment_snippet='Hey @user, check this out!',
-    #             author_name='John Doe',
-    #             mentioned_username='user',
-    #             is_subtask=False,
-    #             comment_metadata={'timestamp': 'just now', 'author_initials': 'JD'}
-    #         )
-            
-    #         self.assertIn('mentioned you', subject.lower())
-    #         self.assertIn('Test Task', body)
-    #         self.assertIn('John Doe', body)
-    #         self.assertIn('@user', body)
 
     def test_mention_alert_email_subtask(self):
         """Test mention alert email for subtask"""
