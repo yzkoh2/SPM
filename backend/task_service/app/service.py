@@ -103,6 +103,10 @@ def create_task(task_data):
         #Add to database
         db.session.add(new_task)
         db.session.flush()
+
+        if new_task.project_id:
+            project = Project.query.get(new_task.project_id)
+            _touch_project(project)
         
         collaborators_to_add = set(task_data.get('collaborators_to_add', []))
         collaborators_to_add.add(new_task.owner_id)
@@ -137,6 +141,10 @@ def update_task(task_id, user_id, task_data):
         # Track status change
         old_status = None
         status_changed = False
+
+        _update_timestamps_cascade(task)
+        
+        current_time = db.func.now()
 
         for field, data in task_data.items():
             if field in ['id', 'owner_id', 'collaborators_to_add', 'collaborators_to_remove']:
@@ -393,6 +401,39 @@ def _cascade_parent_deadline_to_subtasks(task, new_deadline):
             subtask.deadline = new_deadline
         _cascade_parent_deadline_to_subtasks(subtask, new_deadline)
 
+def _update_timestamps_cascade(task):
+    """
+    Updates the updated_at timestamp for the given task,
+    its parent task (if any), and its project (if any).
+    Adds the updated objects to the session but does NOT commit.
+    """
+    if not task:
+        return
+
+    current_time = db.func.now()
+    objects_to_update = set() # Use a set to avoid adding the same object multiple times
+
+    # Update the task itself
+    task.updated_at = current_time
+    objects_to_update.add(task)
+
+    # Find and update the parent task
+    if task.parent_task_id:
+        parent_task = Task.query.get(task.parent_task_id)
+        if parent_task:
+            parent_task.updated_at = current_time
+            objects_to_update.add(parent_task)
+
+    # Find and update the project
+    if task.project_id:
+        project = Project.query.get(task.project_id)
+        if project:
+            project.updated_at = current_time
+            objects_to_update.add(project)
+
+    # Add all modified objects to the session
+    db.session.add_all(list(objects_to_update))
+
 def delete_task(task_id, user_id):
     #Delete a task by ID
     try:
@@ -434,9 +475,17 @@ def get_task_details(task_id):
 def add_comment(task_id, data):
     #Add a new comment to a task, trigger mention notification if necessary
     try:
+<<<<<<< HEAD
         task = Task.query.get(task_id)
         if not task:
             return None, "Task not found"
+=======
+
+        task_to_update = Task.query.get(task_id) # Fetch the task first
+        if not task_to_update:
+            return None, "Task not found"
+
+>>>>>>> 114af7449a40ac0526dab16738cebe782f59bdb4
         #Create new comment
         new_comment = Comment(
             body=data['body'],
@@ -480,6 +529,8 @@ def add_comment(task_id, data):
                 except Exception as publish_error:
                     print(f"⚠️  Failed to publish mention alert: {publish_error}")
 
+        _update_timestamps_cascade(task_to_update)
+
         db.session.commit()
         
         return new_comment.to_json(), "Comment added successfully"
@@ -497,6 +548,12 @@ def delete_comment(comment_id):
             return False
             
         print(f"Deleting comment ID: {comment.id}")
+
+        task_to_update = Task.query.get(comment.task_id)
+
+        if task_to_update:
+            _update_timestamps_cascade(task_to_update)
+
         db.session.delete(comment)
         db.session.commit()
         return True
@@ -521,6 +578,7 @@ def get_task_collaborators(task_id):
         print(f"Error in get_task_collaborators: {e}")
         raise e
 
+<<<<<<< HEAD
 def add_task_collaborators(task_id, collaborator_ids, user_id):
     """Add a list of collaborators to a task and all its parent tasks."""
     if not isinstance(collaborator_ids, list) or not collaborator_ids:
@@ -607,6 +665,8 @@ def remove_task_collaborator(task_id, collaborator_ids, user_id):
         print(f"Error in remove_task_collaborator: {e}")
         raise e
 
+=======
+>>>>>>> 114af7449a40ac0526dab16738cebe782f59bdb4
 def _get_all_subtask_ids(task_id):
     ids = {task_id}
     children = Task.query.filter_by(parent_task_id=task_id).all()
@@ -639,6 +699,9 @@ def add_attachment(task_id, file, input_filename):
             url=s3_object_key,  # Storing S3 object key in the 'url' field
             task_id=task_id
         )
+
+        _update_timestamps_cascade(task)
+
         db.session.add(new_attachment)
         db.session.commit()
         return new_attachment.to_json()
@@ -680,6 +743,10 @@ def delete_attachment_url(task_id, attachment_id):
         attachment = Attachment.query.filter_by(
             id=attachment_id, task_id=task_id
         ).first()
+
+        task_to_update = Task.query.get(task_id)
+        if task_to_update:
+            _update_timestamps_cascade(task_to_update)
 
         if not attachment:
             return False, "Attachment not found"
@@ -971,6 +1038,8 @@ def update_project(project_id, user_id, project_data):
         if project.owner_id != user_id:
             return None, "Forbidden: Only the project owner can update the project"
         
+        _touch_project(project)
+
         # --- Handle standard field updates ---
         for field, data in project_data.items():
             # Skip fields that are handled manually below
@@ -1021,6 +1090,8 @@ def update_project(project_id, user_id, project_data):
                     except Exception as remove_err:
                         print(f"Warning: Failed to remove collaborator {collab_id}: {remove_err}")
         
+        _touch_project(project)
+
         db.session.commit()
         # Return the updated project and a success message
         return project.to_json(), "Project updated successfully"
@@ -1112,7 +1183,9 @@ def add_project_collaborator(project_id, user_id, collaborator_user_id):
         
         if existing:
             return None, "User is already a collaborator on this project"
-        
+
+        _touch_project(project)
+
         # Add collaborator
         db.session.execute(
             project_collaborators.insert().values(
@@ -1141,6 +1214,8 @@ def remove_project_collaborator(project_id, user_id, collaborator_user_id):
         if project.owner_id != user_id:
             return None, "Forbidden: Only the project owner can remove collaborators"
         
+        _touch_project(project)
+
         # Remove collaborator
         db.session.execute(
             project_collaborators.delete().where(
@@ -1229,6 +1304,8 @@ def add_existing_task_to_project(task_id, project_id, user_id):
         project = Project.query.get(project_id)
         if not project:
             return None, "Project not found"
+
+        _touch_project(project)
         
         project_collaborators = set(project.collaborator_ids())
         is_project_owner = (user_id == project.owner_id)
@@ -1285,7 +1362,9 @@ def remove_task_from_project(task_id, user_id):
         project = Project.query.get(task.project_id)
         if not project:
             return None, "Project not found"
-        
+
+        _touch_project(project)
+
         is_task_owner = (task.owner_id == user_id)
         is_project_owner = (user_id == project.owner_id)
 
@@ -1330,6 +1409,8 @@ def create_task_in_project(task_data, project_id, user_id):
             except Exception as add_err:
                 print(f"Warning: Failed to add collaborator {collab_id} to task {new_task.id}: {add_err}")
         
+        _touch_project(project)
+
         return new_task, None
         
     except Exception as e:
@@ -1392,3 +1473,12 @@ def remove_project_collaborator(project_id, user_id, collaborator_user_id):
         print(f"Error removing collaborator: {e}")
         db.session.rollback()
         raise
+
+def _touch_project(project):
+    """
+    Manually updates a project's updated_at timestamp.
+    Does NOT commit.
+    """
+    if project:
+        project.updated_at = db.func.now()
+        db.session.add(project)

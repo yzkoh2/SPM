@@ -6,19 +6,28 @@
         <p class="text-gray-600 mt-2">View all team tasks in calendar format</p>
       </div>
 
-      <TaskCalendar :tasks="filteredTasks" :is-personal="false" :loading="loading" subtitle="Team tasks scheduled this month"
-        @view-task="viewTaskDetails">
+      <TaskCalendar
+        :tasks="filteredTasks"
+        :is-personal="false"
+        :loading="loading"
+        subtitle="Team tasks scheduled this month"
+        @view-task="viewTaskDetails"
+      >
         <template #filters>
-          <select v-model="filters.memberName"
-            class="px-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+          <select
+            v-model="filters.memberName"
+            class="px-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          >
             <option value="">All Members</option>
             <option v-for="member in teamMembers" :key="member.id" :value="member.name">
               {{ member.name }}
             </option>
           </select>
 
-          <select v-model="filters.status"
-            class="px-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+          <select
+            v-model="filters.status"
+            class="px-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          >
             <option value="">All Statuses</option>
             <option value="Unassigned">Unassigned</option>
             <option value="Ongoing">Ongoing</option>
@@ -39,7 +48,7 @@ import TaskCalendar from '@/components/TaskCalendar.vue'
 
 const router = useRouter()
 const authStore = useAuthStore()
-const KONG_API_URL = "http://localhost:8000"
+const KONG_API_URL = 'http://localhost:8000'
 
 const tasks = ref([])
 const loading = ref(true)
@@ -47,7 +56,7 @@ const teamMembers = ref([])
 
 const filters = ref({
   memberName: '',
-  status: ''
+  status: '',
 })
 
 const filteredTasks = computed(() => {
@@ -55,24 +64,24 @@ const filteredTasks = computed(() => {
 
   if (filters.value.memberName) {
     // Find the member ID from the selected member name
-    const selectedMember = teamMembers.value.find(m => m.name === filters.value.memberName)
-    
+    const selectedMember = teamMembers.value.find((m) => m.name === filters.value.memberName)
+
     if (selectedMember) {
-      filtered = filtered.filter(task => {
+      filtered = filtered.filter((task) => {
         // Check if the member is the owner
         const isOwner = task.owner_id === selectedMember.id
-        
+
         // Check if the member is a collaborator
-        const isCollaborator = task.collaborator_ids && 
-                               task.collaborator_ids.includes(selectedMember.id)
-        
+        const isCollaborator =
+          task.collaborator_ids && task.collaborator_ids.includes(selectedMember.id)
+
         return isOwner || isCollaborator
       })
     }
   }
 
   if (filters.value.status) {
-    filtered = filtered.filter(task => task.status === filters.value.status)
+    filtered = filtered.filter((task) => task.status === filters.value.status)
   }
 
   return filtered
@@ -83,7 +92,7 @@ const getTeamMemberIds = async (teamId) => {
     const response = await fetch(`${KONG_API_URL}/user/team/${teamId}`)
     const members = await response.json()
     teamMembers.value = members
-    return members.map(member => member.id)
+    return members.map((member) => member.id)
   } catch (err) {
     console.error('Error fetching team members:', err)
     return []
@@ -95,7 +104,7 @@ const fetchCollaboratorsForTask = async (taskId) => {
     const response = await fetch(`${KONG_API_URL}/tasks/${taskId}/collaborators`)
     if (response.ok) {
       const collaborators = await response.json()
-      return collaborators.map(c => c.user_id)
+      return collaborators.map((c) => c.user_id)
     }
     return []
   } catch (err) {
@@ -130,23 +139,23 @@ const fetchTasks = async () => {
     const userData = await userResponse.json()
     const teamId = userData.team_id
     const memberIds = await getTeamMemberIds(teamId)
-    
+
     if (memberIds.length === 0) {
       tasks.value = []
       return
     }
 
-    const taskPromises = memberIds.map(memberId =>
+    const taskPromises = memberIds.map((memberId) =>
       fetch(`${KONG_API_URL}/tasks?owner_id=${memberId}`)
-        .then(res => res.ok ? res.json() : [])
-        .catch(() => [])
+        .then((res) => (res.ok ? res.json() : []))
+        .catch(() => []),
     )
 
     const ownedTasksArrays = await Promise.all(taskPromises)
     const ownedTasks = ownedTasksArrays.flat()
-    
+
     const taskMap = new Map()
-    ownedTasks.forEach(task => {
+    ownedTasks.forEach((task) => {
       taskMap.set(task.id, { ...task, collaborator_ids: [] })
     })
 
@@ -160,41 +169,40 @@ const fetchTasks = async () => {
     collaboratorResults.forEach(({ taskId, collaboratorIds }) => {
       if (taskMap.has(taskId)) {
         taskMap.get(taskId).collaborator_ids = collaboratorIds
-        
-        const hasTeamCollaborator = collaboratorIds.some(collabId => 
-          memberIds.includes(collabId)
-        )
-        
+
+        const hasTeamCollaborator = collaboratorIds.some((collabId) => memberIds.includes(collabId))
+
         if (hasTeamCollaborator) {
           taskMap.get(taskId).has_team_collaborator = true
         }
       }
     })
 
-    const relevantTasks = Array.from(taskMap.values()).filter(task => {
+    const relevantTasks = Array.from(taskMap.values()).filter((task) => {
       return memberIds.includes(task.owner_id) || task.has_team_collaborator
     })
     // Fetch user details for all unique owner IDs
-    const uniqueOwnerIds = [...new Set(relevantTasks.map(task => task.owner_id).filter(id => id))]
+    const uniqueOwnerIds = [
+      ...new Set(relevantTasks.map((task) => task.owner_id).filter((id) => id)),
+    ]
     const userCache = {}
-    
+
     await Promise.all(
       uniqueOwnerIds.map(async (ownerId) => {
         const userDetails = await fetchUserDetails(ownerId)
         if (userDetails) {
           userCache[ownerId] = userDetails.name || `User ${ownerId}`
         }
-      })
+      }),
     )
 
     // Append owner names to tasks
-    const relevantTasksWithOwners = relevantTasks.map(task => ({
+    const relevantTasksWithOwners = relevantTasks.map((task) => ({
       ...task,
-      owner_name: task.owner_id ? userCache[task.owner_id] || 'Unknown' : 'Unassigned'
+      owner_name: task.owner_id ? userCache[task.owner_id] || 'Unknown' : 'Unassigned',
     }))
 
     tasks.value = relevantTasksWithOwners
-
   } catch (err) {
     console.error('Error fetching team tasks:', err)
     tasks.value = []

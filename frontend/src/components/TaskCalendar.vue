@@ -5,21 +5,34 @@
       <div class="flex items-center justify-between mb-6">
         <button @click="previousMonth" class="p-2 hover:bg-gray-100 rounded-lg transition-colors">
           <svg class="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M15 19l-7-7 7-7"
+            ></path>
           </svg>
         </button>
 
         <div class="text-center">
           <h2 class="text-2xl font-bold text-gray-900">{{ currentMonthYear }}</h2>
           <p class="text-xs text-gray-500 mt-1">{{ subtitle }}</p>
-          <button @click="goToToday" class="text-sm text-indigo-600 hover:text-indigo-700 font-medium mt-1">
+          <button
+            @click="goToToday"
+            class="text-sm text-indigo-600 hover:text-indigo-700 font-medium mt-1"
+          >
             Today
           </button>
         </div>
 
         <button @click="nextMonth" class="p-2 hover:bg-gray-100 rounded-lg transition-colors">
           <svg class="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M9 5l7 7-7 7"
+            ></path>
           </svg>
         </button>
       </div>
@@ -38,50 +51,84 @@
       <!-- Calendar Grid -->
       <div v-else class="grid grid-cols-7 gap-1">
         <!-- Day Headers -->
-        <div v-for="day in weekDays" :key="day" class="text-center font-semibold text-sm text-gray-600 py-2">
+        <div
+          v-for="day in weekDays"
+          :key="day"
+          class="text-center font-semibold text-sm text-gray-600 py-2"
+        >
           {{ day }}
         </div>
 
         <!-- Calendar Days -->
-        <div v-for="(day, index) in calendarDays" :key="index" @click="day.tasks.length > 0 && openDayModal(day)"
-          :class="['min-h-[120px] border border-gray-200 p-2 bg-white transition-all',
+        <div
+          v-for="(day, index) in calendarDays"
+          :key="index"
+          @click="day.tasks.length > 0 && openDayModal(day)"
+          :class="[
+            'min-h-[120px] border border-gray-200 p-2 bg-white transition-all',
             day.isCurrentMonth ? '' : 'bg-gray-50',
             day.isToday ? 'ring-2 ring-indigo-500' : '',
-            day.tasks.length > 0 ? 'hover:shadow-md cursor-pointer' : '']">
-
+            day.tasks.length > 0 ? 'hover:shadow-md cursor-pointer' : '',
+          ]"
+        >
           <div class="flex justify-between items-start mb-1">
-            <span :class="['text-sm font-medium',
-              day.isToday ? 'bg-indigo-600 text-white px-2 py-1 rounded-full' :
-                day.isCurrentMonth ? 'text-gray-900' : 'text-gray-400']">
+            <span
+              :class="[
+                'text-sm font-medium',
+                day.isToday
+                  ? 'bg-indigo-600 text-white px-2 py-1 rounded-full'
+                  : day.isCurrentMonth
+                    ? 'text-gray-900'
+                    : 'text-gray-400',
+              ]"
+            >
               {{ day.date.getDate() }}
             </span>
-            <span v-if="day.tasks.length > 0"
-              class="text-xs bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full font-medium">
+            <span
+              v-if="day.tasks.length > 0"
+              class="text-xs bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full font-medium"
+            >
               {{ day.tasks.length }}
             </span>
           </div>
 
           <div class="space-y-1 overflow-y-auto max-h-[80px]">
-            <div v-for="task in day.tasks.slice(0, 2)" :key="task.id" @click.stop="$emit('view-task', task.id)" :class="['text-xs p-1.5 rounded cursor-pointer hover:shadow-sm transition-all truncate',
-              getTaskColorClass(task)]">
+            <div
+              v-for="task in day.tasks.slice(0, 2)"
+              :key="task.id"
+              @click.stop="$emit('view-task', task.id)"
+              :class="[
+                'text-xs p-1.5 rounded cursor-pointer hover:shadow-sm transition-all truncate',
+                getTaskColorClass(task),
+              ]"
+            >
               <div class="font-medium truncate">{{ task.title }}</div>
               <div class="flex items-center gap-1 mt-0.5">
-                <span :class="['px-1.5 py-0.5 rounded text-[10px] font-medium',
-                  getStatusBadgeColor(task.status)]">
+                <span
+                  :class="[
+                    'px-1.5 py-0.5 rounded text-[10px] font-medium',
+                    getStatusBadgeColor(task.status),
+                  ]"
+                >
                   {{ task.status }}
                 </span>
                 <span class="text-[10px] text-gray-600">
                   {{ formatTimeOnly(task.deadline) }}
                 </span>
               </div>
-              <span v-if="!isPersonal && task.owner_name"
-                class="text-[10px] font-medium text-purple-700 truncate max-w-[80px]">
+              <span
+                v-if="!isPersonal && task.owner_name"
+                class="text-[10px] font-medium text-purple-700 truncate max-w-[80px]"
+              >
                 Owner: {{ task.owner_name }}
               </span>
             </div>
 
-            <div v-if="day.tasks.length > 2" @click.stop="openDayModal(day)"
-              class="text-xs text-indigo-600 font-medium pl-1 hover:text-indigo-700 cursor-pointer">
+            <div
+              v-if="day.tasks.length > 2"
+              @click.stop="openDayModal(day)"
+              class="text-xs text-indigo-600 font-medium pl-1 hover:text-indigo-700 cursor-pointer"
+            >
               +{{ day.tasks.length - 2 }} more
             </div>
           </div>
@@ -94,10 +141,18 @@
       <div class="bg-white rounded-lg shadow-md p-6">
         <div class="flex items-center">
           <div class="p-2 bg-indigo-100 rounded-lg">
-            <svg class="w-6 h-6 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2">
-              </path>
+            <svg
+              class="w-6 h-6 text-indigo-600"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
+              ></path>
             </svg>
           </div>
           <div class="ml-4">
@@ -111,8 +166,12 @@
         <div class="flex items-center">
           <div class="p-2 bg-red-100 rounded-lg">
             <svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+              ></path>
             </svg>
           </div>
           <div class="ml-4">
@@ -125,9 +184,18 @@
       <div class="bg-white rounded-lg shadow-md p-6">
         <div class="flex items-center">
           <div class="p-2 bg-orange-100 rounded-lg">
-            <svg class="w-6 h-6 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+            <svg
+              class="w-6 h-6 text-orange-600"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+              ></path>
             </svg>
           </div>
           <div class="ml-4">
@@ -140,9 +208,18 @@
       <div class="bg-white rounded-lg shadow-md p-6">
         <div class="flex items-center">
           <div class="p-2 bg-green-100 rounded-lg">
-            <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            <svg
+              class="w-6 h-6 text-green-600"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+              ></path>
             </svg>
           </div>
           <div class="ml-4">
@@ -154,8 +231,13 @@
     </div>
 
     <!-- Day Modal -->
-    <TaskDayModal v-if="showDayModal" :day="selectedDay" :show-owner-badge="showOwnerBadge" @close="closeDayModal"
-      @view-task="$emit('view-task', $event)" />
+    <TaskDayModal
+      v-if="showDayModal"
+      :day="selectedDay"
+      :show-owner-badge="showOwnerBadge"
+      @close="closeDayModal"
+      @view-task="$emit('view-task', $event)"
+    />
   </div>
 </template>
 <script setup>
@@ -168,17 +250,13 @@ const props = defineProps({
   loading: { type: Boolean, default: false },
   subtitle: { type: String, default: 'Times shown in your local timezone' },
   showOwnerBadge: { type: Boolean, default: false },
-  isPersonal: { type: Boolean, default: false }
+  isPersonal: { type: Boolean, default: false },
 })
 
 defineEmits(['view-task'])
 
-const {
-  convertToLocalTime,
-  formatTimeOnly,
-  getTaskColorClass,
-  getStatusBadgeColor
-} = useCalendarUtils()
+const { convertToLocalTime, formatTimeOnly, getTaskColorClass, getStatusBadgeColor } =
+  useCalendarUtils()
 
 const currentDate = ref(new Date())
 const weekDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
@@ -188,7 +266,7 @@ const selectedDay = ref(null)
 const currentMonthYear = computed(() => {
   return currentDate.value.toLocaleDateString('en-US', {
     month: 'long',
-    year: 'numeric'
+    year: 'numeric',
   })
 })
 
@@ -220,7 +298,7 @@ const calendarDays = computed(() => {
       date,
       isCurrentMonth: true,
       isToday: dateOnly.getTime() === today.getTime(),
-      tasks: getTasksForDate(date)
+      tasks: getTasksForDate(date),
     })
   }
 
@@ -239,7 +317,7 @@ const calendarDays = computed(() => {
 
 const getTasksForDate = (date) => {
   const dateStr = date.toDateString()
-  return props.tasks.filter(task => {
+  return props.tasks.filter((task) => {
     if (!task.deadline) return false
     return convertToLocalTime(task.deadline).toDateString() === dateStr
   })
@@ -252,25 +330,25 @@ const stats = computed(() => {
   const weekFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000)
 
   return {
-    total: props.tasks.filter(t => {
+    total: props.tasks.filter((t) => {
       if (!t.deadline) return false
       const d = convertToLocalTime(t.deadline)
       return d.getFullYear() === year && d.getMonth() === month
     }).length,
-    overdue: props.tasks.filter(t => {
+    overdue: props.tasks.filter((t) => {
       if (!t.deadline || t.status === 'Completed') return false
       return convertToLocalTime(t.deadline) < now
     }).length,
-    dueThisWeek: props.tasks.filter(t => {
+    dueThisWeek: props.tasks.filter((t) => {
       if (!t.deadline || t.status === 'Completed') return false
       const d = convertToLocalTime(t.deadline)
       return d >= now && d <= weekFromNow
     }).length,
-    completed: props.tasks.filter(t => {
+    completed: props.tasks.filter((t) => {
       if (t.status !== 'Completed' || !t.deadline) return false
       const d = convertToLocalTime(t.deadline)
       return d.getFullYear() === year && d.getMonth() === month
-    }).length
+    }).length,
   }
 })
 

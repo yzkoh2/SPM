@@ -6,19 +6,29 @@
         <p class="text-gray-600 mt-2">View all project tasks in calendar format</p>
       </div>
 
-      <TaskCalendar :tasks="filteredTasks" :is-personal="false" :loading="loading" subtitle="Project tasks scheduled this month"
-        @view-task="viewTaskDetails">
+      <TaskCalendar
+        :tasks="filteredTasks"
+        :is-personal="false"
+        :loading="loading"
+        subtitle="Project tasks scheduled this month"
+        @view-task="viewTaskDetails"
+      >
         <template #filters>
-          <select v-model="filters.projectId" @change="fetchTasks"
-            class="px-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+          <select
+            v-model="filters.projectId"
+            @change="fetchTasks"
+            class="px-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          >
             <option value="">All Projects</option>
             <option v-for="project in projects" :key="project.id" :value="project.id">
               {{ project.title }}
             </option>
           </select>
 
-          <select v-model="filters.status"
-            class="px-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+          <select
+            v-model="filters.status"
+            class="px-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          >
             <option value="">All Statuses</option>
             <option value="Unassigned">Unassigned</option>
             <option value="Ongoing">Ongoing</option>
@@ -39,7 +49,7 @@ import TaskCalendar from '@/components/TaskCalendar.vue'
 
 const router = useRouter()
 const authStore = useAuthStore()
-const KONG_API_URL = "http://localhost:8000"
+const KONG_API_URL = 'http://localhost:8000'
 
 const tasks = ref([])
 const projects = ref([])
@@ -47,18 +57,18 @@ const loading = ref(true)
 
 const filters = ref({
   projectId: '',
-  status: ''
+  status: '',
 })
 
 const filteredTasks = computed(() => {
   let filtered = [...tasks.value]
 
   if (filters.value.projectId) {
-    filtered = filtered.filter(task => task.project_id === parseInt(filters.value.projectId))
+    filtered = filtered.filter((task) => task.project_id === parseInt(filters.value.projectId))
   }
 
   if (filters.value.status) {
-    filtered = filtered.filter(task => task.status === filters.value.status)
+    filtered = filtered.filter((task) => task.status === filters.value.status)
   }
 
   return filtered
@@ -99,7 +109,7 @@ const fetchTasks = async () => {
     await fetchProjects()
 
     // Get project IDs
-    const projectIds = projects.value.map(p => p.id)
+    const projectIds = projects.value.map((p) => p.id)
 
     if (projectIds.length === 0) {
       tasks.value = []
@@ -120,22 +130,22 @@ const fetchTasks = async () => {
     console.log('Fetched tasks:', allTasks)
 
     // Fetch user details for all unique owner IDs
-    const uniqueOwnerIds = [...new Set(allTasks.map(task => task.owner_id).filter(id => id))]
+    const uniqueOwnerIds = [...new Set(allTasks.map((task) => task.owner_id).filter((id) => id))]
     const userCache = {}
-    
+
     await Promise.all(
       uniqueOwnerIds.map(async (ownerId) => {
         const userDetails = await fetchUserDetails(ownerId)
         if (userDetails) {
           userCache[ownerId] = userDetails.name || `User ${ownerId}`
         }
-      })
+      }),
     )
 
     // Append owner names to tasks
-    const tasksWithOwners = allTasks.map(task => ({
+    const tasksWithOwners = allTasks.map((task) => ({
       ...task,
-      owner_name: task.owner_id ? userCache[task.owner_id] || 'Unknown' : 'Unassigned'
+      owner_name: task.owner_id ? userCache[task.owner_id] || 'Unknown' : 'Unassigned',
     }))
 
     tasks.value = tasksWithOwners

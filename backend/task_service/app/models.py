@@ -45,6 +45,7 @@ class Project(db.Model):
     deadline = db.Column(db.DateTime, nullable=True)
     owner_id = db.Column(db.Integer, nullable=False)
     created_at = db.Column(db.DateTime, server_default=db.func.now())
+    updated_at = db.Column(db.DateTime, server_default=db.func.now(), onupdate=db.func.now())
 
     # Relationship to tasks in this project
     tasks = db.relationship('Task', back_populates='project', cascade="all, delete-orphan")
@@ -71,6 +72,7 @@ class Project(db.Model):
             'owner_id': self.owner_id,
             'collaborator_ids': self.collaborator_ids(),
             'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None,
             'tasks': [task.to_json() for task in self.tasks]
         }
 
@@ -97,6 +99,10 @@ class Task(db.Model):
     recurrence_interval = db.Column(db.String(50), nullable=True) 
     recurrence_days = db.Column(db.Integer, nullable=True) #
     recurrence_end_date = db.Column(db.DateTime, nullable=True)
+
+    # Timestamps
+    created_at = db.Column(db.DateTime, server_default=db.func.now())
+    updated_at = db.Column(db.DateTime, server_default=db.func.now(), onupdate=db.func.now())
 
     # Relationships
     project = db.relationship('Project', back_populates='tasks')
@@ -137,7 +143,9 @@ class Task(db.Model):
             'comments': [comment.to_json() for comment in top_level_comments],  # Only top-level
             'comment_count': len(self.comments),  # Still count all comments
             'attachments': [attachment.to_json() for attachment in self.attachments],
-            'attachment_count': len(self.attachments)
+            'attachment_count': len(self.attachments),
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None,
         }
 
 class Attachment(db.Model):

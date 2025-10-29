@@ -1,10 +1,11 @@
 <template>
-  <div v-if="show" class="fixed inset-0 z-[9999]" style="background-color: rgba(0,0,0,0.5);">
+  <div v-if="show" class="fixed inset-0 z-[9999]" style="background-color: rgba(0, 0, 0, 0.5)">
     <div class="flex items-center justify-center min-h-screen p-4">
-      
       <!-- Modal Box -->
-      <div class="bg-white rounded-lg shadow-2xl w-full max-w-md p-6" style="position: relative; z-index: 10000;">
-        
+      <div
+        class="bg-white rounded-lg shadow-2xl w-full max-w-md p-6"
+        style="position: relative; z-index: 10000"
+      >
         <!-- Header -->
         <div class="mb-4">
           <h2 class="text-xl font-bold text-gray-900">Update Task Status</h2>
@@ -19,13 +20,11 @@
 
         <!-- Status Dropdown -->
         <div class="mb-4">
-          <label class="block text-sm font-medium text-gray-700 mb-2">
-            New Status:
-          </label>
-          <select 
+          <label class="block text-sm font-medium text-gray-700 mb-2"> New Status: </label>
+          <select
             v-model="selectedStatus"
             class="w-full px-3 py-2 border-2 border-gray-300 rounded-md text-base"
-            style="appearance: menulist;"
+            style="appearance: menulist"
           >
             <option value="Unassigned">Unassigned</option>
             <option value="Ongoing">Ongoing</option>
@@ -36,19 +35,18 @@
 
         <!-- Status Preview -->
         <div class="mb-4 p-3 bg-blue-50 rounded border border-blue-200">
-          <p class="text-sm text-gray-600">Change: 
-            <span class="font-semibold">{{ currentStatus }}</span> 
-            → 
+          <p class="text-sm text-gray-600">
+            Change:
+            <span class="font-semibold">{{ currentStatus }}</span>
+            →
             <span class="font-semibold text-blue-600">{{ selectedStatus }}</span>
           </p>
         </div>
 
         <!-- Comment -->
         <div class="mb-4">
-          <label class="block text-sm font-medium text-gray-700 mb-2">
-            Comment (Optional):
-          </label>
-          <textarea 
+          <label class="block text-sm font-medium text-gray-700 mb-2"> Comment (Optional): </label>
+          <textarea
             v-model="comment"
             rows="3"
             class="w-full px-3 py-2 border-2 border-gray-300 rounded-md"
@@ -63,19 +61,19 @@
 
         <!-- Buttons -->
         <div class="flex gap-3">
-          <button 
+          <button
             @click="confirmUpdate"
             :disabled="updating || selectedStatus === currentStatus"
             class="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-md font-medium hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
-            style="min-height: 40px;"
+            style="min-height: 40px"
           >
             {{ updating ? 'Updating...' : 'Confirm Update' }}
           </button>
-          <button 
+          <button
             @click="closeModal"
             :disabled="updating"
             class="flex-1 px-4 py-2 bg-gray-200 text-gray-800 rounded-md font-medium hover:bg-gray-300 disabled:opacity-50"
-            style="min-height: 40px;"
+            style="min-height: 40px"
           >
             Cancel
           </button>
@@ -89,7 +87,6 @@
           <p>Current: {{ currentStatus }}</p>
           <p>Selected: {{ selectedStatus }}</p>
         </div> -->
-
       </div>
     </div>
   </div>
@@ -101,17 +98,17 @@ import { ref, watch, computed, onMounted } from 'vue'
 const props = defineProps({
   show: {
     type: Boolean,
-    required: true
+    required: true,
   },
   task: {
     type: Object,
     required: true,
-    default: () => ({})
+    default: () => ({}),
   },
   isSubtask: {
     type: Boolean,
-    default: false
-  }
+    default: false,
+  },
 })
 
 const emit = defineEmits(['close', 'update-status'])
@@ -128,22 +125,29 @@ onMounted(() => {
   console.log('Initial show:', props.show)
 })
 
-watch(() => props.task?.status, (newStatus) => {
-  console.log('Task status changed to:', newStatus)
-  if (newStatus) {
-    selectedStatus.value = newStatus
-  }
-}, { immediate: true })
+watch(
+  () => props.task?.status,
+  (newStatus) => {
+    console.log('Task status changed to:', newStatus)
+    if (newStatus) {
+      selectedStatus.value = newStatus
+    }
+  },
+  { immediate: true },
+)
 
-watch(() => props.show, (newVal) => {
-  console.log('Modal show changed to:', newVal)
-  if (newVal) {
-    selectedStatus.value = currentStatus.value
-    comment.value = ''
-    error.value = null
-    updating.value = false
-  }
-})
+watch(
+  () => props.show,
+  (newVal) => {
+    console.log('Modal show changed to:', newVal)
+    if (newVal) {
+      selectedStatus.value = currentStatus.value
+      comment.value = ''
+      error.value = null
+      updating.value = false
+    }
+  },
+)
 
 const closeModal = () => {
   console.log('Close modal called')
@@ -155,7 +159,7 @@ const closeModal = () => {
 const confirmUpdate = async () => {
   console.log('Selected status:', selectedStatus.value)
   console.log('Current status:', currentStatus.value)
-  
+
   if (selectedStatus.value === currentStatus.value) {
     console.log('No change detected')
     return
@@ -168,7 +172,7 @@ const confirmUpdate = async () => {
     console.log('Emitting update-status event')
     await emit('update-status', {
       newStatus: selectedStatus.value,
-      comment: comment.value
+      comment: comment.value,
     })
   } catch (err) {
     console.error('Error in confirmUpdate:', err)

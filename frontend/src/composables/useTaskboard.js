@@ -14,7 +14,7 @@ export function useTaskboard() {
   const filters = ref({
     member: '',
     status: '',
-    deadline: ''
+    deadline: '',
   })
 
   const sortBy = ref('default')
@@ -27,7 +27,7 @@ export function useTaskboard() {
       const response = await fetch(`http://localhost:8000/tasks/${taskId}/collaborators`)
       if (response.ok) {
         const collaborators = await response.json()
-        return collaborators.map(c => c.user_id)
+        return collaborators.map((c) => c.user_id)
       }
       return []
     } catch (err) {
@@ -43,21 +43,22 @@ export function useTaskboard() {
   const fetchTasks = async (scope = 'team') => {
     loading.value = true
     error.value = null
-    
+
     try {
       const userId = authStore.user.id
-      
+
       // Fetch user data
       const userResponse = await fetch(`http://localhost:8000/user/${userId}`)
       if (!userResponse.ok) throw new Error('Failed to fetch user data')
       const userData = await userResponse.json()
-      
+
       const teamId = userData.team_id
       if (!teamId) {
         tasks.value = []
-        error.value = scope === 'team' 
-          ? 'You are not assigned to a team' 
-          : 'You are not assigned to a team or department'
+        error.value =
+          scope === 'team'
+            ? 'You are not assigned to a team'
+            : 'You are not assigned to a team or department'
         return
       }
 
@@ -77,18 +78,18 @@ export function useTaskboard() {
       }
 
       // Step 1: Fetch tasks owned by members
-      const taskPromises = userIds.map(memberId => 
+      const taskPromises = userIds.map((memberId) =>
         fetch(`http://localhost:8000/tasks?owner_id=${memberId}`)
-          .then(res => res.ok ? res.json() : [])
-          .catch(() => [])
+          .then((res) => (res.ok ? res.json() : []))
+          .catch(() => []),
       )
-      
+
       const ownedTasksArrays = await Promise.all(taskPromises)
       const ownedTasks = ownedTasksArrays.flat()
 
       // Step 2: Create a map to track unique tasks
       const taskMap = new Map()
-      ownedTasks.forEach(task => {
+      ownedTasks.forEach((task) => {
         taskMap.set(task.id, { ...task, collaborator_ids: [] })
       })
 
@@ -104,12 +105,12 @@ export function useTaskboard() {
       collaboratorResults.forEach(({ taskId, collaboratorIds }) => {
         if (taskMap.has(taskId)) {
           taskMap.get(taskId).collaborator_ids = collaboratorIds
-          
+
           // Check if any member is a collaborator on this task
-          const hasMemberCollaborator = collaboratorIds.some(collabId => 
-            userIds.includes(collabId)
+          const hasMemberCollaborator = collaboratorIds.some((collabId) =>
+            userIds.includes(collabId),
           )
-          
+
           if (hasMemberCollaborator) {
             taskMap.get(taskId).has_member_collaborator = true
           }
@@ -117,12 +118,11 @@ export function useTaskboard() {
       })
 
       // Step 5: Filter to only include tasks where members are owner OR collaborator
-      const relevantTasks = Array.from(taskMap.values()).filter(task => {
+      const relevantTasks = Array.from(taskMap.values()).filter((task) => {
         return userIds.includes(task.owner_id) || task.has_member_collaborator
       })
 
       tasks.value = relevantTasks
-      
     } catch (err) {
       console.error(`Error fetching ${scope} tasks:`, err)
       error.value = err.message
@@ -135,34 +135,32 @@ export function useTaskboard() {
   const getTeamMemberIds = async (teamId) => {
     const response = await fetch(`http://localhost:8000/user/team/${teamId}`)
     if (!response.ok) throw new Error('Failed to fetch team members')
-    
+
     const members = await response.json()
     teamMembers.value = members
-    return members.map(member => member.id)
+    return members.map((member) => member.id)
   }
 
   const getDepartmentMemberIds = async (teamId) => {
     // Get all teams to find which department this team belongs to
     const teamsResponse = await fetch(`http://localhost:8000/user/teams`)
     if (!teamsResponse.ok) throw new Error('Failed to fetch teams')
-    
+
     const allTeams = await teamsResponse.json()
-    const userTeam = allTeams.find(team => team.id === teamId)
-    
+    const userTeam = allTeams.find((team) => team.id === teamId)
+
     if (!userTeam || !userTeam.department_id) {
       throw new Error('Team is not assigned to a department')
     }
 
     const departmentId = userTeam.department_id
 
-    const usersResponse = await fetch(
-      `http://localhost:8000/user/department/${departmentId}`
-    )
+    const usersResponse = await fetch(`http://localhost:8000/user/department/${departmentId}`)
     if (!usersResponse.ok) throw new Error('Failed to fetch department users')
-    
+
     const members = await usersResponse.json()
     departmentMembers.value = members
-    return members.map(user => user.id)
+    return members.map((user) => user.id)
   }
 
   // Computed property for filtered and sorted tasks
@@ -172,26 +170,26 @@ export function useTaskboard() {
     // Filter by member (checks both owner and collaborators)
     if (filters.value.member) {
       const memberId = parseInt(filters.value.member)
-      filtered = filtered.filter(task => {
+      filtered = filtered.filter((task) => {
         // Check if member is owner
         if (task.owner_id === memberId) return true
-        
+
         // Check if member is collaborator
         if (task.collaborator_ids && task.collaborator_ids.includes(memberId)) return true
-        
+
         return false
       })
     }
 
     // Filter by status
     if (filters.value.status) {
-      filtered = filtered.filter(task => task.status === filters.value.status)
+      filtered = filtered.filter((task) => task.status === filters.value.status)
     }
 
     // Filter by deadline
     if (filters.value.deadline && filters.value.deadline !== '') {
       const now = new Date()
-      filtered = filtered.filter(task => {
+      filtered = filtered.filter((task) => {
         if (!task.deadline) return false
         const deadline = new Date(task.deadline)
 
@@ -231,15 +229,15 @@ export function useTaskboard() {
   })
 
   const getTaskCountByStatus = (status) => {
-    return filteredAndSortedTasks.value.filter(task => task.status === status).length
+    return filteredAndSortedTasks.value.filter((task) => task.status === status).length
   }
 
   const getTasksByOwner = (ownerId) => {
-    return filteredAndSortedTasks.value.filter(task => task.owner_id === ownerId)
+    return filteredAndSortedTasks.value.filter((task) => task.owner_id === ownerId)
   }
 
   const getTasksByStatus = (status) => {
-    return filteredAndSortedTasks.value.filter(task => task.status === status)
+    return filteredAndSortedTasks.value.filter((task) => task.status === status)
   }
 
   const clearFilters = () => {
@@ -269,6 +267,6 @@ export function useTaskboard() {
     getTasksByOwner,
     getTasksByStatus,
     clearFilters,
-    applyFilters
+    applyFilters,
   }
 }
