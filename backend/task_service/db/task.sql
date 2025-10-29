@@ -174,7 +174,15 @@ WITH inserted_task AS (
   RETURNING id
 )
 INSERT INTO task_collaborators (task_id, user_id)
-SELECT id, 1 FROM inserted_task;
+SELECT
+  it.id,         -- The new task's ID from the CTE
+  c.user_id      -- Each user ID from the VALUES list
+FROM inserted_task AS it
+CROSS JOIN (
+  VALUES
+    (1),               -- The first collaborator
+    (3)  -- Add Susan's ID here
+) AS c(user_id);
 
 -- Project 2 with Susan as Owner and Jane as Collaborator
 with inserted_project AS (
