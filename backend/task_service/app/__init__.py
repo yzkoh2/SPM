@@ -11,13 +11,16 @@ def create_app(config_name="development"):
     
     app = Flask(__name__)
     app.config.from_object(app_config[config_name])
-    
-    app.s3_client = boto3.client(
-        "s3",
-        region_name=app.config['S3_REGION'],
-        aws_access_key_id=app.config['S3_ACCESS_KEY'],
-        aws_secret_access_key=app.config['S3_SECRET_KEY']
-    )
+
+    if not app.config.get("TESTING"):
+        app.s3_client = boto3.client(
+            "s3",
+            region_name=app.config['S3_REGION'],
+            aws_access_key_id=app.config['S3_ACCESS_KEY'],
+            aws_secret_access_key=app.config['S3_SECRET_KEY']
+        )
+    else:
+        app.s3_client = None
     
     # Enable CORS for frontend communication
     CORS(app, origins=["http://localhost:5173", "http://localhost:8000"])
