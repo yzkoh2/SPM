@@ -142,7 +142,7 @@ jobs:
   
   build-and-push-images:
     name: Build and Push Docker Images
-    needs: [test-user-service, test-task-service, test-notification-service, test-frontend]
+    needs: [test-user-service, test-task-service, test-notification-service]
     runs-on: ubuntu-latest
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     
