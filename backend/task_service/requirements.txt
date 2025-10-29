@@ -29,3 +29,4 @@ boto3
 weasyprint
 jinja2
 requests
+coverage
