@@ -137,15 +137,7 @@ def update_task(task_id, user_id, task_data):
         old_status = None
         status_changed = False
 
-        # Check if task is part of a project, then later update the updated_at timestamp
-        project_to_update = None
-        if task.project_id:
-            project_to_update = Project.query.get(task.project_id)
-
-        # Find the parent task (if this is a subtask)
-        parent_task_to_update = None
-        if task.parent_task_id:
-            parent_task_to_update = Task.query.get(task.parent_task_id)
+        _update_timestamps_cascade(task)
         
         current_time = db.func.now()
 
@@ -206,14 +198,6 @@ def update_task(task_id, user_id, task_data):
         if 'status' in task_data and task.status == TaskStatusEnum.COMPLETED:
             if task.is_recurring:
                 _create_next_recurring_task(task)
-
-        if project_to_update:
-            project_to_update.updated_at = current_time
-            db.session.add(project_to_update)
-        
-        if parent_task_to_update:
-            parent_task_to_update.updated_at = current_time
-            db.session.add(parent_task_to_update)
 
         db.session.commit()
 
@@ -412,6 +396,39 @@ def _cascade_parent_deadline_to_subtasks(task, new_deadline):
             subtask.deadline = new_deadline
         _cascade_parent_deadline_to_subtasks(subtask, new_deadline)
 
+def _update_timestamps_cascade(task):
+    """
+    Updates the updated_at timestamp for the given task,
+    its parent task (if any), and its project (if any).
+    Adds the updated objects to the session but does NOT commit.
+    """
+    if not task:
+        return
+
+    current_time = db.func.now()
+    objects_to_update = set() # Use a set to avoid adding the same object multiple times
+
+    # Update the task itself
+    task.updated_at = current_time
+    objects_to_update.add(task)
+
+    # Find and update the parent task
+    if task.parent_task_id:
+        parent_task = Task.query.get(task.parent_task_id)
+        if parent_task:
+            parent_task.updated_at = current_time
+            objects_to_update.add(parent_task)
+
+    # Find and update the project
+    if task.project_id:
+        project = Project.query.get(task.project_id)
+        if project:
+            project.updated_at = current_time
+            objects_to_update.add(project)
+
+    # Add all modified objects to the session
+    db.session.add_all(list(objects_to_update))
+
 def delete_task(task_id, user_id):
     #Delete a task by ID
     try:
@@ -453,6 +470,11 @@ def get_task_details(task_id):
 def add_comment(task_id, data):
     #Add a new comment to a task, trigger mention notification if necessary
     try:
+
+        task_to_update = Task.query.get(task_id) # Fetch the task first
+        if not task_to_update:
+            return None, "Task not found"
+
         #Create new comment
         new_comment = Comment(
             body=data['body'],
@@ -496,6 +518,8 @@ def add_comment(task_id, data):
                 except Exception as publish_error:
                     print(f"⚠️  Failed to publish mention alert: {publish_error}")
 
+        _update_timestamps_cascade(task_to_update)
+
         db.session.commit()
         
         return new_comment.to_json(), "Comment added successfully"
@@ -513,6 +537,12 @@ def delete_comment(comment_id):
             return False
             
         print(f"Deleting comment ID: {comment.id}")
+
+        task_to_update = Task.query.get(comment.task_id)
+
+        if task_to_update:
+            _update_timestamps_cascade(task_to_update)
+
         db.session.delete(comment)
         db.session.commit()
         return True
@@ -537,91 +567,91 @@ def get_task_collaborators(task_id):
         print(f"Error in get_task_collaborators: {e}")
         raise e
 
-def add_task_collaborators(task_id, collaborator_ids, user_id):
-    """Add a list of collaborators to a task and all its parent tasks."""
-    if not isinstance(collaborator_ids, list) or not collaborator_ids:
-        raise ValueError("collaborator_ids must be a non-empty list.")
+# def add_task_collaborators(task_id, collaborator_ids, user_id):
+#     """Add a list of collaborators to a task and all its parent tasks."""
+#     if not isinstance(collaborator_ids, list) or not collaborator_ids:
+#         raise ValueError("collaborator_ids must be a non-empty list.")
 
-    task = Task.query.get(task_id)
-    if not task:
-        raise Exception("Task not found")
+#     task = Task.query.get(task_id)
+#     if not task:
+#         raise Exception("Task not found")
 
-    if task.owner_id != user_id:
-        raise Exception("Forbidden: You do not have permission to edit this task.")
+#     if task.owner_id != user_id:
+#         raise Exception("Forbidden: You do not have permission to edit this task.")
 
-    try:
-        # Use a set to avoid duplicate collaborator IDs
-        collaborators_to_add = set(collaborator_ids)
+#     try:
+#         # Use a set to avoid duplicate collaborator IDs
+#         collaborators_to_add = set(collaborator_ids)
         
-        # Start with the current task and move up to its parents
-        current_task = task
-        while current_task:
-            # Get existing collaborators for the current task
-            result = db.session.execute(
-                task_collaborators.select().with_only_columns([task_collaborators.c.user_id])
-                .where(task_collaborators.c.task_id == current_task.id)
-            )
-            existing_collaborators = {row.user_id for row in result}
+#         # Start with the current task and move up to its parents
+#         current_task = task
+#         while current_task:
+#             # Get existing collaborators for the current task
+#             result = db.session.execute(
+#                 task_collaborators.select().with_only_columns([task_collaborators.c.user_id])
+#                 .where(task_collaborators.c.task_id == current_task.id)
+#             )
+#             existing_collaborators = {row.user_id for row in result}
             
-            # Determine which collaborators are new for this task
-            new_collaborators_for_task = collaborators_to_add - existing_collaborators
+#             # Determine which collaborators are new for this task
+#             new_collaborators_for_task = collaborators_to_add - existing_collaborators
             
-            if new_collaborators_for_task:
-                new_collaborator_entries = [
-                    {'task_id': current_task.id, 'user_id': collab_id}
-                    for collab_id in new_collaborators_for_task
-                ]
-                db.session.execute(task_collaborators.insert(), new_collaborator_entries)
+#             if new_collaborators_for_task:
+#                 new_collaborator_entries = [
+#                     {'task_id': current_task.id, 'user_id': collab_id}
+#                     for collab_id in new_collaborators_for_task
+#                 ]
+#                 db.session.execute(task_collaborators.insert(), new_collaborator_entries)
             
-            # Move to the parent task
-            if current_task.parent_task_id:
-                current_task = Task.query.get(current_task.parent_task_id)
-            else:
-                current_task = None
+#             # Move to the parent task
+#             if current_task.parent_task_id:
+#                 current_task = Task.query.get(current_task.parent_task_id)
+#             else:
+#                 current_task = None
 
-        db.session.commit()
-        return {"message": "Collaborators added successfully to the task and its parents"}
-    except Exception as e:
-        db.session.rollback()
-        print(f"Error in add_task_collaborators: {e}")
-        raise e
+#         db.session.commit()
+#         return {"message": "Collaborators added successfully to the task and its parents"}
+#     except Exception as e:
+#         db.session.rollback()
+#         print(f"Error in add_task_collaborators: {e}")
+#         raise e
 
-def remove_task_collaborator(task_id, collaborator_ids, user_id):
-    """Remove a list of collaborators from a task and all its subtasks."""
-    if not isinstance(collaborator_ids, list) or not collaborator_ids:
-        raise ValueError("collaborator_ids must be a non-empty list.")
+# def remove_task_collaborator(task_id, collaborator_ids, user_id):
+    # """Remove a list of collaborators from a task and all its subtasks."""
+    # if not isinstance(collaborator_ids, list) or not collaborator_ids:
+    #     raise ValueError("collaborator_ids must be a non-empty list.")
 
-    task = Task.query.get(task_id)
-    if not task:
-        raise Exception("Task not found")
+    # task = Task.query.get(task_id)
+    # if not task:
+    #     raise Exception("Task not found")
 
-    is_owner = (task.owner_id == user_id)
-    if not is_owner:
-        raise Exception("Forbidden: You do not have permission to edit this task.")
+    # is_owner = (task.owner_id == user_id)
+    # if not is_owner:
+    #     raise Exception("Forbidden: You do not have permission to edit this task.")
 
-    # A recursive function to get all subtask IDs
-    def get_all_subtask_ids(t_id):
-        ids = {t_id}
-        children = Task.query.filter_by(parent_task_id=t_id).all()
-        for child in children:
-            ids.update(get_all_subtask_ids(child.id))
-        return ids
+    # # A recursive function to get all subtask IDs
+    # def get_all_subtask_ids(t_id):
+    #     ids = {t_id}
+    #     children = Task.query.filter_by(parent_task_id=t_id).all()
+    #     for child in children:
+    #         ids.update(get_all_subtask_ids(child.id))
+    #     return ids
 
-    task_ids_to_update = get_all_subtask_ids(task_id)
+    # task_ids_to_update = get_all_subtask_ids(task_id)
 
-    try:
-        db.session.execute(
-            task_collaborators.delete().where(
-                task_collaborators.c.task_id.in_(task_ids_to_update) &
-                (task_collaborators.c.user_id.in_(collaborator_ids))
-            )
-        )
-        db.session.commit()
-        return {"message": "Collaborators removed successfully from the task and its subtasks"}
-    except Exception as e:
-        db.session.rollback()
-        print(f"Error in remove_task_collaborator: {e}")
-        raise e
+    # try:
+    #     db.session.execute(
+    #         task_collaborators.delete().where(
+    #             task_collaborators.c.task_id.in_(task_ids_to_update) &
+    #             (task_collaborators.c.user_id.in_(collaborator_ids))
+    #         )
+    #     )
+    #     db.session.commit()
+    #     return {"message": "Collaborators removed successfully from the task and its subtasks"}
+    # except Exception as e:
+    #     db.session.rollback()
+    #     print(f"Error in remove_task_collaborator: {e}")
+    #     raise e
 
 def _get_all_subtask_ids(task_id):
     ids = {task_id}
@@ -655,6 +685,9 @@ def add_attachment(task_id, file, input_filename):
             url=s3_object_key,  # Storing S3 object key in the 'url' field
             task_id=task_id
         )
+
+        _update_timestamps_cascade(task)
+
         db.session.add(new_attachment)
         db.session.commit()
         return new_attachment.to_json()
@@ -696,6 +729,10 @@ def delete_attachment_url(task_id, attachment_id):
         attachment = Attachment.query.filter_by(
             id=attachment_id, task_id=task_id
         ).first()
+
+        task_to_update = Task.query.get(task_id)
+        if task_to_update:
+            _update_timestamps_cascade(task_to_update)
 
         if not attachment:
             return False, "Attachment not found"
