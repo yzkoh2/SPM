@@ -97,16 +97,16 @@ EXECUTE PROCEDURE trigger_set_timestamp();
 
 -- Project 1 (Assuming a project context for the first task)
 INSERT INTO projects (title, description, deadline, owner_id)
-VALUES ('Website Redesign', 'A project to overhaul the company homepage.', '2025-10-15', 2);
+VALUES ('Website Redesign', 'A project to overhaul the company homepage.', '2025-11-15', 2);
 
 -- Task 1: Design Homepage (and its subtasks)
 INSERT INTO tasks (title, description, deadline, status, owner_id, project_id)
-VALUES ('Design Homepage', 'Create wireframes and UI for homepage', '2025-10-02', 'ONGOING', 1, 1);
+VALUES ('Design Homepage', 'Create wireframes and UI for homepage', '2025-11-02', 'ONGOING', 1, 1);
 
 -- Subtasks for Task 1
 INSERT INTO tasks (title, description, deadline, status, owner_id, project_id, parent_task_id) VALUES
 ('Wireframe layout', 'Create wireframes', '2025-10-01', 'ONGOING', 1, 1, 1),
-('Define color scheme', 'Design UI', '2025-10-01', 'ONGOING', 1, 1, 1);
+('Define color scheme', 'Design UI', '2025-11-01', 'ONGOING', 1, 1, 1);
 
 -- Attachment for Task 1
 INSERT INTO attachments (filename, url, task_id) VALUES
@@ -161,7 +161,7 @@ INSERT INTO comments (body, author_id, task_id) VALUES
 -- Task 3 main task with collaborator John
 WITH inserted_task AS (
   INSERT INTO tasks (title, description, deadline, status, owner_id, project_id)
-  VALUES ('Frontend Development', 'Develop the frontend using Vue.js', '2025-10-30', 'UNASSIGNED', 3, 1)
+  VALUES ('Frontend Development', 'Develop the frontend using Vue.js', '2025-11-13', 'UNASSIGNED', 3, 1)
   RETURNING id
 )
 INSERT INTO task_collaborators (task_id, user_id)

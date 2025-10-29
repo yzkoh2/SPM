@@ -1,6 +1,7 @@
 from ..routes import task_bp 
 from . import generator_service as generator
 from flask import make_response, jsonify, request
+from datetime import datetime
 
 @task_bp.route('/reports/team/<int:team_id>', methods=['GET'])
 def get_team_report(team_id):
@@ -22,7 +23,6 @@ def get_team_report(team_id):
         print(f"Error generating report: {e}")
         return jsonify({"error": "Could not generate report"}), 500
 
-# You can add more report routes here...
 @task_bp.route('/reports/project/<int:project_id>', methods=['GET'])
 def get_project_report(project_id):
     """
@@ -42,12 +42,34 @@ def get_project_report(project_id):
     except ValueError:
         return jsonify({"error": "'user_id' must be an integer"}), 400
 
+    start_date_str = request.args.get('start_date')
+    end_date_str = request.args.get('end_date')
+
+    start_date = None
+    end_date = None
+
+    try:
+        if start_date_str:
+            # Add time component to start of the day
+            start_date = datetime.strptime(start_date_str, '%Y-%m-%d').replace(hour=0, minute=0, second=0)
+        if end_date_str:
+            # Add time component to end of the day
+            end_date = datetime.strptime(end_date_str, '%Y-%m-%d').replace(hour=23, minute=59, second=59)
+            
+        if start_date and end_date and start_date > end_date:
+             return jsonify({"error": "start_date cannot be after end_date"}), 400
+
+    except ValueError:
+        return jsonify({"error": "Date format must be YYYY-MM-DD"}), 400
+
     # --- 2. Call Generator Service ---
     try:
         # Call the correct function from your generator
         pdf_data = generator.generate_project_pdf_report(
             project_id=project_id, 
-            user_id=user_id
+            user_id=user_id,
+            start_date=start_date,
+            end_date=end_date
         )
         
         # Check if generator failed (e.g., auth error, project not found)
