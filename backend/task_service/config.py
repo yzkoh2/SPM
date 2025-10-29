@@ -33,3 +33,18 @@ class Config:
     #     "http://localhost:8000",  # Kong gateway
     #     "http://frontend:5173"    # Docker frontend service
     # ]
+
+class TestingConfig(Config):
+    """Configurations for Testing."""
+    TESTING = True
+    SQLALCHEMY_DATABASE_URI = 'sqlite:///:memory:'
+    SQLALCHEMY_TRACK_MODIFICATIONS = False
+    S3_BUCKET_NAME = 'test-bucket'
+    SECRET_KEY = 'test-secret-key'
+
+# A dictionary to access the different configuration classes.
+app_config = {
+    'development': Config,
+    'testing': TestingConfig,
+    'production': Config,
+}
