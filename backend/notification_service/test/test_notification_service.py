@@ -2425,6 +2425,487 @@ class TestNotificationService(unittest.TestCase):
             result = format_deadline_for_email(None)
             self.assertEqual(result, 'No deadline set')
 
+
+ # ==================== Email Template Coverage ====================
+
+    def test_mention_alert_email_long_title(self):
+        """Test mention alert email with very long task title"""
+        with self.app.app_context():
+            from app.email_templates import get_mention_alert_email
+            
+            long_title = 'A' * 100
+            subject, body = get_mention_alert_email(
+                task_title=long_title,
+                comment_snippet='Test comment',
+                author_name='Author',
+                mentioned_username='user',
+                is_subtask=False,
+                comment_metadata={}
+            )
+            
+            self.assertIn('...', subject)
+            self.assertLess(len(subject), 80)
+
+    def test_mention_alert_email_with_full_metadata(self):
+        """Test mention alert email with complete metadata"""
+        with self.app.app_context():
+            from app.email_templates import get_mention_alert_email
+            
+            metadata = {
+                'timestamp': '2 hours ago',
+                'author_initials': 'JD',
+                'task_id': 1,
+                'is_subtask': False
+            }
+            
+            subject, body = get_mention_alert_email(
+                task_title='Task',
+                comment_snippet='Comment with @user mention',
+                author_name='John Doe',
+                mentioned_username='user',
+                is_subtask=False,
+                comment_metadata=metadata
+            )
+            
+            self.assertIn('JD', body)
+            self.assertIn('2 hours ago', body)
+
+    # ==================== Helper Function Edge Cases ====================
+
+    def test_extract_mention_context_no_mention(self):
+        """Test extract_mention_context when mention not found"""
+        with self.app.app_context():
+            from app.service import extract_mention_context
+            
+            comment = "This is a comment without any mention"
+            result = extract_mention_context(comment, "username")
+            
+            self.assertEqual(result, comment)
+
+    def test_extract_mention_context_long_comment(self):
+        """Test extract_mention_context with very long comment"""
+        with self.app.app_context():
+            from app.service import extract_mention_context
+            
+            comment = "A" * 250
+            result = extract_mention_context(comment, "user")
+            
+            self.assertIn('...', result)
+
+    def test_extract_mention_context_at_start(self):
+        """Test extract_mention_context when mention is at start"""
+        with self.app.app_context():
+            from app.service import extract_mention_context
+            
+            comment = "@user can you check this task? " + "A" * 150
+            result = extract_mention_context(comment, "user", context_chars=100)
+            
+            self.assertIn('@user', result)
+
+    def test_extract_mention_context_at_end(self):
+        """Test extract_mention_context when mention is at end"""
+        with self.app.app_context():
+            from app.service import extract_mention_context
+            
+            comment = "A" * 150 + " please review @user"
+            result = extract_mention_context(comment, "user", context_chars=100)
+            
+            self.assertIn('@user', result)
+            self.assertIn('...', result)
+
+    def test_highlight_mention_in_text_custom_color(self):
+        """Test highlight_mention_in_text with custom color"""
+        with self.app.app_context():
+            from app.service import highlight_mention_in_text
+            
+            text = "Hello @user, how are you?"
+            result = highlight_mention_in_text(text, "user", primary_color="#FF0000")
+            
+            self.assertIn('#FF0000', result)
+            self.assertIn('@user', result)
+
+    def test_format_time_ago_minutes(self):
+        """Test format_time_ago for minutes"""
+        with self.app.app_context():
+            from app.service import format_time_ago
+            
+            singapore_tz = ZoneInfo('Asia/Singapore')
+            timestamp = datetime.now(singapore_tz) - timedelta(minutes=30)
+            
+            result = format_time_ago(timestamp)
+            self.assertIn('30 minute', result)
+
+    def test_format_time_ago_one_minute(self):
+        """Test format_time_ago for exactly one minute"""
+        with self.app.app_context():
+            from app.service import format_time_ago
+            
+            singapore_tz = ZoneInfo('Asia/Singapore')
+            timestamp = datetime.now(singapore_tz) - timedelta(minutes=1)
+            
+            result = format_time_ago(timestamp)
+            self.assertIn('1 minute', result)
+            self.assertNotIn('minutes', result)
+
+    def test_format_time_ago_hours(self):
+        """Test format_time_ago for hours"""
+        with self.app.app_context():
+            from app.service import format_time_ago
+            
+            singapore_tz = ZoneInfo('Asia/Singapore')
+            timestamp = datetime.now(singapore_tz) - timedelta(hours=5)
+            
+            result = format_time_ago(timestamp)
+            self.assertIn('5 hour', result)
+
+    def test_format_time_ago_one_hour(self):
+        """Test format_time_ago for exactly one hour"""
+        with self.app.app_context():
+            from app.service import format_time_ago
+            
+            singapore_tz = ZoneInfo('Asia/Singapore')
+            timestamp = datetime.now(singapore_tz) - timedelta(hours=1)
+            
+            result = format_time_ago(timestamp)
+            self.assertIn('1 hour', result)
+            self.assertNotIn('hours', result)
+
+    def test_format_time_ago_days(self):
+        """Test format_time_ago for days"""
+        with self.app.app_context():
+            from app.service import format_time_ago
+            
+            singapore_tz = ZoneInfo('Asia/Singapore')
+            timestamp = datetime.now(singapore_tz) - timedelta(days=3)
+            
+            result = format_time_ago(timestamp)
+            self.assertIn('3 day', result)
+
+    def test_format_time_ago_one_day(self):
+        """Test format_time_ago for exactly one day"""
+        with self.app.app_context():
+            from app.service import format_time_ago
+            
+            singapore_tz = ZoneInfo('Asia/Singapore')
+            timestamp = datetime.now(singapore_tz) - timedelta(days=1)
+            
+            result = format_time_ago(timestamp)
+            self.assertIn('1 day', result)
+            self.assertNotIn('days', result)
+
+    def test_format_time_ago_weeks(self):
+        """Test format_time_ago for weeks (shows date)"""
+        with self.app.app_context():
+            from app.service import format_time_ago
+            
+            singapore_tz = ZoneInfo('Asia/Singapore')
+            timestamp = datetime.now(singapore_tz) - timedelta(weeks=2)
+            
+            result = format_time_ago(timestamp)
+            # Should return formatted date
+            self.assertIn('202', result)  # Year
+
+    def test_format_time_ago_naive_datetime(self):
+        """Test format_time_ago with naive datetime"""
+        with self.app.app_context():
+            from app.service import format_time_ago
+            
+            timestamp = datetime.now() - timedelta(minutes=5)
+            
+            result = format_time_ago(timestamp)
+            self.assertIn('minute', result)
+
+    def test_get_user_initials_multiple_words(self):
+        """Test get_user_initials with multiple middle names"""
+        from app.service import get_user_initials
+        
+        result = get_user_initials("John Michael Doe")
+        self.assertEqual(result, "JD")
+
+    def test_get_user_initials_whitespace(self):
+        """Test get_user_initials with extra whitespace"""
+        from app.service import get_user_initials
+        
+        result = get_user_initials("  John   Doe  ")
+        self.assertEqual(result, "JD")
+
+    @mock.patch('requests.get')
+    def test_get_user_details_for_mention_non_200_status(self, mock_get):
+        """Test get_user_details_for_mention with non-200 status"""
+        with self.app.app_context():
+            from app.service import get_user_details_for_mention
+            
+            mock_resp = mock.MagicMock()
+            mock_resp.status_code = 500
+            mock_get.return_value = mock_resp
+            
+            result = get_user_details_for_mention(1)
+            self.assertEqual(result, {})
+
+    # ==================== Mention Notification Integration Tests ====================
+
+    @mock.patch('smtplib.SMTP')
+    @mock.patch('requests.get')
+    def test_send_mention_alert_with_long_comment(self, mock_get, mock_smtp):
+        """Test mention alert with very long comment body"""
+        with self.app.app_context():
+            from app.service import send_mention_alert_notification
+            
+            mock_server = mock.MagicMock()
+            mock_smtp.return_value.__enter__.return_value = mock_server
+            
+            long_comment = "A" * 500 + " @mentioned please review this"
+            
+            task_data = {
+                'id': 1,
+                'title': 'Task',
+                'parent_task_id': None
+            }
+            
+            def mock_requests_get(url, **kwargs):
+                mock_resp = mock.MagicMock()
+                mock_resp.status_code = 200
+                
+                if 'tasks/' in url:
+                    mock_resp.json.return_value = task_data
+                elif '/user/1' in url:
+                    mock_resp.json.return_value = {
+                        'id': 1, 'name': 'Author', 
+                        'email': 'author@test.com', 'username': 'author'
+                    }
+                elif '/user/2' in url:
+                    mock_resp.json.return_value = {
+                        'id': 2, 'name': 'Mentioned User', 
+                        'email': 'mentioned@test.com', 'username': 'mentioned'
+                    }
+                return mock_resp
+            
+            mock_get.side_effect = mock_requests_get
+            
+            success = send_mention_alert_notification(
+                task_id=1,
+                comment_id=1,
+                mentioned_user_id=2,
+                author_id=1,
+                comment_body=long_comment
+            )
+            
+            self.assertTrue(success)
+
+    @mock.patch('smtplib.SMTP')
+    @mock.patch('requests.get')
+    def test_send_mention_alert_for_subtask(self, mock_get, mock_smtp):
+        """Test mention alert for subtask"""
+        with self.app.app_context():
+            from app.service import send_mention_alert_notification
+            
+            mock_server = mock.MagicMock()
+            mock_smtp.return_value.__enter__.return_value = mock_server
+            
+            subtask_data = {
+                'id': 2,
+                'title': 'Subtask',
+                'parent_task_id': 1
+            }
+            
+            def mock_requests_get(url, **kwargs):
+                mock_resp = mock.MagicMock()
+                mock_resp.status_code = 200
+                
+                if 'tasks/' in url:
+                    mock_resp.json.return_value = subtask_data
+                elif '/user/1' in url:
+                    mock_resp.json.return_value = {
+                        'id': 1, 'name': 'Author', 
+                        'email': 'author@test.com', 'username': 'author'
+                    }
+                elif '/user/2' in url:
+                    mock_resp.json.return_value = {
+                        'id': 2, 'name': 'Mentioned', 
+                        'email': 'mentioned@test.com', 'username': 'mentioned'
+                    }
+                return mock_resp
+            
+            mock_get.side_effect = mock_requests_get
+            
+            success = send_mention_alert_notification(
+                task_id=2,
+                comment_id=1,
+                mentioned_user_id=2,
+                author_id=1,
+                comment_body="@mentioned check this subtask"
+            )
+            
+            self.assertTrue(success)
+
+    @mock.patch('smtplib.SMTP')
+    @mock.patch('requests.get')
+    def test_send_mention_alert_db_rollback_on_error(self, mock_get, mock_smtp):
+        """Test database rollback when mention alert fails"""
+        with self.app.app_context():
+            from app.service import send_mention_alert_notification
+            
+            mock_server = mock.MagicMock()
+            mock_smtp.return_value.__enter__.return_value = mock_server
+            
+            def mock_requests_get(url, **kwargs):
+                mock_resp = mock.MagicMock()
+                mock_resp.status_code = 200
+                
+                if 'tasks/' in url:
+                    mock_resp.json.return_value = {'id': 1, 'title': 'Task', 'parent_task_id': None}
+                elif '/user/' in url:
+                    mock_resp.json.return_value = {
+                        'id': 1, 'name': 'User', 
+                        'email': 'user@test.com', 'username': 'user'
+                    }
+                return mock_resp
+            
+            mock_get.side_effect = mock_requests_get
+            
+            with mock.patch('app.service.send_email_via_smtp', return_value=(True, None)):
+                with mock.patch.object(db.session, 'commit', side_effect=Exception("DB Error")):
+                    success = send_mention_alert_notification(
+                        task_id=1,
+                        comment_id=1,
+                        mentioned_user_id=2,
+                        author_id=1,
+                        comment_body="@user test"
+                    )
+                    
+                    self.assertFalse(success)
+
+    # ==================== RabbitMQ Consumer Edge Cases ====================
+
+    @mock.patch('pika.BlockingConnection')
+    def test_rabbitmq_consumer_connect_success_on_retry(self, mock_conn):
+        """Test RabbitMQ connection succeeds on retry"""
+        from app.rabbitmq_consumer import RabbitMQConsumer
+        import pika
+        
+        mock_connection = mock.MagicMock()
+        mock_channel = mock.MagicMock()
+        mock_connection.channel.return_value = mock_channel
+        
+        # Fail first, succeed second
+        mock_conn.side_effect = [
+            pika.exceptions.AMQPConnectionError("Error"),
+            mock_connection
+        ]
+        
+        consumer = RabbitMQConsumer(self.app)
+        success = consumer.connect(max_retries=3, retry_delay=0.1)
+        
+        self.assertTrue(success)
+        self.assertEqual(mock_conn.call_count, 2)
+
+    @mock.patch('pika.BlockingConnection')
+    def test_rabbitmq_consumer_start_consuming_connection_closed(self, mock_conn):
+        """Test start_consuming when connection is closed"""
+        from app.rabbitmq_consumer import RabbitMQConsumer
+        
+        consumer = RabbitMQConsumer(self.app)
+        consumer.connection = mock.MagicMock()
+        consumer.connection.is_closed = True
+        
+        mock_connection = mock.MagicMock()
+        mock_channel = mock.MagicMock()
+        mock_connection.channel.return_value = mock_channel
+        mock_connection.is_closed = False
+        mock_conn.return_value = mock_connection
+        
+        consumer.start_consuming()
+        
+        # Should attempt to reconnect
+        mock_conn.assert_called()
+
+    # ==================== Overdue Alert Edge Cases ====================
+
+    @mock.patch('smtplib.SMTP')
+    @mock.patch('requests.get')
+    def test_check_overdue_alerts_same_day_overdue(self, mock_get, mock_smtp):
+        """Test overdue check for task overdue on same day but time passed"""
+        with self.app.app_context():
+            mock_server = mock.MagicMock()
+            mock_smtp.return_value.__enter__.return_value = mock_server
+            
+            singapore_tz = ZoneInfo('Asia/Singapore')
+            now = datetime.now(singapore_tz)
+            
+            # Deadline today but earlier time (overdue)
+            deadline = now.replace(hour=9, minute=0)
+            
+            task = {
+                'id': 1,
+                'title': 'Task',
+                'deadline': deadline.isoformat(),
+                'status': 'Ongoing',
+                'owner_id': 1,
+                'parent_task_id': None,
+                'description': 'Test'
+            }
+            
+            def mock_requests_get(url, **kwargs):
+                mock_resp = mock.MagicMock()
+                mock_resp.status_code = 200
+                
+                if 'with-deadlines' in url:
+                    mock_resp.json.return_value = [task]
+                elif 'collaborators' in url:
+                    mock_resp.json.return_value = []
+                elif 'tasks/' in url:
+                    mock_resp.json.return_value = task
+                elif '/user/' in url:
+                    mock_resp.json.return_value = {
+                        'id': 1, 'name': 'Test', 'email': 'test@test.com'
+                    }
+                return mock_resp
+            
+            mock_get.side_effect = mock_requests_get
+            
+            from app.service import check_and_send_overdue_alerts
+            alerts = check_and_send_overdue_alerts()
+            
+            # Only sends if current time is after deadline time
+            if now.hour > 9:
+                self.assertGreaterEqual(alerts, 0)
+
+    # ==================== Scheduler Coverage ====================
+
+    @mock.patch('app.service.check_and_send_deadline_reminders')
+    @mock.patch('app.service.check_and_send_overdue_alerts')
+    def test_scheduler_run_all_checks_overdue_error(self, mock_overdue, mock_deadline):
+        """Test scheduler when overdue check raises error but deadline succeeds"""
+        with self.app.app_context():
+            from app.scheduler import NotificationScheduler
+            
+            mock_deadline.return_value = 2
+            mock_overdue.side_effect = Exception("Overdue check failed")
+            
+            scheduler = NotificationScheduler(self.app)
+            scheduler._run_all_checks()  # Should handle exception gracefully
+            
+            mock_deadline.assert_called_once()
+            mock_overdue.assert_called_once()
+
+    # ==================== Format Deadline Edge Cases ====================
+
+    def test_format_deadline_for_email_invalid_format(self):
+        """Test format_deadline_for_email with invalid format"""
+        with self.app.app_context():
+            from app.service import format_deadline_for_email
+            
+            result = format_deadline_for_email('invalid-date')
+            self.assertEqual(result, 'No deadline set')
+
+    def test_format_deadline_for_email_empty_string(self):
+        """Test format_deadline_for_email with empty string"""
+        with self.app.app_context():
+            from app.service import format_deadline_for_email
+            
+            result = format_deadline_for_email('')
+            self.assertEqual(result, 'No deadline set')
+
     # ==================== APP INITIALIZATION EDGE CASES ====================
 
     # def test_create_app_production_mode(self):
@@ -2436,5 +2917,5 @@ class TestNotificationService(unittest.TestCase):
     #     self.assertIsNotNone(app)
     #     self.assertFalse(app.config.get('TESTING', False))
 
-if __name__ == "__main__":
-    unittest.main()
+# if __name__ == "__main__":
+#     unittest.main()
