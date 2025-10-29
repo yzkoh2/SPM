@@ -111,6 +111,7 @@ def create_task(task_data):
 
         db.session.commit()
         
+        return new_task
     except Exception as e:
         print(f"Error in create_task: {e}")
         db.session.rollback()
@@ -538,7 +539,7 @@ def add_task_collaborators(task_id, collaborator_ids, user_id):
         while current_task:
             # Get existing collaborators for the current task
             result = db.session.execute(
-                task_collaborators.select().with_only_columns([task_collaborators.c.user_id])
+                task_collaborators.select().with_only_columns(task_collaborators.c.user_id)
                 .where(task_collaborators.c.task_id == current_task.id)
             )
             existing_collaborators = {row.user_id for row in result}
