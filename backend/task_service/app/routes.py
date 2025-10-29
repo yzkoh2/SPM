@@ -79,7 +79,7 @@ def create_task():
         # Create the task using your service
         new_task = service.create_task(data)
         print(f"Created task: {new_task}")
-        return jsonify(new_task), 201
+        return jsonify(new_task.to_json()), 201
         
     except Exception as e:
         print(f"Error in create_task: {e}")
