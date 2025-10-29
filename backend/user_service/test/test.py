@@ -1,4 +1,9 @@
 # To run the test, navigate to the user_service directory and run 'python3 -m unittest discover test'
+# to run coverage:
+# docker-compose exec user_service pip install coverage
+# docker-compose exec user_service coverage run -m unittest test.test
+# docker-compose exec user_service coverage report
+
 import unittest
 from unittest.mock import patch, MagicMock, ANY
 import os

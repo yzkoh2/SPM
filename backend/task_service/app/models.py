@@ -202,7 +202,7 @@ class Comment(db.Model):
     
 class ReportHistory(db.Model):
     """Represents a file attachment linked to a task."""
-    __tablename__ = 'attachments'
+    __tablename__ = 'reporthistory'
 
     id = db.Column(db.Integer, primary_key=True)
     filename = db.Column(db.String(255), nullable=False)
