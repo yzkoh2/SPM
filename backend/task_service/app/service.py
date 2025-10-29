@@ -137,6 +137,18 @@ def update_task(task_id, user_id, task_data):
         old_status = None
         status_changed = False
 
+        # Check if task is part of a project, then later update the updated_at timestamp
+        project_to_update = None
+        if task.project_id:
+            project_to_update = Project.query.get(task.project_id)
+
+        # Find the parent task (if this is a subtask)
+        parent_task_to_update = None
+        if task.parent_task_id:
+            parent_task_to_update = Task.query.get(task.parent_task_id)
+        
+        current_time = db.func.now()
+
         for field, data in task_data.items():
             if field in ['id', 'owner_id', 'collaborators_to_add', 'collaborators_to_remove']:
                 continue
@@ -194,6 +206,14 @@ def update_task(task_id, user_id, task_data):
         if 'status' in task_data and task.status == TaskStatusEnum.COMPLETED:
             if task.is_recurring:
                 _create_next_recurring_task(task)
+
+        if project_to_update:
+            project_to_update.updated_at = current_time
+            db.session.add(project_to_update)
+        
+        if parent_task_to_update:
+            parent_task_to_update.updated_at = current_time
+            db.session.add(parent_task_to_update)
 
         db.session.commit()
 

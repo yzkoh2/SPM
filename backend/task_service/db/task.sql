@@ -5,6 +5,9 @@ DROP TABLE IF EXISTS comment_mentions CASCADE;
 DROP TABLE IF EXISTS tasks CASCADE;
 DROP TABLE IF EXISTS projects CASCADE;
 DROP TABLE IF EXISTS comments CASCADE;
+DROP TABLE IF EXISTS report_history CASCADE;
+DROP FUNCTION IF EXISTS set_timestamp_projects() CASCADE;
+DROP FUNCTION IF EXISTS set_timestamp_tasks() CASCADE;
 
 
 ALTER DATABASE task_db SET timezone TO 'UTC';
@@ -15,7 +18,8 @@ CREATE TABLE projects (
     description TEXT,
     deadline TIMESTAMP,
     owner_id INT NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE tasks (
@@ -31,7 +35,9 @@ CREATE TABLE tasks (
     is_recurring BOOLEAN DEFAULT FALSE,
     recurrence_interval VARCHAR(50),
     recurrence_days INT,
-    recurrence_end_date TIMESTAMP
+    recurrence_end_date TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE attachments (
@@ -67,6 +73,23 @@ CREATE TABLE comment_mentions (
     user_id INT NOT NULL,
     PRIMARY KEY (comment_id, user_id)
 );
+
+CREATE TABLE report_history (
+    id SERIAL PRIMARY KEY,
+    filename VARCHAR(255) NOT NULL,
+    url VARCHAR(500) NOT NULL,
+);
+
+CREATE TRIGGER set_timestamp_projects
+BEFORE UPDATE ON projects
+FOR EACH ROW
+EXECUTE PROCEDURE trigger_set_timestamp();
+
+-- This tells PostgreSQL to run the function before any UPDATE on 'tasks'
+CREATE TRIGGER set_timestamp_tasks
+BEFORE UPDATE ON tasks
+FOR EACH ROW
+EXECUTE PROCEDURE trigger_set_timestamp();
 
 ------------------------------------------------------------------
 -- SAMPLE DATA MIGRATION
