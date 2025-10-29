@@ -1,3 +1,6 @@
+DROP TRIGGER IF EXISTS set_timestamp_projects ON projects;
+DROP TRIGGER IF EXISTS set_timestamp_tasks ON tasks;
+DROP FUNCTION IF EXISTS trigger_set_timestamp();
 DROP TABLE IF EXISTS attachments CASCADE;
 DROP TABLE IF EXISTS task_collaborators CASCADE;
 DROP TABLE IF EXISTS project_collaborators CASCADE;
@@ -6,8 +9,6 @@ DROP TABLE IF EXISTS tasks CASCADE;
 DROP TABLE IF EXISTS projects CASCADE;
 DROP TABLE IF EXISTS comments CASCADE;
 DROP TABLE IF EXISTS report_history CASCADE;
-DROP FUNCTION IF EXISTS set_timestamp_projects() CASCADE;
-DROP FUNCTION IF EXISTS set_timestamp_tasks() CASCADE;
 
 
 ALTER DATABASE task_db SET timezone TO 'UTC';
@@ -77,8 +78,16 @@ CREATE TABLE comment_mentions (
 CREATE TABLE report_history (
     id SERIAL PRIMARY KEY,
     filename VARCHAR(255) NOT NULL,
-    url VARCHAR(500) NOT NULL,
+    url VARCHAR(500) NOT NULL
 );
+
+CREATE FUNCTION trigger_set_timestamp()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.updated_at = NOW();
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
 
 CREATE TRIGGER set_timestamp_projects
 BEFORE UPDATE ON projects
