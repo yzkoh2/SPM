@@ -62,83 +62,76 @@ def _fetch_user_details(user_id):
         user_service_url = current_app.config.get('USER_SERVICE_URL', 'http://spm_user_service:6000')
         response = requests.get(f"{user_service_url}/user/{user_id}", timeout=5)
         if response.status_code == 200:
-            user_data = response.json(); return {"id": user_data.get("id"), "name": user_data.get("name", f"User {user_id}"), "role": user_data.get("role", "Unknown")}
-        else: print(f"Error fetching user {user_id}: {response.status_code}"); return {"id": user_id, "name": f"User {user_id} (Not Found)", "role": "Unknown"}
-    except requests.exceptions.RequestException as e: print(f"API call failed for user {user_id}: {e}"); return {"id": user_id, "name": f"User {user_id} (Service Down?)", "role": "Unknown"}
-    except Exception as e: print(f"Error fetching details for user {user_id}: {e}"); return {"id": user_id, "name": f"User {user_id} (Error)", "role": "Unknown"}
+            user_data = response.json(); 
+            return {"id": user_data.get("id"), "name": user_data.get("name", f"User {user_id}"), "role": user_data.get("role", "Unknown")}
+        else: 
+            print(f"Error fetching user {user_id}: {response.status_code}"); return {"id": user_id, "name": f"User {user_id} (Not Found)", "role": "Unknown"}
+    except requests.exceptions.RequestException as e: 
+        print(f"API call failed for user {user_id}: {e}"); return {"id": user_id, "name": f"User {user_id} (Service Down?)", "role": "Unknown"}
+    except Exception as e: 
+        print(f"Error fetching details for user {user_id}: {e}"); return {"id": user_id, "name": f"User {user_id} (Error)", "role": "Unknown"}
 
 
 # Helper to get task state as of a specific date in UTC
+# Helper to get task state as of a specific date in UTC
 def get_task_state_as_of(task, end_date_utc):
     """
-    Determines the task's status, priority, and owner as of a specific end_date (UTC)
-    by starting from the task's CURRENT state and "rewinding" logs back to the end_date.
-    Returns a dictionary {'status': TaskStatusEnum, 'priority': int, 'owner_id': int}
-    or None if the task didn't exist at end_date_utc.
+    [REPLAY METHOD] Determines the task's status, priority, and owner as of a 
+    specific end_date (UTC) by starting from the initial state and replaying all
+    activity logs up to the snapshot time.
     """
     utc_tz = pytz.utc
 
-    # Localize task creation time if naive
+    # Localize task creation time
     task_created_at_utc = task.created_at
     if task_created_at_utc.tzinfo is None:
         task_created_at_utc = utc_tz.localize(task_created_at_utc)
 
-    # If the task was created AFTER the 'as_of' date, it didn't exist yet.
-    # Handle the edge case where end_date_utc might be None (report for "current time")
+    # 1. Check if the task existed yet
     if end_date_utc and task_created_at_utc > end_date_utc:
-        return None # Indicate task didn't exist
+        return None # Task did not exist
 
-    # --- 1. Start with the task's CURRENT state ---
-    # The 'task' object holds the most recent values.
+    # --- 2. Establish Initial State (The Baseline) ---
+    # We must use the ORM values as the starting point, assuming they reflect creation data.
     state = {
-        'status': task.status,
+        'status': models.TaskStatusEnum(task.status.value) if task.status is not None else models.TaskStatusEnum.UNASSIGNED,
         'priority': task.priority if task.priority is not None else 5,
         'owner_id': task.owner_id
     }
 
-    # --- 2. Fetch logs that happened AFTER the cutoff date ---
-    # These are the changes we need to undo.
-    logs_to_rewind = models.TaskActivityLog.query.filter(
+    # --- 3. Fetch logs that happened UP TO AND INCLUDING the cutoff date ---
+    # These are the changes we need to APPLY chronologically (Replay).
+    logs_to_replay = models.TaskActivityLog.query.filter(
         models.TaskActivityLog.task_id == task.id,
-        # Only get logs that are *after* the date we care about
-        models.TaskActivityLog.timestamp > end_date_utc
-    ).order_by(models.TaskActivityLog.timestamp.desc()).all() # Newest first
+        models.TaskActivityLog.timestamp <= end_date_utc
+    ).order_by(models.TaskActivityLog.timestamp.asc()).all() # Oldest first
 
-    # --- 3. Replay logs in reverse (rewind) ---
-    # By applying the 'old_value' from each log, we revert the state.
-    for log in logs_to_rewind:
+    # --- 4. Replay logs in forward chronological order ---
+    for log in logs_to_replay:
         field = log.field_changed
-        old_value_str = log.old_value # Use the old_value to rewind
+        new_value_str = log.new_value # Use the NEW_VALUE to evolve the state forward
 
         if field == 'status':
-            if old_value_str == 'None':
-                 state['status'] = models.TaskStatusEnum.UNASSIGNED # Revert to default
-            else:
-                 try: state['status'] = models.TaskStatusEnum(old_value_str)
-                 except ValueError: pass # Keep previous state if invalid enum
+             try: 
+                 state['status'] = models.TaskStatusEnum(new_value_str)
+             except ValueError: 
+                 pass
         elif field == 'priority':
-             if old_value_str == 'None':
-                 state['priority'] = 5 # Revert to default
-             else:
-                 try: state['priority'] = int(old_value_str)
-                 except (ValueError, TypeError): pass # Keep previous state
+             try: state['priority'] = int(new_value_str)
+             except (ValueError, TypeError): pass
         elif field == 'owner_id':
-             if old_value_str == 'None': continue # Cannot have None owner
-             try: state['owner_id'] = int(old_value_str)
-             except (ValueError, TypeError): pass # Keep previous state
+             try: state['owner_id'] = int(new_value_str)
+             except (ValueError, TypeError): pass
         # Add elif for other fields if needed
 
-    # --- 4. Final state validation ---
-    # The state dictionary now holds the values as they were at end_date_utc
+    # --- 5. Final state validation (Remains the same) ---
     if not (isinstance(state['priority'], int) and 1 <= state['priority'] <= 10):
-         state['priority'] = 5 # Fallback to default if invalid
+         state['priority'] = 5 
 
     if not isinstance(state['status'], models.TaskStatusEnum):
-        # Fallback to the task's original status if rewind fails
-        state['status'] = task.status if isinstance(task.status, models.TaskStatusEnum) else models.TaskStatusEnum.UNASSIGNED
+        state['status'] = models.TaskStatusEnum.UNASSIGNED
 
     return state
-
 
 def generate_project_pdf_report(project_id: int, user_id: int, start_date: datetime = None, end_date: datetime = None, timezone_str: str = "UTC"):
     """
@@ -232,7 +225,15 @@ def generate_project_pdf_report(project_id: int, user_id: int, start_date: datet
     print(f"DEBUG: generator - Calculated as_of_date_utc: {as_of_date_utc}")
 
     for task in all_project_tasks:
+        # 1. Get the task state as of the report snapshot date
         state_as_of = get_task_state_as_of(task, as_of_date_utc)
+        
+        # 2. CRITICAL FIX: Check if the task existed as of the report date
+        if state_as_of is None:
+            # If the task didn't exist at the snapshot time, skip it and continue to the next task
+            continue 
+            
+        # 3. Only proceed with processing if state_as_of is a valid dictionary
         status_as_of = state_as_of['status']
         priority_as_of = state_as_of['priority']
         owner_id_as_of = state_as_of['owner_id']
@@ -273,7 +274,19 @@ def generate_project_pdf_report(project_id: int, user_id: int, start_date: datet
                  'priority': priority_as_of or '-', 'is_overdue_as_of': is_overdue_as_of
             })
 
-    section3_tasks.sort(key=lambda x: (x['deadline'] == 'N/A', x['deadline'], x['priority'] == '-', x['priority']))
+# Convert to proper types before sorting
+    section3_for_sort = []
+    for task in section3_tasks:
+        try:
+            deadline_sort = datetime.fromisoformat(task['deadline'].replace('SGT', '').strip()) if task['deadline'] != 'N/A' else datetime.max
+        except:
+            deadline_sort = datetime.max
+        
+        priority_sort = int(task['priority']) if task['priority'] != '-' else 0
+        
+        section3_for_sort.append((deadline_sort, priority_sort, task))
+
+    section3_tasks = [item[2] for item in sorted(section3_for_sort)]
 
 
     # --- 5. Format Metrics and Generate Charts ---
