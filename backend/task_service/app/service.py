@@ -1154,7 +1154,9 @@ def get_project_tasks(project_id):
             Task.parent_task_id.is_(None)
         ).order_by(Task.id.desc()).all()
 
+
         return tasks, None
+
 
     except Exception as e:
         print(f"Error getting project tasks: {e}")

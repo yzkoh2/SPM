@@ -595,116 +595,30 @@ class TestCommentsUnit(TestTaskRoutesUnit):
 
 class TestCollaboratorsUnit(TestTaskRoutesUnit):
     """Unit tests for collaborator operations"""
-    
-    @patch('app.routes.service.get_task_collaborators')
-    def test_get_task_collaborators_success(self, mock_get_collaborators):
-        """Test getting task collaborators"""
-        mock_collaborators = [
-            {'user_id': 2},
-            {'user_id': 3}
-        ]
-        mock_get_collaborators.return_value = mock_collaborators
-        
-        response = self.client.get('/api/tasks/1/collaborators')
-        self.assertEqual(response.status_code, 200)
-        data = json.loads(response.data)
-        self.assertEqual(len(data), 2)
-    
-    @patch('app.routes.service.get_task_collaborators')
-    def test_get_task_collaborators_empty(self, mock_get_collaborators):
-        """Test getting collaborators for task with none"""
-        mock_get_collaborators.return_value = []
-        
-        response = self.client.get('/api/tasks/1/collaborators')
-        self.assertEqual(response.status_code, 200)
-        data = json.loads(response.data)
-        self.assertEqual(len(data), 0)
-    
-    @patch('app.routes.service.get_task_collaborators')
-    def test_get_task_collaborators_exception(self, mock_get_collaborators):
-        """Test get collaborators with exception"""
-        mock_get_collaborators.side_effect = Exception("Database error")
-        
-        response = self.client.get('/api/tasks/1/collaborators')
-        self.assertEqual(response.status_code, 500)
-    
-    @patch('app.routes.service.add_task_collaborators')
-    def test_add_collaborator_success(self, mock_add_collaborators):
+
+    @patch('app.routes.service.update_task')
+    def test_add_collaborators(self, mock_update_task):
         """Test adding collaborators to a task"""
-        data = {
-            'collaborator_ids': [2, 3],
-            'requested_by': 1
-        }
-        mock_add_collaborators.return_value = {'message': 'Success'}
-        
-        response = self.client.post('/api/tasks/1/collaborators',
-                                   data=json.dumps(data),
-                                   content_type='application/json')
-        self.assertEqual(response.status_code, 201)
-    
-    @patch('app.routes.service.add_task_collaborators')
-    def test_add_collaborator_missing_ids(self, mock_add_collaborators):
-        """Test adding collaborators without IDs"""
-        data = {
-            'requested_by': 1
-        }
-        
-        response = self.client.post('/api/tasks/1/collaborators',
-                                   data=json.dumps(data),
-                                   content_type='application/json')
-        self.assertEqual(response.status_code, 400)
-    
-    @patch('app.routes.service.add_task_collaborators')
-    def test_add_collaborator_missing_requester(self, mock_add_collaborators):
-        """Test adding collaborators without requester"""
-        data = {
-            'collaborator_ids': [2, 3]
-        }
-        
-        response = self.client.post('/api/tasks/1/collaborators',
-                                   data=json.dumps(data),
-                                   content_type='application/json')
-        self.assertEqual(response.status_code, 400)
-    
-    @patch('app.routes.service.add_task_collaborators')
-    def test_add_collaborator_exception(self, mock_add_collaborators):
-        """Test add collaborator with exception"""
-        data = {
-            'collaborator_ids': [2, 3],
-            'requested_by': 1
-        }
-        mock_add_collaborators.side_effect = Exception("Permission denied")
-        
-        response = self.client.post('/api/tasks/1/collaborators',
-                                   data=json.dumps(data),
-                                   content_type='application/json')
-        self.assertEqual(response.status_code, 500)
-    
-    @patch('app.routes.service.remove_task_collaborator')
-    def test_remove_collaborator_success(self, mock_remove_collaborator):
-        """Test removing a collaborator from a task"""
-        data = {
-            'collaborator_id': [2],
-            'requested_by': 1
-        }
-        mock_remove_collaborator.return_value = {'message': 'Success'}
-        
-        response = self.client.delete('/api/tasks/1/collaborators',
-                                     data=json.dumps(data),
-                                     content_type='application/json')
+        mock_update_task.return_value = ({}, "success")
+        response = self.client.put('/api/tasks/1',
+                                  data=json.dumps({
+                                      'user_id': 1,
+                                      'collaborators_to_add': [2, 3]
+                                  }),
+                                  content_type='application/json')
         self.assertEqual(response.status_code, 200)
-    
-    @patch('app.routes.service.remove_task_collaborator')
-    def test_remove_collaborator_missing_id(self, mock_remove_collaborator):
-        """Test removing collaborator without ID"""
-        data = {
-            'requested_by': 1
-        }
-        
-        response = self.client.delete('/api/tasks/1/collaborators',
-                                     data=json.dumps(data),
-                                     content_type='application/json')
-        self.assertEqual(response.status_code, 400)
+
+    @patch('app.routes.service.update_task')
+    def test_remove_collaborators(self, mock_update_task):
+        """Test removing collaborators from a task"""
+        mock_update_task.return_value = ({}, "success")
+        response = self.client.put('/api/tasks/1',
+                                  data=json.dumps({
+                                      'user_id': 1,
+                                      'collaborators_to_remove': [2]
+                                  }),
+                                  content_type='application/json')
+        self.assertEqual(response.status_code, 200)
 
 
 # ==================== UNIT TESTS - ATTACHMENTS ====================
@@ -1653,16 +1567,16 @@ class TestServiceFunctions(TestTaskRoutesIntegration):
 
     def test_add_and_remove_task_collaborators(self):
         """Test adding and removing task collaborators"""
-        from app.service import add_task_collaborators, remove_task_collaborator
+        from app.service import update_task
         task = Task(title="Add/Remove Collaborator Task", owner_id=1)
         db.session.add(task)
         db.session.commit()
 
-        add_task_collaborators(task.id, [2, 3], 1)
+        update_task(task.id, 1, {'collaborators_to_add': [2, 3]})
         collaborators = db.session.execute(task_collaborators.select().where(task_collaborators.c.task_id == task.id)).fetchall()
         self.assertEqual(len(collaborators), 2)
 
-        remove_task_collaborator(task.id, [2], 1)
+        update_task(task.id, 1, {'collaborators_to_remove': [2]})
         collaborators = db.session.execute(task_collaborators.select().where(task_collaborators.c.task_id == task.id)).fetchall()
         self.assertEqual(len(collaborators), 1)
 
@@ -2012,6 +1926,45 @@ class TestServiceFunctions(TestTaskRoutesIntegration):
         db.session.commit()
         tasks = get_standalone_tasks_for_user(1)
         self.assertEqual(len(tasks), 0)
+
+    def test_get_all_subtask_ids(self):
+        """Test getting all subtask ids for a task"""
+        from app.service import _get_all_subtask_ids
+        task1 = Task(id=1, title="Parent Task", owner_id=1)
+        task2 = Task(id=2, title="Subtask 1", owner_id=1, parent_task_id=1)
+        task3 = Task(id=3, title="Subtask 2", owner_id=1, parent_task_id=1)
+        task4 = Task(id=4, title="Sub-subtask 1", owner_id=1, parent_task_id=2)
+        db.session.add_all([task1, task2, task3, task4])
+        db.session.commit()
+
+        subtask_ids = _get_all_subtask_ids(1)
+        self.assertEqual(subtask_ids, {1, 2, 3, 4})
+
+    def test_calculate_next_due_date(self):
+        """Test calculating the next due date for a recurring task"""
+        from app.service import _calculate_next_due_date
+        from datetime import datetime, timedelta
+        from dateutil.relativedelta import relativedelta
+
+        start_date = datetime(2024, 1, 1)
+
+        # Test daily recurrence
+        self.assertEqual(_calculate_next_due_date(start_date, 'daily', None), start_date + timedelta(days=1))
+
+        # Test weekly recurrence
+        self.assertEqual(_calculate_next_due_date(start_date, 'weekly', None), start_date + timedelta(weeks=1))
+
+        # Test monthly recurrence
+        self.assertEqual(_calculate_next_due_date(start_date, 'monthly', None), start_date + relativedelta(months=1))
+
+        # Test custom recurrence
+        self.assertEqual(_calculate_next_due_date(start_date, 'custom', 5), start_date + timedelta(days=5))
+
+        # Test no recurrence
+        self.assertIsNone(_calculate_next_due_date(start_date, 'none', None))
+
+        # Test no start date
+        self.assertIsNone(_calculate_next_due_date(None, 'daily', None))
 
 
 
