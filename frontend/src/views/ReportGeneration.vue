@@ -9,9 +9,6 @@
         </p>
       </div>
 
-      <!-- Navigation -->
-      <TaskboardNavigation />
-
       <!-- Error Display -->
       <div v-if="error" class="bg-red-50 border border-red-200 rounded-md p-4 mb-6">
         <div class="flex items-center">
