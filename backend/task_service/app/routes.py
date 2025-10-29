@@ -118,6 +118,9 @@ def update_task(task_id):
                 return jsonify({"error": message}), 400 
         return jsonify(updated_task), 200
     
+    except ValueError as e:
+        print(f"Error in update_task: {e}")
+        return jsonify({"error": str(e)}), 400
     except Exception as e:
         print(f"Error in update_task: {e}")
         return jsonify({"error": str(e)}), 500
@@ -275,6 +278,9 @@ def create_project():
         new_project = service.create_project(data)
         return jsonify(new_project), 201
         
+    except KeyError as e:
+        print(f"Error in create_project: {e}")
+        return jsonify({"error": str(e)}), 400
     except Exception as e:
         print(f"Error in create_project: {e}")
         return jsonify({"error": str(e)}), 500

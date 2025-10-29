@@ -434,6 +434,9 @@ def get_task_details(task_id):
 def add_comment(task_id, data):
     #Add a new comment to a task, trigger mention notification if necessary
     try:
+        task = Task.query.get(task_id)
+        if not task:
+            return None, "Task not found"
         #Create new comment
         new_comment = Comment(
             body=data['body'],
@@ -1161,15 +1164,18 @@ def get_project_tasks(project_id):
     """
     Get all tasks (excluding subtasks) for a project
     """
-    try:        
+    try:
+        project = Project.query.get(project_id)
+        if not project:
+            return None, "Project not found"
         # Get all parent tasks in the project
         tasks = Task.query.filter(
             Task.project_id == project_id,
             Task.parent_task_id.is_(None)
         ).order_by(Task.id.desc()).all()
-        
+
         return tasks, None
-        
+
     except Exception as e:
         print(f"Error getting project tasks: {e}")
         raise

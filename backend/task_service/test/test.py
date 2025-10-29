@@ -471,6 +471,14 @@ class TestDeleteTaskUnit(TestTaskRoutesUnit):
                                      content_type='application/json')
         
         self.assertEqual(response.status_code, 404)
+
+    @patch('app.routes.service.add_comment')
+    def test_add_comment_no_data(self, mock_add_comment):
+        """Test adding a comment with no data"""
+        response = self.client.post('/api/tasks/1/comments',
+                                      data=json.dumps({}),
+                                      content_type='application/json')
+        self.assertEqual(response.status_code, 400)
         data = json.loads(response.data)
         self.assertIn('error', data)
     
@@ -587,116 +595,30 @@ class TestCommentsUnit(TestTaskRoutesUnit):
 
 class TestCollaboratorsUnit(TestTaskRoutesUnit):
     """Unit tests for collaborator operations"""
-    
-    @patch('app.routes.service.get_task_collaborators')
-    def test_get_task_collaborators_success(self, mock_get_collaborators):
-        """Test getting task collaborators"""
-        mock_collaborators = [
-            {'user_id': 2},
-            {'user_id': 3}
-        ]
-        mock_get_collaborators.return_value = mock_collaborators
-        
-        response = self.client.get('/api/tasks/1/collaborators')
-        self.assertEqual(response.status_code, 200)
-        data = json.loads(response.data)
-        self.assertEqual(len(data), 2)
-    
-    @patch('app.routes.service.get_task_collaborators')
-    def test_get_task_collaborators_empty(self, mock_get_collaborators):
-        """Test getting collaborators for task with none"""
-        mock_get_collaborators.return_value = []
-        
-        response = self.client.get('/api/tasks/1/collaborators')
-        self.assertEqual(response.status_code, 200)
-        data = json.loads(response.data)
-        self.assertEqual(len(data), 0)
-    
-    @patch('app.routes.service.get_task_collaborators')
-    def test_get_task_collaborators_exception(self, mock_get_collaborators):
-        """Test get collaborators with exception"""
-        mock_get_collaborators.side_effect = Exception("Database error")
-        
-        response = self.client.get('/api/tasks/1/collaborators')
-        self.assertEqual(response.status_code, 500)
-    
-    @patch('app.routes.service.add_task_collaborators')
-    def test_add_collaborator_success(self, mock_add_collaborators):
+
+    @patch('app.routes.service.update_task')
+    def test_add_collaborators(self, mock_update_task):
         """Test adding collaborators to a task"""
-        data = {
-            'collaborator_ids': [2, 3],
-            'requested_by': 1
-        }
-        mock_add_collaborators.return_value = {'message': 'Success'}
-        
-        response = self.client.post('/api/tasks/1/collaborators',
-                                   data=json.dumps(data),
-                                   content_type='application/json')
-        self.assertEqual(response.status_code, 201)
-    
-    @patch('app.routes.service.add_task_collaborators')
-    def test_add_collaborator_missing_ids(self, mock_add_collaborators):
-        """Test adding collaborators without IDs"""
-        data = {
-            'requested_by': 1
-        }
-        
-        response = self.client.post('/api/tasks/1/collaborators',
-                                   data=json.dumps(data),
-                                   content_type='application/json')
-        self.assertEqual(response.status_code, 400)
-    
-    @patch('app.routes.service.add_task_collaborators')
-    def test_add_collaborator_missing_requester(self, mock_add_collaborators):
-        """Test adding collaborators without requester"""
-        data = {
-            'collaborator_ids': [2, 3]
-        }
-        
-        response = self.client.post('/api/tasks/1/collaborators',
-                                   data=json.dumps(data),
-                                   content_type='application/json')
-        self.assertEqual(response.status_code, 400)
-    
-    @patch('app.routes.service.add_task_collaborators')
-    def test_add_collaborator_exception(self, mock_add_collaborators):
-        """Test add collaborator with exception"""
-        data = {
-            'collaborator_ids': [2, 3],
-            'requested_by': 1
-        }
-        mock_add_collaborators.side_effect = Exception("Permission denied")
-        
-        response = self.client.post('/api/tasks/1/collaborators',
-                                   data=json.dumps(data),
-                                   content_type='application/json')
-        self.assertEqual(response.status_code, 500)
-    
-    @patch('app.routes.service.remove_task_collaborator')
-    def test_remove_collaborator_success(self, mock_remove_collaborator):
-        """Test removing a collaborator from a task"""
-        data = {
-            'collaborator_id': [2],
-            'requested_by': 1
-        }
-        mock_remove_collaborator.return_value = {'message': 'Success'}
-        
-        response = self.client.delete('/api/tasks/1/collaborators',
-                                     data=json.dumps(data),
-                                     content_type='application/json')
+        mock_update_task.return_value = ({}, "success")
+        response = self.client.put('/api/tasks/1',
+                                  data=json.dumps({
+                                      'user_id': 1,
+                                      'collaborators_to_add': [2, 3]
+                                  }),
+                                  content_type='application/json')
         self.assertEqual(response.status_code, 200)
-    
-    @patch('app.routes.service.remove_task_collaborator')
-    def test_remove_collaborator_missing_id(self, mock_remove_collaborator):
-        """Test removing collaborator without ID"""
-        data = {
-            'requested_by': 1
-        }
-        
-        response = self.client.delete('/api/tasks/1/collaborators',
-                                     data=json.dumps(data),
-                                     content_type='application/json')
-        self.assertEqual(response.status_code, 400)
+
+    @patch('app.routes.service.update_task')
+    def test_remove_collaborators(self, mock_update_task):
+        """Test removing collaborators from a task"""
+        mock_update_task.return_value = ({}, "success")
+        response = self.client.put('/api/tasks/1',
+                                  data=json.dumps({
+                                      'user_id': 1,
+                                      'collaborators_to_remove': [2]
+                                  }),
+                                  content_type='application/json')
+        self.assertEqual(response.status_code, 200)
 
 
 # ==================== UNIT TESTS - ATTACHMENTS ====================
@@ -860,6 +782,49 @@ class TestProjectRoutesUnit(TestTaskRoutesUnit):
                                    data=json.dumps(project_data),
                                    content_type='application/json')
         self.assertEqual(response.status_code, 400)
+
+    @patch('app.routes.service.create_project')
+    def test_create_project_key_error(self, mock_create_project):
+        """Test creating a project with a key error"""
+        mock_create_project.side_effect = KeyError("Test error")
+        project_data = {
+            'title': 'New Project',
+            'description': 'Project description',
+            'owner_id': 1
+        }
+
+        response = self.client.post('/api/projects',
+                                      data=json.dumps(project_data),
+                                      content_type='application/json')
+        self.assertEqual(response.status_code, 400)
+
+    @patch('app.routes.service.update_task')
+    def test_update_task_value_error(self, mock_update_task):
+        """Test updating a task with a value error"""
+        mock_update_task.side_effect = ValueError("Test error")
+        update_data = {
+            'title': 'Updated Title',
+            'user_id': 1
+        }
+
+        response = self.client.put('/api/tasks/1',
+                                    data=json.dumps(update_data),
+                                    content_type='application/json')
+        self.assertEqual(response.status_code, 400)
+
+    @patch('app.routes.service.update_task')
+    def test_update_task_unauthorized(self, mock_update_task):
+        """Test updating a task with an unauthorized user"""
+        mock_update_task.return_value = (None, "Forbidden: You do not have permission to edit this task.")
+        update_data = {
+            'title': 'Updated Title',
+            'user_id': 2
+        }
+
+        response = self.client.put('/api/tasks/1',
+                                    data=json.dumps(update_data),
+                                    content_type='application/json')
+        self.assertEqual(response.status_code, 403)
     
     @patch('app.routes.service.create_project')
     def test_create_project_missing_owner(self, mock_create_project):
@@ -967,6 +932,23 @@ class TestProjectRoutesUnit(TestTaskRoutesUnit):
         
         response = self.client.get('/api/projects/user/1?role=owner')
         self.assertEqual(response.status_code, 200)
+
+    @patch('app.routes.service.get_project_dashboard')
+    def test_get_project_dashboard_not_found(self, mock_get_dashboard):
+        """Test getting project dashboard for a non-existent project"""
+        mock_get_dashboard.return_value = (None, "Project not found")
+
+        response = self.client.get('/api/projects/999/dashboard?user_id=1')
+        self.assertEqual(response.status_code, 404)
+
+    @patch('app.routes.service.get_user_projects')
+    def test_get_user_projects_no_projects(self, mock_get_user_projects):
+        """Test getting user projects when user has no projects"""
+        mock_get_user_projects.return_value = []
+
+        response = self.client.get('/api/projects/user/999')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(json.loads(response.data), [])
     
     @patch('app.routes.service.update_project')
     def test_update_project_success(self, mock_update_project):
@@ -1092,6 +1074,31 @@ class TestProjectRoutesUnit(TestTaskRoutesUnit):
                                    data=json.dumps(data),
                                    content_type='application/json')
         self.assertEqual(response.status_code, 409)
+
+    @patch('app.routes.service.add_project_collaborator')
+    def test_add_project_collaborator_project_not_found(self, mock_add_collaborator):
+        """Test adding a collaborator to a non-existent project"""
+        mock_add_collaborator.return_value = (None, "Project not found")
+        data = {
+            'user_id': 1,
+            'collaborator_user_id': 2
+        }
+        response = self.client.post('/api/projects/999/collaborators',
+                                      data=json.dumps(data),
+                                      content_type='application/json')
+        self.assertEqual(response.status_code, 404)
+
+    @patch('app.routes.service.remove_project_collaborator')
+    def test_remove_project_collaborator_forbidden(self, mock_remove_collaborator):
+        """Test removing a collaborator without permission"""
+        mock_remove_collaborator.return_value = (None, "Forbidden: Only the project owner can remove collaborators")
+        data = {
+            'user_id': 2
+        }
+        response = self.client.delete('/api/projects/1/collaborators/1',
+                                      data=json.dumps(data),
+                                      content_type='application/json')
+        self.assertEqual(response.status_code, 403)
     
     @patch('app.routes.service.remove_project_collaborator')
     def test_remove_project_collaborator_success(self, mock_remove_collaborator):
@@ -1323,6 +1330,54 @@ class TestServiceFunctions(TestTaskRoutesIntegration):
         updated_task, message = update_task(task.id, 1, update_data)
         self.assertEqual(updated_task['status'], 'Completed')
 
+    def test_update_task_not_found(self):
+        from app.service import update_task
+        updated_task, message = update_task(999, 1, {'title': 'New Title'})
+        self.assertIsNone(updated_task)
+        self.assertEqual(message, "Task not found")
+
+    def test_update_task_forbidden(self):
+        from app.service import update_task
+        task = Task(title="Forbidden Task", owner_id=1)
+        db.session.add(task)
+        db.session.commit()
+        updated_task, message = update_task(task.id, 2, {'title': 'New Title'})
+        self.assertIsNone(updated_task)
+        self.assertEqual(message, "Forbidden: You do not have permission to edit this task.")
+
+    def test_update_task_invalid_status(self):
+        from app.service import update_task
+        task = Task(title="Invalid Status Task", owner_id=1)
+        db.session.add(task)
+        db.session.commit()
+        updated_task, message = update_task(task.id, 1, {'status': 'Invalid'})
+        self.assertIsNone(updated_task)
+        self.assertEqual(message, "Invalid status value")
+
+    def test_update_task_collaborator_forbidden(self):
+        from app.service import update_task
+        task = Task(title="Forbidden Task", owner_id=1)
+        db.session.add(task)
+        db.session.commit()
+        db.session.execute(task_collaborators.insert().values(task_id=task.id, user_id=2))
+        db.session.commit()
+        updated_task, message = update_task(task.id, 2, {'title': 'New Title'})
+        self.assertIsNone(updated_task)
+        self.assertEqual(message, "Forbidden: Collaborators can only update the task's status.")
+
+    def test_create_task_with_invalid_deadline(self):
+        """Test creating a task with an invalid deadline is handled gracefully"""
+        from app.service import create_task
+        task_data = {
+            'title': 'Service Task Invalid Deadline',
+            'description': 'Service Task Description',
+            'owner_id': 1,
+            'deadline': 'invalid-deadline'
+        }
+        task = create_task(task_data)
+        self.assertIsNotNone(task)
+        self.assertIsNone(task.deadline)
+
     def test_delete_task_with_incomplete_subtasks(self):
         """Test deleting a task with incomplete subtasks"""
         from app.service import delete_task
@@ -1336,6 +1391,46 @@ class TestServiceFunctions(TestTaskRoutesIntegration):
         success, message = delete_task(parent_task.id, 1)
         self.assertFalse(success)
         self.assertEqual(message, "Cannot delete task. All subtasks must be completed first.")
+
+    def test_delete_task_not_found(self):
+        from app.service import delete_task
+        success, message = delete_task(999, 1)
+        self.assertFalse(success)
+        self.assertEqual(message, "Task not found")
+
+    def test_delete_task_forbidden(self):
+        from app.service import delete_task
+        task = Task(title="Forbidden Task", owner_id=1)
+        db.session.add(task)
+        db.session.commit()
+        success, message = delete_task(task.id, 2)
+        self.assertFalse(success)
+        self.assertEqual(message, "Forbidden: You do not have permission to delete this task.")
+
+    def test_create_task_with_priority(self):
+        """Test creating a task with a priority"""
+        from app.service import create_task
+        task_data = {
+            'title': 'Service Task with Priority',
+            'description': 'Service Task Description',
+            'owner_id': 1,
+            'priority': 'High'
+        }
+        create_task(task_data)
+        task = Task.query.filter_by(title='Service Task with Priority').first()
+        self.assertIsNotNone(task)
+        self.assertEqual(task.priority, 'High')
+
+    def test_add_comment_not_found(self):
+        """Test adding a comment to a non-existent task"""
+        from app.service import add_comment
+        comment_data = {
+            'body': 'Hello',
+            'author_id': 1,
+        }
+        comment, message = add_comment(999, comment_data)
+        self.assertIsNone(comment)
+        self.assertEqual(message, "Task not found")
 
     def test_add_comment_with_mentions(self):
         """Test adding a comment with mentions"""
@@ -1382,6 +1477,33 @@ class TestServiceFunctions(TestTaskRoutesIntegration):
         self.assertEqual(len(dashboard_data['tasks']), 1)
         self.assertEqual(dashboard_data['tasks'][0]['title'], 'Ongoing Task')
 
+    def test_get_project_dashboard_not_found(self):
+        """Test getting a project dashboard for a non-existent project"""
+        from app.service import get_project_dashboard
+        dashboard_data, error = get_project_dashboard(999, 1)
+        self.assertIsNone(dashboard_data)
+        self.assertEqual(error, "Project not found")
+
+    def test_get_project_dashboard_forbidden(self):
+        """Test getting a project dashboard without permission"""
+        from app.service import get_project_dashboard
+        project = Project(title="Forbidden Project", owner_id=1)
+        db.session.add(project)
+        db.session.commit()
+        dashboard_data, error = get_project_dashboard(project.id, 2)
+        self.assertIsNone(dashboard_data)
+        self.assertEqual(error, "Forbidden: You don't have access to this project")
+
+    def test_get_project_by_id_forbidden(self):
+        """Test getting a project by id without permission"""
+        from app.service import get_project_by_id
+        project = Project(title="Forbidden Project", owner_id=1)
+        db.session.add(project)
+        db.session.commit()
+        project_data, error = get_project_by_id(project.id, 2)
+        self.assertIsNone(project_data)
+        self.assertEqual(error, "Forbidden: You don't have access to this project")
+
     def test_get_all_tasks_for_user(self):
         """Test getting all tasks for a user"""
         from app.service import get_all_tasks
@@ -1416,6 +1538,21 @@ class TestServiceFunctions(TestTaskRoutesIntegration):
         result = delete_comment(comment.id)
         self.assertTrue(result)
 
+    def test_delete_comment_not_found(self):
+        """Test deleting a non-existent comment"""
+        from app.service import delete_comment
+        result = delete_comment(999)
+        self.assertFalse(result)
+
+    def test_add_attachment_task_not_found(self):
+        """Test adding an attachment to a non-existent task"""
+        from app.service import add_attachment
+        mock_file = MagicMock()
+        mock_file.filename = 'test.txt'
+        mock_file.content_type = 'text/plain'
+        attachment = add_attachment(999, mock_file, 'test.txt')
+        self.assertIsNone(attachment)
+
     def test_get_task_collaborators(self):
         """Test getting task collaborators"""
         from app.service import get_task_collaborators
@@ -1430,16 +1567,16 @@ class TestServiceFunctions(TestTaskRoutesIntegration):
 
     def test_add_and_remove_task_collaborators(self):
         """Test adding and removing task collaborators"""
-        from app.service import add_task_collaborators, remove_task_collaborator
+        from app.service import update_task
         task = Task(title="Add/Remove Collaborator Task", owner_id=1)
         db.session.add(task)
         db.session.commit()
 
-        add_task_collaborators(task.id, [2, 3], 1)
+        update_task(task.id, 1, {'collaborators_to_add': [2, 3]})
         collaborators = db.session.execute(task_collaborators.select().where(task_collaborators.c.task_id == task.id)).fetchall()
         self.assertEqual(len(collaborators), 2)
 
-        remove_task_collaborator(task.id, [2], 1)
+        update_task(task.id, 1, {'collaborators_to_remove': [2]})
         collaborators = db.session.execute(task_collaborators.select().where(task_collaborators.c.task_id == task.id)).fetchall()
         self.assertEqual(len(collaborators), 1)
 
@@ -1497,6 +1634,18 @@ class TestServiceFunctions(TestTaskRoutesIntegration):
         collab_projects = get_user_projects(1, role_filter='collaborator')
         self.assertEqual(len(collab_projects), 2)
 
+    def test_get_user_projects_no_projects(self):
+        """Test getting user projects when user has no projects"""
+        from app.service import get_user_projects
+        projects = get_user_projects(999)
+        self.assertEqual(len(projects), 0)
+
+    def test_get_all_tasks_for_user_no_tasks(self):
+        """Test getting all tasks for a user with no tasks"""
+        from app.service import get_all_tasks
+        tasks = get_all_tasks(999)
+        self.assertEqual(len(tasks), 0)
+
     def test_update_project(self):
         """Test updating a project"""
         from app.service import update_project
@@ -1508,6 +1657,25 @@ class TestServiceFunctions(TestTaskRoutesIntegration):
         updated_project, msg = update_project(project.id, 1, update_data)
         self.assertEqual(updated_project['title'], 'Updated Title')
 
+    def test_update_project_not_found(self):
+        """Test updating a non-existent project"""
+        from app.service import update_project
+        update_data = {'title': 'Updated Title'}
+        updated_project, msg = update_project(999, 1, update_data)
+        self.assertIsNone(updated_project)
+        self.assertEqual(msg, "Project not found")
+
+    def test_update_project_forbidden(self):
+        """Test updating a project without permission"""
+        from app.service import update_project
+        project = Project(title="Forbidden Project", owner_id=1)
+        db.session.add(project)
+        db.session.commit()
+        update_data = {'title': 'Updated Title'}
+        updated_project, msg = update_project(project.id, 2, update_data)
+        self.assertIsNone(updated_project)
+        self.assertEqual(msg, "Forbidden: Only the project owner can update the project")
+
     def test_delete_project(self):
         """Test deleting a project"""
         from app.service import delete_project
@@ -1517,6 +1685,23 @@ class TestServiceFunctions(TestTaskRoutesIntegration):
 
         success, msg = delete_project(project.id, 1)
         self.assertTrue(success)
+
+    def test_delete_project_not_found(self):
+        """Test deleting a non-existent project"""
+        from app.service import delete_project
+        success, msg = delete_project(999, 1)
+        self.assertFalse(success)
+        self.assertEqual(msg, "Project not found")
+
+    def test_delete_project_forbidden(self):
+        """Test deleting a project without permission"""
+        from app.service import delete_project
+        project = Project(title="Forbidden Project", owner_id=1)
+        db.session.add(project)
+        db.session.commit()
+        success, msg = delete_project(project.id, 2)
+        self.assertFalse(success)
+        self.assertEqual(msg, "Forbidden: Only the project owner can delete the project")
 
     def test_add_and_remove_project_collaborator(self):
         """Test adding and removing a project collaborator"""
@@ -1533,6 +1718,55 @@ class TestServiceFunctions(TestTaskRoutesIntegration):
         collaborators = db.session.execute(project_collaborators.select().where(project_collaborators.c.project_id == project.id)).fetchall()
         self.assertEqual(len(collaborators), 0)
 
+    def test_remove_project_collaborator_not_found(self):
+        """Test removing a collaborator from a non-existent project"""
+        from app.service import remove_project_collaborator
+        _, msg = remove_project_collaborator(999, 1, 2)
+        self.assertEqual(msg, "Project not found")
+
+    def test_remove_project_collaborator_forbidden(self):
+        """Test removing a collaborator without permission"""
+        from app.service import remove_project_collaborator
+        project = Project(title="Forbidden Project", owner_id=1)
+        db.session.add(project)
+        db.session.commit()
+        _, msg = remove_project_collaborator(project.id, 2, 1)
+        self.assertEqual(msg, "Forbidden: Only the project owner can remove collaborators")
+
+    def test_remove_project_collaborator_owner(self):
+        """Test removing the project owner"""
+        from app.service import remove_project_collaborator
+        project = Project(title="Project Collaborator Task", owner_id=1)
+        db.session.add(project)
+        db.session.commit()
+        _, msg = remove_project_collaborator(project.id, 1, 1)
+        self.assertEqual(msg, "Cannot remove the project owner from collaborators")
+
+    def test_add_project_collaborator_not_found(self):
+        """Test adding a collaborator to a non-existent project"""
+        from app.service import add_project_collaborator
+        _, msg = add_project_collaborator(999, 1, 2)
+        self.assertEqual(msg, "Project not found")
+
+    def test_add_project_collaborator_forbidden(self):
+        """Test adding a collaborator without permission"""
+        from app.service import add_project_collaborator
+        project = Project(title="Forbidden Project", owner_id=1)
+        db.session.add(project)
+        db.session.commit()
+        _, msg = add_project_collaborator(project.id, 2, 3)
+        self.assertEqual(msg, "Forbidden: Only the project owner can add collaborators")
+
+    def test_add_project_collaborator_already_exists(self):
+        """Test adding a collaborator that already exists"""
+        from app.service import add_project_collaborator
+        project = Project(title="Project Collaborator Task", owner_id=1)
+        db.session.add(project)
+        db.session.commit()
+        add_project_collaborator(project.id, 1, 2)
+        _, msg = add_project_collaborator(project.id, 1, 2)
+        self.assertEqual(msg, "User is already a collaborator on this project")
+
     def test_get_project_tasks(self):
         """Test getting project tasks"""
         from app.service import get_project_tasks
@@ -1543,6 +1777,19 @@ class TestServiceFunctions(TestTaskRoutesIntegration):
 
         tasks, msg = get_project_tasks(project.id)
         self.assertEqual(len(tasks), 1)
+
+    def test_get_project_tasks_not_found(self):
+        """Test getting tasks for a non-existent project"""
+        from app.service import get_project_tasks
+        tasks, msg = get_project_tasks(999)
+        self.assertIsNone(tasks)
+        self.assertEqual(msg, "Project not found")
+
+    def test_get_task_details_not_found(self):
+        """Test getting details for a non-existent task"""
+        from app.service import get_task_details
+        task = get_task_details(999)
+        self.assertIsNone(task)
 
     def test_add_existing_task_to_project(self):
         """Test adding an existing task to a project"""
@@ -1555,6 +1802,28 @@ class TestServiceFunctions(TestTaskRoutesIntegration):
         updated_task, msg = add_existing_task_to_project(task.id, project.id, 1)
         self.assertEqual(updated_task['project_id'], project.id)
 
+    def test_add_existing_task_to_project_task_not_found(self):
+        """Test adding a non-existent task to a project"""
+        from app.service import add_existing_task_to_project
+        project = Project(title="Add Existing Task Project", owner_id=1)
+        db.session.add(project)
+        db.session.commit()
+
+        updated_task, msg = add_existing_task_to_project(999, project.id, 1)
+        self.assertIsNone(updated_task)
+        self.assertEqual(msg, "Task not found")
+
+    def test_add_existing_task_to_project_project_not_found(self):
+        """Test adding a task to a non-existent project"""
+        from app.service import add_existing_task_to_project
+        task = Task(title="Standalone Task", owner_id=1)
+        db.session.add(task)
+        db.session.commit()
+
+        updated_task, msg = add_existing_task_to_project(task.id, 999, 1)
+        self.assertIsNone(updated_task)
+        self.assertEqual(msg, "Project not found")
+
     def test_remove_task_from_project(self):
         """Test removing a task from a project"""
         from app.service import remove_task_from_project
@@ -1565,6 +1834,36 @@ class TestServiceFunctions(TestTaskRoutesIntegration):
 
         updated_task, msg = remove_task_from_project(task.id, 1)
         self.assertIsNone(updated_task['project_id'])
+
+    def test_remove_task_from_project_task_not_found(self):
+        """Test removing a non-existent task from a project"""
+        from app.service import remove_task_from_project
+        updated_task, msg = remove_task_from_project(999, 1)
+        self.assertIsNone(updated_task)
+        self.assertEqual(msg, "Task not found")
+
+    def test_remove_task_from_project_not_in_project(self):
+        """Test removing a task that is not in a project"""
+        from app.service import remove_task_from_project
+        task = Task(title="Standalone Task", owner_id=1)
+        db.session.add(task)
+        db.session.commit()
+
+        updated_task, msg = remove_task_from_project(task.id, 1)
+        self.assertIsNone(updated_task)
+        self.assertEqual(msg, "Task is not assigned to any project")
+
+    def test_remove_task_from_project_forbidden(self):
+        """Test removing a task from a project without permission"""
+        from app.service import remove_task_from_project
+        project = Project(title="Remove Task Project", owner_id=1)
+        task = Task(title="Task to Remove", project=project, owner_id=1)
+        db.session.add_all([project, task])
+        db.session.commit()
+
+        updated_task, msg = remove_task_from_project(task.id, 2)
+        self.assertIsNone(updated_task)
+        self.assertEqual(msg, "Forbidden: You don't have permission to remove this task from the project")
 
     def test_create_task_in_project(self):
         """Test creating a task in a project"""
@@ -1578,6 +1877,25 @@ class TestServiceFunctions(TestTaskRoutesIntegration):
         self.assertIsNotNone(new_task)
         self.assertEqual(new_task.project_id, project.id)
 
+    def test_create_task_in_project_project_not_found(self):
+        """Test creating a task in a non-existent project"""
+        from app.service import create_task_in_project
+        task_data = {'title': 'New Task in Project', 'owner_id': 1}
+        new_task, msg = create_task_in_project(task_data, 999, 1)
+        self.assertIsNone(new_task)
+        self.assertEqual(msg, "Project not found")
+
+    def test_create_task_in_project_forbidden(self):
+        """Test creating a task in a project without permission"""
+        from app.service import create_task_in_project
+        project = Project(title="Forbidden Project", owner_id=1)
+        db.session.add(project)
+        db.session.commit()
+        task_data = {'title': 'New Task in Project', 'owner_id': 2}
+        new_task, msg = create_task_in_project(task_data, project.id, 2)
+        self.assertIsNone(new_task)
+        self.assertEqual(msg, "Forbidden: You must be a project owner or collaborator to create tasks")
+
     def test_get_standalone_tasks_for_user(self):
         """Test getting standalone tasks for a user"""
         from app.service import get_standalone_tasks_for_user
@@ -1587,6 +1905,66 @@ class TestServiceFunctions(TestTaskRoutesIntegration):
 
         tasks = get_standalone_tasks_for_user(1)
         self.assertEqual(len(tasks), 1)
+
+    def test_get_project_dashboard_no_tasks(self):
+        """Test getting a project dashboard for a project with no tasks"""
+        from app.service import get_project_dashboard
+        project = Project(title="Empty Project", owner_id=1)
+        db.session.add(project)
+        db.session.commit()
+
+        dashboard_data, error = get_project_dashboard(project.id, 1)
+        self.assertIsNone(error)
+        self.assertEqual(len(dashboard_data['tasks']), 0)
+
+    def test_get_standalone_tasks_for_user_no_tasks(self):
+        """Test getting standalone tasks for a user with no standalone tasks"""
+        from app.service import get_standalone_tasks_for_user
+        project = Project(title="Project", owner_id=1)
+        task = Task(title="Task in project", owner_id=1, project=project)
+        db.session.add_all([project, task])
+        db.session.commit()
+        tasks = get_standalone_tasks_for_user(1)
+        self.assertEqual(len(tasks), 0)
+
+    def test_get_all_subtask_ids(self):
+        """Test getting all subtask ids for a task"""
+        from app.service import _get_all_subtask_ids
+        task1 = Task(id=1, title="Parent Task", owner_id=1)
+        task2 = Task(id=2, title="Subtask 1", owner_id=1, parent_task_id=1)
+        task3 = Task(id=3, title="Subtask 2", owner_id=1, parent_task_id=1)
+        task4 = Task(id=4, title="Sub-subtask 1", owner_id=1, parent_task_id=2)
+        db.session.add_all([task1, task2, task3, task4])
+        db.session.commit()
+
+        subtask_ids = _get_all_subtask_ids(1)
+        self.assertEqual(subtask_ids, {1, 2, 3, 4})
+
+    def test_calculate_next_due_date(self):
+        """Test calculating the next due date for a recurring task"""
+        from app.service import _calculate_next_due_date
+        from datetime import datetime, timedelta
+        from dateutil.relativedelta import relativedelta
+
+        start_date = datetime(2024, 1, 1)
+
+        # Test daily recurrence
+        self.assertEqual(_calculate_next_due_date(start_date, 'daily', None), start_date + timedelta(days=1))
+
+        # Test weekly recurrence
+        self.assertEqual(_calculate_next_due_date(start_date, 'weekly', None), start_date + timedelta(weeks=1))
+
+        # Test monthly recurrence
+        self.assertEqual(_calculate_next_due_date(start_date, 'monthly', None), start_date + relativedelta(months=1))
+
+        # Test custom recurrence
+        self.assertEqual(_calculate_next_due_date(start_date, 'custom', 5), start_date + timedelta(days=5))
+
+        # Test no recurrence
+        self.assertIsNone(_calculate_next_due_date(start_date, 'none', None))
+
+        # Test no start date
+        self.assertIsNone(_calculate_next_due_date(None, 'daily', None))
 
 
 
