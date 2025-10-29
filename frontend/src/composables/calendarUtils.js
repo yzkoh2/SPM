@@ -14,7 +14,7 @@ export function useCalendarUtils() {
     return date.toLocaleTimeString('en-US', {
       hour: 'numeric',
       minute: '2-digit',
-      hour12: true
+      hour12: true,
     })
   }
 
@@ -27,14 +27,14 @@ export function useCalendarUtils() {
       day: 'numeric',
       hour: 'numeric',
       minute: '2-digit',
-      hour12: true
+      hour12: true,
     })
   }
 
   const getTaskColorClass = (task) => {
     const now = new Date()
     const deadline = convertToLocalTime(task.deadline)
-    
+
     if (task.status === 'Completed') {
       return 'bg-green-100 border-l-4 border-green-500 text-green-800'
     } else if (deadline < now) {
@@ -48,20 +48,20 @@ export function useCalendarUtils() {
 
   const getStatusBadgeColor = (status) => {
     const colors = {
-      'Unassigned': 'bg-gray-100 text-gray-800',
-      'Ongoing': 'bg-blue-100 text-blue-800',
+      Unassigned: 'bg-gray-100 text-gray-800',
+      Ongoing: 'bg-blue-100 text-blue-800',
       'Under Review': 'bg-yellow-100 text-yellow-800',
-      'Completed': 'bg-green-100 text-green-800'
+      Completed: 'bg-green-100 text-green-800',
     }
     return colors[status] || 'bg-gray-100 text-gray-800'
   }
 
   const getDeadlineTextColor = (deadline) => {
     if (!deadline) return 'text-gray-600'
-    
+
     const now = new Date()
     const deadlineDate = convertToLocalTime(deadline)
-    
+
     if (deadlineDate < now) return 'text-red-600 font-semibold'
     if (deadlineDate.toDateString() === now.toDateString()) return 'text-orange-600 font-semibold'
     return 'text-gray-700'
@@ -73,6 +73,6 @@ export function useCalendarUtils() {
     formatFullDateTime,
     getTaskColorClass,
     getStatusBadgeColor,
-    getDeadlineTextColor
+    getDeadlineTextColor,
   }
 }

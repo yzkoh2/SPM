@@ -9,34 +9,54 @@
       <!-- Error State -->
       <div v-if="error" class="bg-red-50 border border-red-200 rounded-md p-6 mb-6">
         <div class="flex items-center mb-4">
-          <svg class="w-6 h-6 text-red-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-              d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+          <svg
+            class="w-6 h-6 text-red-600 mr-2"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+            ></path>
           </svg>
           <h3 class="text-lg font-medium text-red-800">Error Loading Department Tasks</h3>
         </div>
         <pre class="text-red-700 text-sm whitespace-pre-wrap">{{ error }}</pre>
         <div class="mt-4">
-          <button @click="fetchTasks"
-            class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-md transition-colors">
+          <button
+            @click="fetchTasks"
+            class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-md transition-colors"
+          >
             Try Again
           </button>
         </div>
       </div>
 
-      <TaskCalendar :tasks="filteredTasks" :is-personal="false" :loading="loading" subtitle="Department tasks scheduled this month"
-        @view-task="viewTaskDetails">
+      <TaskCalendar
+        :tasks="filteredTasks"
+        :is-personal="false"
+        :loading="loading"
+        subtitle="Department tasks scheduled this month"
+        @view-task="viewTaskDetails"
+      >
         <template #filters>
-          <select v-model="filters.memberName"
-            class="px-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+          <select
+            v-model="filters.memberName"
+            class="px-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          >
             <option value="">All Department Members</option>
             <option v-for="member in departmentMembers" :key="member.id" :value="member.name">
               {{ member.name }} ({{ member.team || 'No Team' }})
             </option>
           </select>
 
-          <select v-model="filters.status"
-            class="px-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+          <select
+            v-model="filters.status"
+            class="px-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          >
             <option value="">All Statuses</option>
             <option value="Unassigned">Unassigned</option>
             <option value="Ongoing">Ongoing</option>
@@ -57,7 +77,7 @@ import TaskCalendar from '@/components/TaskCalendar.vue'
 
 const router = useRouter()
 const authStore = useAuthStore()
-const KONG_API_URL = "http://localhost:8000"
+const KONG_API_URL = 'http://localhost:8000'
 
 const tasks = ref([])
 const loading = ref(true)
@@ -66,7 +86,7 @@ const error = ref(null)
 
 const filters = ref({
   memberName: '',
-  status: ''
+  status: '',
 })
 
 const filteredTasks = computed(() => {
@@ -74,24 +94,24 @@ const filteredTasks = computed(() => {
 
   if (filters.value.memberName) {
     // Find the member ID from the selected member name
-    const selectedMember = departmentMembers.value.find(m => m.name === filters.value.memberName)
-    
+    const selectedMember = departmentMembers.value.find((m) => m.name === filters.value.memberName)
+
     if (selectedMember) {
-      filtered = filtered.filter(task => {
+      filtered = filtered.filter((task) => {
         // Check if the member is the owner
         const isOwner = task.owner_id === selectedMember.id
-        
+
         // Check if the member is a collaborator
-        const isCollaborator = task.collaborator_ids && 
-                               task.collaborator_ids.includes(selectedMember.id)
-        
+        const isCollaborator =
+          task.collaborator_ids && task.collaborator_ids.includes(selectedMember.id)
+
         return isOwner || isCollaborator
       })
     }
   }
 
   if (filters.value.status) {
-    filtered = filtered.filter(task => task.status === filters.value.status)
+    filtered = filtered.filter((task) => task.status === filters.value.status)
   }
 
   return filtered
@@ -103,7 +123,7 @@ const getDepartmentMemberIds = async (teamId) => {
   if (!teamsResponse.ok) throw new Error('Failed to fetch teams')
 
   const allTeams = await teamsResponse.json()
-  const userTeam = allTeams.find(team => team.id === teamId)
+  const userTeam = allTeams.find((team) => team.id === teamId)
 
   if (!userTeam || !userTeam.department_id) {
     throw new Error('Team is not assigned to a department')
@@ -117,7 +137,7 @@ const getDepartmentMemberIds = async (teamId) => {
 
   const members = await usersResponse.json()
   departmentMembers.value = members
-  return members.map(user => user.id)
+  return members.map((user) => user.id)
 }
 
 const fetchCollaboratorsForTask = async (taskId) => {
@@ -125,7 +145,7 @@ const fetchCollaboratorsForTask = async (taskId) => {
     const response = await fetch(`${KONG_API_URL}/tasks/${taskId}/collaborators`)
     if (response.ok) {
       const collaborators = await response.json()
-      return collaborators.map(c => c.user_id)
+      return collaborators.map((c) => c.user_id)
     }
     return []
   } catch (err) {
@@ -171,25 +191,25 @@ const fetchTasks = async () => {
 
     // Get all department member IDs
     const memberIds = await getDepartmentMemberIds(teamId)
-    
+
     if (memberIds.length === 0) {
       tasks.value = []
       return
     }
 
     // Fetch tasks owned by all department members
-    const taskPromises = memberIds.map(memberId =>
+    const taskPromises = memberIds.map((memberId) =>
       fetch(`${KONG_API_URL}/tasks?owner_id=${memberId}`)
-        .then(res => res.ok ? res.json() : [])
-        .catch(() => [])
+        .then((res) => (res.ok ? res.json() : []))
+        .catch(() => []),
     )
 
     const ownedTasksArrays = await Promise.all(taskPromises)
     const ownedTasks = ownedTasksArrays.flat()
-    
+
     // Create a map to store unique tasks with collaborator info
     const taskMap = new Map()
-    ownedTasks.forEach(task => {
+    ownedTasks.forEach((task) => {
       taskMap.set(task.id, { ...task, collaborator_ids: [] })
     })
 
@@ -205,12 +225,12 @@ const fetchTasks = async () => {
     collaboratorResults.forEach(({ taskId, collaboratorIds }) => {
       if (taskMap.has(taskId)) {
         taskMap.get(taskId).collaborator_ids = collaboratorIds
-        
+
         // Check if any collaborator is from the department
-        const hasDepartmentCollaborator = collaboratorIds.some(collabId => 
-          memberIds.includes(collabId)
+        const hasDepartmentCollaborator = collaboratorIds.some((collabId) =>
+          memberIds.includes(collabId),
         )
-        
+
         if (hasDepartmentCollaborator) {
           taskMap.get(taskId).has_department_collaborator = true
         }
@@ -218,30 +238,31 @@ const fetchTasks = async () => {
     })
 
     // Filter to only include tasks owned by or collaborated on by department members
-    const relevantTasks = Array.from(taskMap.values()).filter(task => {
+    const relevantTasks = Array.from(taskMap.values()).filter((task) => {
       return memberIds.includes(task.owner_id) || task.has_department_collaborator
     })
     // Fetch user details for all unique owner IDs
-    const uniqueOwnerIds = [...new Set(relevantTasks.map(task => task.owner_id).filter(id => id))]
+    const uniqueOwnerIds = [
+      ...new Set(relevantTasks.map((task) => task.owner_id).filter((id) => id)),
+    ]
     const userCache = {}
-    
+
     await Promise.all(
       uniqueOwnerIds.map(async (ownerId) => {
         const userDetails = await fetchUserDetails(ownerId)
         if (userDetails) {
           userCache[ownerId] = userDetails.name || `User ${ownerId}`
         }
-      })
+      }),
     )
 
     // Append owner names to tasks
-    const relevantTasksWithOwners = relevantTasks.map(task => ({
+    const relevantTasksWithOwners = relevantTasks.map((task) => ({
       ...task,
-      owner_name: task.owner_id ? userCache[task.owner_id] || 'Unknown' : 'Unassigned'
+      owner_name: task.owner_id ? userCache[task.owner_id] || 'Unknown' : 'Unassigned',
     }))
 
     tasks.value = relevantTasksWithOwners
-
   } catch (err) {
     console.error('Error fetching department tasks:', err)
     error.value = err.message

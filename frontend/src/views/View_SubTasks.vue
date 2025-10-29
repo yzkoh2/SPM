@@ -6,17 +6,24 @@
           <div class="flex items-center space-x-4">
             <div v-if="parentTask">
               <h1 class="text-xl font-semibold text-gray-900">Subtasks</h1>
-              <router-link :to="`/tasks/${parentTask.id}`">for "<a class="text-sm text-blue-600">{{ parentTask.title }}"</a></router-link>
+              <router-link :to="`/tasks/${parentTask.id}`"
+                >for "<a class="text-sm text-blue-600">{{ parentTask.title }}"</a></router-link
+              >
             </div>
           </div>
 
           <div class="flex items-center space-x-4">
-            <button @click="fetchSubtasks"
-              class="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+            <button
+              @click="fetchSubtasks"
+              class="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+            >
               <svg class="-ml-1 mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                  d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15">
-                </path>
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                ></path>
               </svg>
               Refresh
             </button>
@@ -27,23 +34,39 @@
 
     <main class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
       <div class="mb-6 px-4 sm:px-0">
-        <button @click="showCreateForm = !showCreateForm"
-          class="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-lg font-medium transition-colors flex items-center">
+        <button
+          @click="showCreateForm = !showCreateForm"
+          class="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-lg font-medium transition-colors flex items-center"
+        >
           <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M12 6v6m0 0v6m0-6h6m-6 0H6"
+            ></path>
           </svg>
           {{ showCreateForm ? 'Cancel' : 'Create New Subtask' }}
         </button>
       </div>
       <div class="mb-6 px-4 sm:px-0">
         <div class="bg-white rounded-lg shadow-md p-6">
-          <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0">
-            <div class="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-4">
+          <div
+            class="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0"
+          >
+            <div
+              class="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-4"
+            >
               <!-- Filter by Priority -->
               <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Filter by Priority</label>
-                <select v-model="filters.priority" @change="applyFilters"
-                  class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                <label class="block text-sm font-medium text-gray-700 mb-1"
+                  >Filter by Priority</label
+                >
+                <select
+                  v-model="filters.priority"
+                  @change="applyFilters"
+                  class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                >
                   <option value="">All Priorities</option>
                   <option value="high">High (8-10)</option>
                   <option value="medium">Medium (4-7)</option>
@@ -54,8 +77,11 @@
               <!-- Sort by Priority -->
               <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Sort by Priority</label>
-                <select v-model="prioritySort" @change="applyFilters"
-                  class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                <select
+                  v-model="prioritySort"
+                  @change="applyFilters"
+                  class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                >
                   <option value="default">Default Order</option>
                   <option value="priority-high">Highest First</option>
                   <option value="priority-low">Lowest First</option>
@@ -63,13 +89,19 @@
               </div>
             </div>
 
-            <div class="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-4">
-              <button @click="clearFilters"
-                class="px-4 py-2 text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors">
+            <div
+              class="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-4"
+            >
+              <button
+                @click="clearFilters"
+                class="px-4 py-2 text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors"
+              >
                 Clear Filters
               </button>
-              <button @click="fetchSubtasks"
-                class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors">
+              <button
+                @click="fetchSubtasks"
+                class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors"
+              >
                 Refresh
               </button>
             </div>
@@ -77,16 +109,24 @@
         </div>
       </div>
       <div class="px-4 sm:px-0">
-        <TaskForm v-if="showCreateForm" title="Create New Subtask" 
-          :is-subtask="true" 
+        <TaskForm
+          v-if="showCreateForm"
+          title="Create New Subtask"
+          :is-subtask="true"
           :is-submitting="isCreating"
           :all-users="allUsers"
-          :parent-deadline="parentTask.deadline" 
-          submit-button-text="Create Subtask" submit-button-loading-text="Creating..." @submit="createSubtask"
-          @cancel="showCreateForm = false" />
+          :parent-deadline="parentTask.deadline"
+          submit-button-text="Create Subtask"
+          submit-button-loading-text="Creating..."
+          @submit="createSubtask"
+          @cancel="showCreateForm = false"
+        />
       </div>
 
-      <div v-if="showEditForm" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 flex items-start justify-center">
+      <div
+        v-if="showEditForm"
+        class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 flex items-start justify-center"
+      >
         <div class="relative w-full max-w-2xl">
           <TaskForm
             :task-to-edit="subtaskToEdit"
@@ -94,7 +134,7 @@
             :is-submitting="isUpdating"
             :all-users="allUsers"
             :current-collaborators="collaboratorDetails"
-            :parent-deadline="parentTask.deadline" 
+            :parent-deadline="parentTask.deadline"
             submit-button-text="Update Subtask"
             submit-button-loading-text="Updating..."
             @submit="updateSubtask"
@@ -109,15 +149,21 @@
             <div class="flex items-center justify-between">
               <div>
                 <h2 class="text-lg font-medium text-gray-900">{{ parentTask.title }}</h2>
-                <p v-if="parentTask.description" class="mt-1 text-sm text-gray-600">{{ parentTask.description }}</p>
+                <p v-if="parentTask.description" class="mt-1 text-sm text-gray-600">
+                  {{ parentTask.description }}
+                </p>
               </div>
               <div class="flex items-center space-x-4">
-                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
-                  :class="getStatusBadgeColor(parentTask.status)">
+                <span
+                  class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
+                  :class="getStatusBadgeColor(parentTask.status)"
+                >
                   {{ parentTask.status }}
                 </span>
-                <router-link :to="`/tasks/${parentTask.id}`"
-                  class="text-indigo-600 hover:text-indigo-500 text-sm font-medium">
+                <router-link
+                  :to="`/tasks/${parentTask.id}`"
+                  class="text-indigo-600 hover:text-indigo-500 text-sm font-medium"
+                >
                   View Full Task →
                 </router-link>
               </div>
@@ -126,7 +172,9 @@
         </div>
 
         <div v-if="loading" class="text-center">
-          <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+          <div
+            class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"
+          ></div>
           <p class="mt-2 text-gray-600">Loading subtasks...</p>
         </div>
 
@@ -144,24 +192,35 @@
         <div v-else-if="subtasks.length > 0" class="space-y-3">
           <div class="flex justify-between items-center">
             <h3 class="text-lg font-medium text-gray-900">
-              Subtasks ({{ filteredSubtasks.length }}{{ filteredSubtasks.length !== subtasks.length ? ` of ${subtasks.length}` : '' }})
+              Subtasks ({{ filteredSubtasks.length
+              }}{{ filteredSubtasks.length !== subtasks.length ? ` of ${subtasks.length}` : '' }})
             </h3>
             <div class="flex space-x-2">
               <span class="text-sm text-gray-500">
                 {{ completedCount }}/{{ subtasks.length }} completed
               </span>
               <div class="w-24 bg-gray-200 rounded-full h-2 mt-1">
-                <div class="bg-green-600 h-2 rounded-full" :style="{ width: progressPercentage + '%' }"></div>
+                <div
+                  class="bg-green-600 h-2 rounded-full"
+                  :style="{ width: progressPercentage + '%' }"
+                ></div>
               </div>
             </div>
           </div>
 
           <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             <div v-for="subtask in filteredSubtasks" :key="subtask.id" class="relative">
-              <TaskCard :task="subtask" @view="viewSubtaskDetails" @edit="editSubtask" @delete="deleteSubtask" />
+              <TaskCard
+                :task="subtask"
+                @view="viewSubtaskDetails"
+                @edit="editSubtask"
+                @delete="deleteSubtask"
+              />
 
-              <div v-if="updatingSubtaskId === subtask.id"
-                class="absolute inset-0 bg-white bg-opacity-50 flex items-center justify-center rounded-lg">
+              <div
+                v-if="updatingSubtaskId === subtask.id"
+                class="absolute inset-0 bg-white bg-opacity-50 flex items-center justify-center rounded-lg"
+              >
                 <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
               </div>
             </div>
@@ -170,17 +229,28 @@
           <!-- Show message if filters hide all subtasks -->
           <div v-if="filteredSubtasks.length === 0" class="text-center py-8 bg-gray-50 rounded-lg">
             <p class="text-sm text-gray-600">No subtasks match the current filters.</p>
-            <button @click="clearFilters" class="mt-2 text-sm text-indigo-600 hover:text-indigo-500">
+            <button
+              @click="clearFilters"
+              class="mt-2 text-sm text-indigo-600 hover:text-indigo-500"
+            >
               Clear filters
             </button>
           </div>
         </div>
 
         <div v-else class="text-center py-12">
-          <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-              d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4">
-            </path>
+          <svg
+            class="mx-auto h-12 w-12 text-gray-400"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"
+            ></path>
           </svg>
           <h3 class="mt-2 text-sm font-medium text-gray-900">No subtasks found</h3>
           <p class="mt-1 text-sm text-gray-500">This task doesn't have any subtasks yet.</p>
@@ -217,16 +287,16 @@ const allUsers = ref([])
 const collaboratorDetails = ref([])
 
 const filters = ref({
-  priority: ''
+  priority: '',
 })
 
 const prioritySort = ref('default')
 
-const KONG_API_URL = "http://localhost:8000"
+const KONG_API_URL = 'http://localhost:8000'
 
 // Computed properties for progress tracking
 const completedCount = computed(() => {
-  return subtasks.value.filter(subtask => subtask.status === 'Completed').length
+  return subtasks.value.filter((subtask) => subtask.status === 'Completed').length
 })
 
 const progressPercentage = computed(() => {
@@ -239,9 +309,9 @@ const filteredSubtasks = computed(() => {
 
   // Filter by priority
   if (filters.value.priority) {
-    filtered = filtered.filter(subtask => {
+    filtered = filtered.filter((subtask) => {
       const priority = subtask.priority || 5
-      
+
       switch (filters.value.priority) {
         case 'high':
           return priority >= 8 && priority <= 10
@@ -276,24 +346,24 @@ const filteredSubtasks = computed(() => {
 const fetchAllUsers = async () => {
   try {
     // Assume you have an endpoint that returns all users
-    const response = await fetch(`${KONG_API_URL}/user`);
+    const response = await fetch(`${KONG_API_URL}/user`)
     if (response.ok) {
-      allUsers.value = await response.json();
+      allUsers.value = await response.json()
     } else {
-      console.error("Failed to fetch all users.");
+      console.error('Failed to fetch all users.')
     }
   } catch (err) {
-    console.error("Error fetching all users:", err);
+    console.error('Error fetching all users:', err)
   }
-};
+}
 
 // Function to fetch parent task details
 async function fetchParentTask() {
   try {
     const response = await fetch(`${KONG_API_URL}/tasks/${route.params.id}`, {
       headers: {
-        'Content-Type': 'application/json'
-      }
+        'Content-Type': 'application/json',
+      },
     })
 
     if (!response.ok) {
@@ -313,8 +383,8 @@ async function fetchSubtasks() {
   try {
     const response = await fetch(`${KONG_API_URL}/tasks/${route.params.id}`, {
       headers: {
-        'Content-Type': 'application/json'
-      }
+        'Content-Type': 'application/json',
+      },
     })
 
     if (!response.ok) {
@@ -337,34 +407,34 @@ async function fetchSubtasks() {
 
 const fetchCollaboratorsForTask = async (taskId) => {
   try {
-    const response = await fetch(`${KONG_API_URL}/tasks/${taskId}/collaborators`);
+    const response = await fetch(`${KONG_API_URL}/tasks/${taskId}/collaborators`)
     if (!response.ok) {
-        throw new Error('Failed to fetch collaborators');
+      throw new Error('Failed to fetch collaborators')
     }
-    const collaborators = await response.json();
+    const collaborators = await response.json()
 
-    const detailsPromises = collaborators.map(collab =>
-        fetch(`${KONG_API_URL}/user/${collab.user_id}`).then(res => {
-            if (res.ok) return res.json();
-            return null;
-        })
-    );
-    const details = (await Promise.all(detailsPromises)).filter(Boolean);
+    const detailsPromises = collaborators.map((collab) =>
+      fetch(`${KONG_API_URL}/user/${collab.user_id}`).then((res) => {
+        if (res.ok) return res.json()
+        return null
+      }),
+    )
+    const details = (await Promise.all(detailsPromises)).filter(Boolean)
 
-    collaboratorDetails.value = collaborators.map(collab => {
-        const userDetail = details.find(d => d.id === collab.user_id);
-        return {
-            ...collab,
-            name: userDetail?.name || `User ${collab.user_id}`,
-            role: userDetail?.role || 'Unknown',
-        };
-    });
+    collaboratorDetails.value = collaborators.map((collab) => {
+      const userDetail = details.find((d) => d.id === collab.user_id)
+      return {
+        ...collab,
+        name: userDetail?.name || `User ${collab.user_id}`,
+        role: userDetail?.role || 'Unknown',
+      }
+    })
   } catch (err) {
-    console.error('Error fetching collaborator details:', err);
-    collaboratorDetails.value = [];
-    alert('Could not load collaborator details for the task.');
+    console.error('Error fetching collaborator details:', err)
+    collaboratorDetails.value = []
+    alert('Could not load collaborator details for the task.')
   }
-};
+}
 
 // Function to create subtask
 async function createSubtask(formData) {
@@ -383,15 +453,15 @@ async function createSubtask(formData) {
       recurrence_interval: formData.recurrence_interval,
       recurrence_days: formData.recurrence_days,
       recurrence_end_date: formData.recurrence_end_date,
-      collaborators_to_add: formData.collaborators_to_add || []
+      collaborators_to_add: formData.collaborators_to_add || [],
     }
 
     const response = await fetch(`${KONG_API_URL}/tasks`, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
       },
-      body: JSON.stringify(subtaskData)
+      body: JSON.stringify(subtaskData),
     })
 
     if (response.ok) {
@@ -410,55 +480,55 @@ async function createSubtask(formData) {
 }
 
 async function updateSubtask(formData) {
-  isUpdating.value = true;
+  isUpdating.value = true
   try {
-    const originalSubtask = subtaskToEdit.value;
-    const changedFields = {};
+    const originalSubtask = subtaskToEdit.value
+    const changedFields = {}
 
     for (const key in formData) {
-      if (key === 'id') continue;
+      if (key === 'id') continue
 
-      let originalValue = originalSubtask[key];
-      let currentValue = formData[key];
+      let originalValue = originalSubtask[key]
+      let currentValue = formData[key]
 
       if (key === 'deadline' || key === 'recurrence_end_date') {
-        originalValue = originalValue ? new Date(originalValue).toISOString().slice(0, 16) : null;
-        currentValue = currentValue || null;
+        originalValue = originalValue ? new Date(originalValue).toISOString().slice(0, 16) : null
+        currentValue = currentValue || null
       }
 
       if (originalValue !== currentValue) {
-        changedFields[key] = currentValue;
+        changedFields[key] = currentValue
       }
     }
 
     if (Object.keys(changedFields).length === 0) {
-      closeEditModal();
-      return;
+      closeEditModal()
+      return
     }
 
     const payload = {
       ...changedFields,
-      user_id: authStore.user.id
-    };
+      user_id: authStore.user.id,
+    }
 
     const response = await fetch(`${KONG_API_URL}/tasks/${formData.id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    });
+      body: JSON.stringify(payload),
+    })
 
     if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.error || 'Failed to update subtask');
+      const errorData = await response.json()
+      throw new Error(errorData.error || 'Failed to update subtask')
     }
 
-    await fetchSubtasks();
-    closeEditModal();
+    await fetchSubtasks()
+    closeEditModal()
   } catch (err) {
-    console.error('Error updating subtask:', err);
-    alert('Failed to update subtask: ' + err.message);
+    console.error('Error updating subtask:', err)
+    alert('Failed to update subtask: ' + err.message)
   } finally {
-    isUpdating.value = false;
+    isUpdating.value = false
   }
 }
 
@@ -470,11 +540,11 @@ function viewSubtaskDetails(subtaskId) {
 // Function to edit subtask
 function editSubtask(subtask) {
   if (authStore.user.id != subtask.owner_id) {
-    alert("You do not have permission to edit the task.");
+    alert('You do not have permission to edit the task.')
     return
   }
-  subtaskToEdit.value = { ...subtask };
-  fetchCollaboratorsForTask(subtask.id);
+  subtaskToEdit.value = { ...subtask }
+  fetchCollaboratorsForTask(subtask.id)
   showEditForm.value = true
 }
 
@@ -491,11 +561,11 @@ async function deleteSubtask(subtaskId) {
     const response = await fetch(`${KONG_API_URL}/tasks/${subtaskId}`, {
       method: 'DELETE',
       headers: {
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        user_id: authStore.user.id
-      })
+        user_id: authStore.user.id,
+      }),
     })
 
     const data = await response.json()
@@ -515,17 +585,16 @@ async function deleteSubtask(subtaskId) {
 // Function to get status badge color (for parent task)
 function getStatusBadgeColor(status) {
   const colors = {
-    'Unassigned': 'bg-gray-100 text-gray-800',
-    'Ongoing': 'bg-yellow-100 text-yellow-800',
+    Unassigned: 'bg-gray-100 text-gray-800',
+    Ongoing: 'bg-yellow-100 text-yellow-800',
     'Under Review': 'bg-orange-100 text-orange-800',
-    'Completed': 'bg-green-100 text-green-800',
-    'On Hold': 'bg-red-100 text-red-800'
+    Completed: 'bg-green-100 text-green-800',
+    'On Hold': 'bg-red-100 text-red-800',
   }
   return colors[status] || 'bg-gray-100 text-gray-800'
 }
 
-const applyFilters = () => {
-}
+const applyFilters = () => {}
 
 const clearFilters = () => {
   filters.value.priority = ''
@@ -540,7 +609,7 @@ onMounted(async () => {
   }
   await fetchParentTask()
   await fetchSubtasks()
-  fetchAllUsers();
+  fetchAllUsers()
 })
 </script>
 
