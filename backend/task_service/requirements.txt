@@ -30,3 +30,4 @@ weasyprint
 jinja2
 requests
 coverage
+matplotlib

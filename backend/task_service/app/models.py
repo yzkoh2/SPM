@@ -1,5 +1,6 @@
 from flask_sqlalchemy import SQLAlchemy
 import enum
+from datetime import datetime
 
 db = SQLAlchemy()
 
@@ -76,6 +77,25 @@ class Project(db.Model):
             'tasks': [task.to_json() for task in self.tasks]
         }
 
+class TaskActivityLog(db.Model):
+    """
+    Records a log of all changes to task details (title, status, priority, etc.)
+    """
+    __tablename__ = 'task_activity_log'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    task_id = db.Column(db.Integer, db.ForeignKey('tasks.id'), nullable=False, index=True)
+    user_id = db.Column(db.Integer, nullable=False)
+    timestamp = db.Column(db.DateTime, nullable=False, default=db.func.now(), index=True)
+    field_changed = db.Column(db.String(50), nullable=False)
+    old_value = db.Column(db.Text, nullable=True)
+    new_value = db.Column(db.Text, nullable=True)
+
+    # Relationships
+    task = db.relationship('Task', back_populates='activity_logs')
+
+    def __repr__(self):
+        return f'<TaskActivityLog {self.id}: {self.field_changed} on Task {self.task_id}>'
 
 class Task(db.Model):
     """
@@ -105,6 +125,7 @@ class Task(db.Model):
     updated_at = db.Column(db.DateTime, server_default=db.func.now(), onupdate=db.func.now())
 
     # Relationships
+    activity_logs = db.relationship('TaskActivityLog', back_populates='task', lazy='dynamic', cascade="all, delete-orphan")
     project = db.relationship('Project', back_populates='tasks')
     subtasks = db.relationship(
         'Task', backref=db.backref('parent_task', remote_side=[id]), cascade="all, delete-orphan"

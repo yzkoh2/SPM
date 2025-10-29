@@ -65,18 +65,24 @@ def get_project_report(project_id):
     # --- 2. Call Generator Service ---
     try:
         # Call the correct function from your generator
-        pdf_data = generator.generate_project_pdf_report(
+        pdf_data, error = generator.generate_project_pdf_report(
             project_id=project_id, 
             user_id=user_id,
             start_date=start_date,
             end_date=end_date
         )
         
-        # Check if generator failed (e.g., auth error, project not found)
-        if pdf_data is None:
-            return jsonify({"error": "Report could not be generated. Check permissions or project ID."}), 404
+        # Check if the generator itself had an error
+        if error:
+            print(f"Report generation failed with error: {error}")
+            # pdf_data might contain an HTML error page, but we'll return JSON
+            return jsonify({"error": f"Report could not be generated: {error}"}), 500
 
-        # --- 3. Create and send the file response ---
+        # Check if data is missing (should be caught by 'error' but as a safeguard)
+        if not pdf_data:
+             return jsonify({"error": "Report generation resulted in empty data."}), 500
+
+        # --- 4. Create and send the file response ---
         response = make_response(pdf_data)
         response.headers['Content-Type'] = 'application/pdf'
         response.headers['Content-Disposition'] = f'attachment; filename=project_{project_id}_report.pdf'

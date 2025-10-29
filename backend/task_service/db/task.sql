@@ -1,6 +1,7 @@
 DROP TRIGGER IF EXISTS set_timestamp_projects ON projects;
 DROP TRIGGER IF EXISTS set_timestamp_tasks ON tasks;
 DROP FUNCTION IF EXISTS trigger_set_timestamp();
+DROP TABLE IF EXISTS task_activity_log CASCADE;
 DROP TABLE IF EXISTS attachments CASCADE;
 DROP TABLE IF EXISTS task_collaborators CASCADE;
 DROP TABLE IF EXISTS project_collaborators CASCADE;
@@ -39,6 +40,16 @@ CREATE TABLE tasks (
     recurrence_end_date TIMESTAMP,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE task_activity_log (
+    id SERIAL PRIMARY KEY,
+    task_id INT NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
+    user_id INT NOT NULL,
+    "timestamp" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    field_changed VARCHAR(100),
+    old_value TEXT,
+    new_value TEXT
 );
 
 CREATE TABLE attachments (
@@ -105,14 +116,33 @@ EXECUTE PROCEDURE trigger_set_timestamp();
 ------------------------------------------------------------------
 
 -- Project 1 (Assuming a project context for the first task)
-INSERT INTO projects (title, description, deadline, owner_id)
-VALUES ('Website Redesign', 'A project to overhaul the company homepage.', '2025-11-15', 2);
+-- Project 1: Owner (2) is auto-added as collaborator
+WITH inserted_project AS (
+  INSERT INTO projects (title, description, deadline, owner_id)
+  VALUES ('Website Redesign', 'A project to overhaul the company homepage.', '2025-11-15', 2)
+  RETURNING id, owner_id
+)
+INSERT INTO project_collaborators (project_id, user_id)
+SELECT id, owner_id FROM inserted_project;
 
--- Task 1: Design Homepage (and its subtasks)
-INSERT INTO tasks (title, description, deadline, status, owner_id, project_id)
-VALUES ('Design Homepage', 'Create wireframes and UI for homepage', '2025-11-02', 'ONGOING', 1, 1);
+-- Add other collaborators for Project 1 (User 1 and 3)
+INSERT INTO project_collaborators (project_id, user_id) VALUES (1, 1), (1, 3);
 
--- Subtasks for Task 1
+
+-- Task 1: Owner (1) is auto-added as collaborator
+WITH inserted_task AS (
+  INSERT INTO tasks (title, description, deadline, status, owner_id, project_id)
+  VALUES ('Design Homepage', 'Create wireframes and UI for homepage', '2025-11-02', 'ONGOING', 1, 1)
+  RETURNING id, owner_id
+)
+INSERT INTO task_collaborators (task_id, user_id)
+SELECT id, owner_id FROM inserted_task;
+
+-- Add other collaborators for Task 1 (User 2)
+INSERT INTO task_collaborators (task_id, user_id) VALUES (1, 2);
+
+
+-- Subtasks for Task 1 (Task ID 1)
 INSERT INTO tasks (title, description, deadline, status, owner_id, project_id, parent_task_id) VALUES
 ('Wireframe layout', 'Create wireframes', '2025-10-01', 'ONGOING', 1, 1, 1),
 ('Define color scheme', 'Design UI', '2025-11-01', 'ONGOING', 1, 1, 1);
@@ -121,25 +151,28 @@ INSERT INTO tasks (title, description, deadline, status, owner_id, project_id, p
 INSERT INTO attachments (filename, url, task_id) VALUES
 ('Week 04 Project Instructions', 'Week_04_Project_Instructions.pdf', 1);
 
--- Task 2: Backend API Setup (Standalone task, no project)
-INSERT INTO tasks (title, description, deadline, status, owner_id)
-VALUES ('Backend API Setup', 'Setup Flask API for task management', '2025-10-05', 'ONGOING', 2);
 
--- Subtasks for Task 2
+-- Task 2: Owner (2) is auto-added as collaborator
+WITH inserted_task AS (
+  INSERT INTO tasks (title, description, deadline, status, owner_id)
+  VALUES ('Backend API Setup', 'Setup Flask API for task management', '2025-10-05', 'ONGOING', 2)
+  RETURNING id, owner_id
+)
+INSERT INTO task_collaborators (task_id, user_id)
+SELECT id, owner_id FROM inserted_task;
+
+-- Add other collaborators for Task 2 (which is ID 4) (User 3)
+INSERT INTO task_collaborators (task_id, user_id) VALUES (4, 3);
+
+-- Subtasks for Task 2 (Task ID 4)
 INSERT INTO tasks (title, status, owner_id, parent_task_id) VALUES
 ('Define API endpoints', 'ONGOING', 2, 4),
 ('Setup database models', 'ONGOING', 2, 4);
 
--- Attachment for Task 2
+-- Attachment for Task 2 (Task ID 4)
 INSERT INTO attachments (filename, url, task_id) VALUES
-('Change Document', 'Change_Document_Week_6.pdf', 2);
+('Change Document', 'Change_Document_Week_6.pdf', 4);
 
--- Sample Collaborators
-INSERT INTO project_collaborators (project_id, user_id) VALUES
-(1, 1), (1, 2), (1, 3);
-
-INSERT INTO task_collaborators (task_id, user_id) VALUES
-(1, 1), (1, 2), (2, 2), (2, 3);
 
 -- Comments for Task 1 ('Design Homepage')
 INSERT INTO comments (body, author_id, task_id) VALUES
@@ -167,7 +200,8 @@ INSERT INTO comments (body, author_id, task_id) VALUES
 INSERT INTO comments (body, author_id, task_id) VALUES
 ('Should we include a route for collaborators or handle that within the main task endpoint?', 3, 5);
 
--- Task 3 main task with collaborator John
+-- Task 3: Owner (3) is auto-added as collaborator (along with User 1)
+-- This query already correctly included the owner.
 WITH inserted_task AS (
   INSERT INTO tasks (title, description, deadline, status, owner_id, project_id)
   VALUES ('Frontend Development', 'Develop the frontend using Vue.js', '2025-11-13', 'UNASSIGNED', 3, 1)
@@ -180,15 +214,19 @@ SELECT
 FROM inserted_task AS it
 CROSS JOIN (
   VALUES
-    (1),               -- The first collaborator
-    (3)  -- Add Susan's ID here
+    (1),         -- The first collaborator
+    (3)          -- The owner
 ) AS c(user_id);
 
--- Project 2 with Susan as Owner and Jane as Collaborator
-with inserted_project AS (
+-- Project 2: Owner (3) and Collaborator (2) are both added
+WITH inserted_project AS (
   INSERT INTO projects (title, description, deadline, owner_id)
   VALUES ('Marketing Campaign', 'Plan and execute the fall marketing campaign.', '2025-12-01', 3)
-  RETURNING id
+  RETURNING id, owner_id
 )
-insert into project_collaborators (project_id, user_id)
-SELECT id, 2 FROM inserted_project
+INSERT INTO project_collaborators (project_id, user_id)
+-- Insert the owner (3)
+SELECT id, owner_id FROM inserted_project
+UNION
+-- Insert the other collaborator (2)
+SELECT id, 2 FROM inserted_project;

@@ -6,281 +6,240 @@
 <style>
     /* --- General Setup --- */
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
-    @page {
-        size: A4;
-        margin: 20mm 15mm 20mm 15mm;
+    @page { size: A4; margin: 20mm 15mm; }
+    html, body { box-sizing: border-box; -webkit-text-size-adjust: none; }
+    *, *:before, *:after { box-sizing: inherit; }
+    h1, h2, h3 { color: #1a253c; font-weight: 600; margin-top: 0; }
+    h1 { font-size: 20px; margin-bottom: 5px; color: #3498db; }
+    h2 { font-size: 15px; margin-top: 20px; border-bottom: 1px solid #dbe3e0; padding-bottom: 5px; margin-bottom: 10px; }
+    h3 { font-size: 12px; margin-top: 15px; margin-bottom: 8px; color: #555; }
+    
+    /* ======================================================== */
+    /* --- THIS IS THE FIX --- */
+    /* ======================================================== */
+    table { 
+        width: 100%; 
+        border-collapse: collapse; 
+        margin-top: 10px; 
+        font-size: 9px;
+        table-layout: fixed; /* This is essential for word wrap to work with widths */
+        max-width: 100%;
+        overflow-wrap: break-word; /* Wrap long words (standard) */
+        word-wrap: break-word;     /* Wrap long words (legacy) */
     }
-    body {
-        font-family: 'Inter', Arial, sans-serif;
-        font-size: 12px;
-        color: #333;
-        background-color: #fff;
-        margin: 0;
-        padding: 0;
+    th, td { 
+        border: 1px solid #dce3ea; 
+        padding: 5px 6px; 
+        text-align: left; 
+        vertical-align: top; 
+        /* Word wrapping is now inherited from the 'table' element */
+        max-width: 100%; /* Ensure cell respects its column width */
     }
+    /* ======================================================== */
+    /* --- END OF FIX --- */
+    /* ======================================================== */
 
-    .report-container {
-        width: 100%;
-        max-width: 190mm;
-        margin: 0 auto;
-        padding: 0;
+    th { 
+        background-color: #f8faff; 
+        color: #2f3a56; 
+        font-weight: 600; 
+        text-transform: uppercase; 
+        font-size: 8px;
+        padding: 6px 6px;
     }
+    tr:nth-child(even) { background-color: #fbfcfd; }
 
-    h1, h2, h3 {
-        color: #1a253c;
-        font-weight: 600;
-        margin-top: 0;
-    }
-    h1 { font-size: 20px; margin-bottom: 6px; }
-    h2 { font-size: 15px; margin-top: 18px; border-bottom: 1px solid #dbe3e0; padding-bottom: 4px; }
-    h3 { font-size: 13px; }
-
-    /* --- Report Header --- */
-    .report-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: flex-start;
-        border-bottom: 2px solid #3498db;
-        padding-bottom: 10px;
-        margin-bottom: 15px;
-    }
-    .report-header h1 {
-        color: #3498db;
-    }
-    .report-meta {
-        text-align: right;
-        font-size: 11px;
-        color: #555;
-    }
+    .report-header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #3498db; padding-bottom: 10px; margin-bottom: 15px; }
+    .report-meta { text-align: right; font-size: 10px; color: #555; }
     .report-meta div { margin-bottom: 3px; }
+    .project-details-box { background: #fafafa; border: 1px solid #eef1f3; padding: 10px 12px; border-radius: 6px; font-size: 11px; line-height: 1.5; margin-bottom: 15px; }
+    
+    /* --- Grid Layout --- */
+    .grid-container { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px;}
+    .grid-item { background: #f9fbfd; border: 1px solid #eef1f3; border-radius: 6px; padding: 10px; }
+    .grid-item h3 { margin-top: 0; font-size: 12px; color: #5a6b8c; border-bottom: 1px solid #eee; padding-bottom: 4px; margin-bottom: 8px; }
+    .grid-item ul { list-style: none; padding: 0; margin: 0; font-size: 10px; }
+    .grid-item li { display: flex; justify-content: space-between; padding: 3px 0; }
+    .grid-item li strong { font-weight: 500; color: #444; }
+    
+    /* --- Overdue Box --- */
+    .overdue-box { background: #fff8f8; border: 1px solid #f3e0e0; border-radius: 6px; padding: 10px; grid-column: span 2; }
+    .overdue-box h3 { color: #c0392b; }
+    .overdue-box ul { list-style: none; padding: 0; margin: 0; }
+    .overdue-box li { color: #c0392b; font-size: 10px; }
+    .overdue-box li strong { color: #a13023; }
 
-    /* --- Project Details --- */
-    .project-details {
-        background: #fafafa;
-        border: 1px solid #eef1f3;
-        padding: 10px 12px;
-        border-radius: 6px;
+    .completion-rate-bar { background-color: #e0e0e0; border-radius: 3px; height: 8px; overflow: hidden; margin-top: 4px; }
+    .completion-rate-fill { background-color: #27ae60; height: 100%; border-radius: 3px; }
+    .no-data { text-align: center; color: #888; font-style: italic; font-size: 10px; padding: 15px; }
+    .footer { margin-top: 20px; text-align: center; font-size: 9px; color: #999; border-top: 1px solid #eef1f3; padding-top: 8px; }
+
+    /* --- Charts --- */
+    .chart-placeholder {
+        border: 1px dashed #ccc;
+        background-color: #f0f0f0;
+        text-align: center;
+        padding: 40px 10px;
         font-size: 12px;
-        line-height: 1.5;
-    }
-
-    /* --- KPI Summary Grid --- */
-    .kpi-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-        gap: 10px;
-        margin-top: 10px;
-        margin-bottom: 20px;
-        page-break-inside: avoid;
-    }
-    .kpi-card {
-        background: #f9fbfd;
-        border: 1px solid #eef1f3;
-        border-radius: 6px;
-        padding: 12px;
-    }
-    .kpi-label {
-        font-size: 11px;
-        font-weight: 500;
-        color: #5a6b8c;
-        margin-bottom: 4px;
-    }
-    .kpi-value {
-        font-size: 20px;
-        font-weight: 700;
-        color: #1a253c;
-    }
-    .kpi-card.overdue-card { border-left: 4px solid #e74c3c; }
-    .kpi-card.completed-card { border-left: 4px solid #2ecc71; }
-
-    /* --- Task Table --- */
-    .task-table {
-        width: 100%;
-        border-collapse: collapse;
-        margin-top: 10px;
-        font-size: 11px;
-        word-wrap: break-word;
-        table-layout: fixed;
-    }
-    .task-table th, .task-table td {
-        border: 1px solid #dce3ea;
-        padding: 6px 8px;
-        text-align: left;
-        vertical-align: top;
-    }
-    .task-table th {
-        background-color: #f8faff;
-        color: #2f3a56;
-        font-weight: 600;
-        text-transform: uppercase;
-        font-size: 10px;
-    }
-    .task-table td {
-        white-space: normal;
-        overflow-wrap: break-word;
-    }
-    .task-table tr:nth-child(even) { background-color: #fbfcfd; }
-
-    .no-tasks-row td {
-        text-align: center;
-        padding: 20px;
         color: #777;
-        font-size: 13px;
+        margin-top: 10px;
+        border-radius: 4px;
+        min-height: 150px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
     }
-
-    /* --- Status & Priority Tags --- */
-    .status-tag {
-        padding: 2px 8px;
-        border-radius: 10px;
-        font-weight: 500;
-        font-size: 10px;
-        display: inline-block;
-        line-height: 1.3;
-    }
-    .status-tag.status-Unassigned { background-color: #e4e7eb; color: #5a6b8c; }
-    .status-tag.status-Ongoing { background-color: #dbeafe; color: #2563eb; }
-    .status-tag.status-Under-Review { background-color: #fef3c7; color: #d97706; }
-    .status-tag.status-Completed { background-color: #d1fae5; color: #057a55; }
-    .status-tag.status-Overdue { background-color: #ffe4e6; color: #e74c3c; }
-
-    .priority-display { display: flex; align-items: center; }
-    .priority-dot {
-        width: 8px;
-        height: 8px;
-        border-radius: 50%;
-        margin-right: 5px;
-        flex-shrink: 0;
-    }
-    .priority-dot.priority-low { background-color: #2ecc71; }
-    .priority-dot.priority-medium { background-color: #f39c12; }
-    .priority-dot.priority-high { background-color: #e74c3c; }
-
-    /* --- Footer --- */
-    .report-footer {
-        margin-top: 20px;
-        text-align: center;
-        font-size: 10px;
-        color: #999;
-        border-top: 1px solid #eef1f3;
-        padding-top: 10px;
-    }
-
-    /* --- Print Optimization --- */
-    @media print {
-        body {
-            background: #fff;
-            margin: 0;
-        }
-        .report-header, .kpi-grid, .task-table, .project-details {
-            page-break-inside: avoid;
-        }
-        h2 {
-            page-break-before: avoid;
-        }
-        .report-footer {
-            position: relative;
-            bottom: 0;
-            width: 100%;
-            page-break-before: auto;
-        }
+    .chart-image {
+        width: 100%;
+        max-width: 400px;
+        height: auto;
+        margin: 10px auto;
+        display: block;
     }
 </style>
 </head>
 <body>
-<div class="report-container">
     <div class="report-header">
-        <div>
-            <h1>{{ report_title | default('Project Performance Report') }}</h1>
-        </div>
+        <h1>{{ report_title }}</h1>
         <div class="report-meta">
-            <div><strong>Project:</strong> {{ project_name | default('N/A') }}</div>
+            <div><strong>Project:</strong> {{ project_details.title | default('N/A') }}</div>
             <div><strong>Period:</strong> {{ report_period | default('N/A') }}</div>
             <div><strong>Generated:</strong> {{ generation_date }}</div>
         </div>
     </div>
 
-    <h2>Project Overview</h2>
-    <div class="project-details">
-        <strong>Project Owner:</strong> {{ project_owner | default('N/A') }}<br>
-        <strong>Collaborators:</strong> {{ project_collaborators | default('N/A') }}
+    <div class="project-details-box">
+        <strong>Owner:</strong> {{ project_details.owner_name | default('N/A') }} |
+        <strong>Deadline:</strong> {{ project_details.deadline | default('N/A') }} <br>
+        <strong>Collaborators:</strong> {{ project_details.collaborator_names | default('None') }} <br>
+        <strong>Description:</strong> {{ project_details.description | default('No description.') }}
     </div>
 
-    <h2>Key Metrics</h2>
-    <div class="kpi-grid">
-        <div class="kpi-card">
-            <div class="kpi-label">Total Tasks</div>
-            <div class="kpi-value">{{ total_tasks | default(0) }}</div>
+    <h2>Section 1: Project Metrics ({{ report_period }})</h2>
+
+    <div class="grid-container">
+        <div class="grid-item">
+            <h3>Task Status Distribution</h3>
+            {% if charts.status_chart %}
+                <img src="data:image/png;base64,{{ charts.status_chart }}" class="chart-image">
+            {% else %}
+                <div class="chart-placeholder">[Status Chart N/A]</div>
+            {% endif %}
+            <ul>
+                {% for status, count in section1.status_distribution.items() %}
+                <li>{{ status }}: <strong>{{ count }}</strong></li>
+                {% endfor %}
+                 <li style="border-top: 1px solid #eee; padding-top: 4px; margin-top: 4px;">Total Tasks: <strong>{{ section1.total_relevant_tasks }}</strong></li>
+            </ul>
         </div>
-        <div class="kpi-card completed-card">
-            <div class="kpi-label">Completed</div>
-            <div class="kpi-value">{{ status_counts['Completed'] | default(0) }}</div>
+
+        <div class="grid-item">
+            <h3>Task Priority Distribution</h3>
+            {% if charts.priority_chart %}
+                <img src="data:image/png;base64,{{ charts.priority_chart }}" class="chart-image">
+            {% else %}
+                <div class="chart-placeholder">[Priority Chart N/A]</div>
+            {% endif %}
+            <ul>
+                {% for priority, count in section1.priority_distribution.items() %}
+                    {% if count > 0 %}
+                    <li>Priority {{ priority }}: <strong>{{ count }}</strong></li>
+                    {% endif %}
+                {% endfor %}
+            </ul>
         </div>
-        <div class="kpi-card">
-            <div class="kpi-label">Ongoing</div>
-            <div class="kpi-value">{{ status_counts['Ongoing'] | default(0) }}</div>
-        </div>
-        <div class="kpi-card">
-            <div class="kpi-label">Under Review</div>
-            <div class="kpi-value">{{ status_counts['Under Review'] | default(0) }}</div>
-        </div>
-        <div class="kpi-card">
-            <div class="kpi-label">Unassigned</div>
-            <div class="kpi-value">{{ status_counts['Unassigned'] | default(0) }}</div>
-        </div>
-        <div class="kpi-card overdue-card">
-            <div class="kpi-label">Overdue</div>
-            <div class="kpi-value">{{ overdue_count | default(0) }}</div>
+
+        <div class="overdue-box">
+            <h3>Currently Overdue Tasks ({{ section1.overdue_count }})</h3>
+            {% if section1.overdue_tasks %}
+            <ul style="max-height: 150px; overflow-y: auto;">
+                {% for task in section1.overdue_tasks %}
+                <li><strong>({{ task.task_type }}) {{ task.title }}</strong> (Due: {{ task.deadline }}) - Owner: {{ task.owner_name }}</li>
+                {% endfor %}
+            </ul>
+            {% else %}
+            <div class="no-data">No overdue tasks.</div>
+            {% endif %}
         </div>
     </div>
 
-    <h2>Task Details</h2>
-    <table class="task-table">
+
+    <h2>Collaborator Summary (Based on Task Ownership)</h2>
+    {% if collaborator_stats %}
+     <table>
         <thead>
             <tr>
-                <th>Task Title</th>
-                <th>Status</th>
-                <th>Priority</th>
-                <th>Deadline</th>
-                <th>Owner</th>
-                <th>Collaborators</th>
-                <th>Duration</th>
+                <th style="width: 20%;">Collaborator</th>
+                <th style="width: 10%;">Tasks</th>
+                <th style="width: 10%;">Subtasks</th>
+                <th style="width: 15%;">In Progress</th>
+                <th style="width: 15%;">Under Review</th>
+                <th style="width: 15%;">Completed</th>
+                <th style="width: 15%;">Completion Rate</th>
             </tr>
         </thead>
         <tbody>
-            {% for task in tasks %}
+            {% for stat in collaborator_stats %}
             <tr>
-                <td>{{ task.title | default('N/A') }}</td>
+                <td>{{ stat.name }}</td>
+                <td>{{ stat.main_tasks }}</td>
+                <td>{{ stat.sub_tasks }}</td>
+                <td>{{ stat.in_progress }}</td>
+                <td>{{ stat.under_review }}</td>
+                <td>{{ stat.completed }}</td>
                 <td>
-                    <span class="status-tag status-{{ task.status | replace(' ', '-') }}">{{ task.status | default('N/A') }}</span>
-                    {% if task.is_overdue and task.status != 'Completed' %}
-                        <span class="status-tag status-Overdue" style="margin-top: 3px;">Overdue</span>
-                    {% endif %}
-                </td>
-                <td>
-                    {% set priority_level = 'low' %}
-                    {% if task.priority >= 8 %}{% set priority_level = 'high' %}
-                    {% elif task.priority >= 4 %}{% set priority_level = 'medium' %}{% endif %}
-                    <div class="priority-display">
-                        <span class="priority-dot priority-{{ priority_level }}"></span>
-                        <span>{{ task.priority | default('N/A') }} ({{ priority_level | capitalize }})</span>
+                    {{ stat.completion_rate }}%
+                    <div class="completion-rate-bar">
+                        <div class="completion-rate-fill" style="width: {{ stat.completion_rate }}%;"></div>
                     </div>
                 </td>
-                <td>{{ task.deadline | default('N/A') }}</td>
-                <td>{{ task.owner_name | default('N/A') }}</td>
-                <td>{{ task.collaborator_names | default('N/A') }}</td>
-                <td>{{ task.duration | default('N/A') }}</td>
             </tr>
-            {% else %}
-            <tr class="no-tasks-row">
-                <td colspan="7">No tasks found for this project in the selected period.</td>
+            {% endfor %}
+        </tbody>
+        <tfoot>
+            <tr>
+                <td colspan="6">Project Average Completion Rate:</td>
+                <td>{{ average_completion_rate }}%</td>
+            </tr>
+        </tfoot>
+     </table>
+    {% else %}
+     <div class="no-data">No collaborator task data available for this period.</div>
+    {% endif %}
+
+
+    <h2>Section 2: Individual Task Changes ({{ report_period }})</h2>
+    {% if section2 %}
+    <table>
+        <thead>
+            <tr>
+                <th style="width: 22%;">Task</th>
+                <th style="width: 15%;">Timestamp</th>
+                <th style="width: 15%;">User</th>
+                <th style="width: 15%;">Field Changed</th>
+                <th style="width: 16.5%;">Old Value</th>
+                <th style="width: 16.5%;">New Value</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for log in section2 %}
+            <tr>
+                <td>{{ log.task_title | default('N/A') }} (ID: {{ log.task_id }})</td>
+                <td>{{ log.timestamp }}</td>
+                <td>{{ log.user_name }}</td>
+                <td>{{ log.field_changed }}</td>
+                <td>{{ log.old_value }}</td>
+                <td>{{ log.new_value }}</td>
             </tr>
             {% endfor %}
         </tbody>
     </table>
+    {% else %}
+    <div classs="no-data">No task changes recorded during this period.</div>
+    {% endif %}
 
-    <div class="report-footer">
-        Generated by Smart Task Management System
+    <div class="footer">
+        End of Report
     </div>
-</div>
 </body>
 </html>

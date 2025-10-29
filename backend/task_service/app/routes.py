@@ -518,7 +518,7 @@ def create_task_in_project(project_id):
             else:
                 return jsonify({"error": error}), 403
         
-        return jsonify(new_task), 201
+        return jsonify(new_task.to_json()), 201
         
     except Exception as e:
         print(f"Error in create_task_in_project: {e}")

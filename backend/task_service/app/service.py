@@ -1,4 +1,4 @@
-from .models import db, Project, Task, Attachment, TaskStatusEnum, project_collaborators, task_collaborators, Comment, comment_mentions
+from .models import db, Project, Task, Attachment, TaskStatusEnum, project_collaborators, task_collaborators, Comment, comment_mentions, TaskActivityLog
 from sqlalchemy import or_
 from sqlalchemy.orm import aliased
 from datetime import datetime, timedelta
@@ -7,6 +7,7 @@ from .rabbitmq_publisher import publish_status_update
 from werkzeug.utils import secure_filename
 from flask import current_app
 import uuid
+from datetime import datetime
 
 # Settled
 def get_all_tasks(user_id):
@@ -121,6 +122,28 @@ def create_task(task_data):
         db.session.rollback()
         raise e
 
+def _log_task_activity(user_id, task_id, field, old_val, new_val):
+    """
+    Helper function to create and add a log entry to the session.
+    We convert values to string for generic storage.
+    """
+    if old_val is None:
+        old_val = "None"
+    if new_val is None:
+        new_val = "None"
+        
+    log_entry = TaskActivityLog(
+        task_id=task_id,
+        user_id=user_id,
+        field_changed=str(field).lower(),
+        old_value=str(old_val),
+        new_value=str(new_val),
+        timestamp=datetime.utcnow()
+    )
+    db.session.add(log_entry)
+
+# --- YOUR MODIFIED update_task FUNCTION ---
+
 def update_task(task_id, user_id, task_data):
     #Update an existing task
     try:
@@ -135,85 +158,117 @@ def update_task(task_id, user_id, task_data):
         if not is_owner:
             if not is_collaborator:
                 return None, "Forbidden: You do not have permission to edit this task."
+            # Check if collaborator is trying to change anything *other* than status
             if any(field != 'status' for field in task_data):
                 return None, "Forbidden: Collaborators can only update the task's status."
         
-        # Track status change
-        old_status = None
-        status_changed = False
+        # Track status change for RabbitMQ (your existing logic)
+        old_status_for_rabbitmq = None
+        status_changed_for_rabbitmq = False
 
         _update_timestamps_cascade(task)
         
-        current_time = db.func.now()
+        current_time = db.func.now() # Your existing logic
 
+        # --- MODIFIED: We iterate field by field to log changes ---
+        
+        fields_to_skip = ['id', 'owner_id', 'collaborators_to_add', 'collaborators_to_remove']
+        
         for field, data in task_data.items():
-            if field in ['id', 'owner_id', 'collaborators_to_add', 'collaborators_to_remove']:
+            if field in fields_to_skip:
                 continue
 
             if field == 'deadline' and data:
-                task.deadline = datetime.fromisoformat(data)
-                _cascade_parent_deadline_to_subtasks(task, task.deadline)
+                new_deadline = datetime.fromisoformat(data)
+                if new_deadline != task.deadline:
+                    # --- LOGGING ---
+                    _log_task_activity(user_id, task.id, 'deadline', task.deadline, new_deadline)
+                    # --- END LOGGING ---
+                    task.deadline = new_deadline
+                    _cascade_parent_deadline_to_subtasks(task, task.deadline)
+                    
             elif field == 'recurring_end_date' and data:
-                task.recurrence_end_date = datetime.fromisoformat(data)
+                new_recur_end = datetime.fromisoformat(data)
+                if new_recur_end != task.recurrence_end_date:
+                    # --- LOGGING ---
+                    _log_task_activity(user_id, task.id, 'recurring_end_date', task.recurrence_end_date, new_recur_end)
+                    # --- END LOGGING ---
+                    task.recurrence_end_date = new_recur_end
+                    
             elif field == 'status':
                 try:
-                    # Parse the new status value
                     new_status_enum = TaskStatusEnum(data)
                     
-                    # Validate subtasks before completing
-                    if new_status_enum == TaskStatusEnum.COMPLETED:
-                        if not _are_all_subtasks_completed(task):
-                            return None, "Cannot mark task as completed while it has incomplete subtasks."
-                    
-                    # Track status change for RabbitMQ
                     if task.status != new_status_enum:
-                        old_status = task.status.value
-                        status_changed = True
-                    
-                    # Update the status
-                    task.status = new_status_enum
+                        # Validate subtasks before completing
+                        if new_status_enum == TaskStatusEnum.COMPLETED:
+                            if not _are_all_subtasks_completed(task):
+                                return None, "Cannot mark task as completed while it has incomplete subtasks."
+                        
+                        # --- LOGGING ---
+                        _log_task_activity(user_id, task.id, 'status', task.status.value, data)
+                        # --- END LOGGING ---
+
+                        # Keep your RabbitMQ logic
+                        old_status_for_rabbitmq = task.status.value
+                        status_changed_for_rabbitmq = True
+                        
+                        task.status = new_status_enum
                     
                 except ValueError:
                     return None, "Invalid status value"
+                    
             elif hasattr(task, field):
-                setattr(task, field, data)
+                # --- LOGGING for all other generic fields (title, description, priority, etc) ---
+                old_val = getattr(task, field)
+                if old_val != data:
+                    _log_task_activity(user_id, task.id, field, old_val, data)
+                    setattr(task, field, data)
+                # --- END LOGGING ---
 
+        # --- MODIFIED: Handle Owner/Collaborator changes with logging ---
         if is_owner:
-            # First, determine the final set of collaborators to be added.
-            # Use a set to automatically handle duplicates.
             collaborators_to_add = set(task_data.get('collaborators_to_add', []))
 
-            # If the owner is being changed, update the task and add the new owner
-            # to our set of users to be added as collaborators.
             new_owner_id = task_data.get('owner_id')
             if new_owner_id and int(new_owner_id) != task.owner_id:
+                # --- LOGGING ---
+                _log_task_activity(user_id, task.id, 'owner_id', task.owner_id, new_owner_id)
+                # --- END LOGGING ---
                 task.owner_id = int(new_owner_id)
-                collaborators_to_add.add(task.owner_id)
+                collaborators_to_add.add(task.owner_id) # Your existing logic
 
-            # Add all new collaborators from the consolidated set
             if collaborators_to_add:
-                _add_collaborators_to_parents(task, collaborators_to_add)
+                # --- LOGGING ---
+                # Log the IDs of users being added
+                _log_task_activity(user_id, task.id, 'collaborators_added', '', ", ".join(map(str, collaborators_to_add)))
+                # --- END LOGGING ---
+                _add_collaborators_to_parents(task, collaborators_to_add) # Your existing logic
 
-            # Remove collaborators from the task and all its subtasks
-            collaborators_to_remove = task_data.get('collaborators_to_remove')
+            collaborators_to_remove = set(task_data.get('collaborators_to_remove', []))
             if collaborators_to_remove:
-                _remove_collaborators_from_subtasks(task, set(collaborators_to_remove))
+                # --- LOGGING ---
+                # Log the IDs of users being removed
+                _log_task_activity(user_id, task.id, 'collaborators_removed', '', ", ".join(map(str, collaborators_to_remove)))
+                # --- END LOGGING ---
+                _remove_collaborators_from_subtasks(task, collaborators_to_remove) # Your existing logic
 
-        #RECURRENCE LOGIC
+        #RECURRENCE LOGIC (Your existing logic)
         if 'status' in task_data and task.status == TaskStatusEnum.COMPLETED:
             if task.is_recurring:
                 _create_next_recurring_task(task)
 
+        # Commit all changes (Task updates AND new Log entries)
         db.session.commit()
 
-        # Publish to RabbitMQ if status changed
-        if status_changed:
+        # Publish to RabbitMQ if status changed (Your existing logic)
+        if status_changed_for_rabbitmq:
             try:
                 from .rabbitmq_publisher import publish_status_update
                 
                 publish_status_update(
                     task_id=task.id,
-                    old_status=old_status,
+                    old_status=old_status_for_rabbitmq,
                     new_status=task.status.value,
                     changed_by_id=user_id
                 )
@@ -1389,3 +1444,23 @@ def _touch_project(project):
     if project:
         project.updated_at = db.func.now()
         db.session.add(project)
+
+def _log_task_activity(user_id, task_id, field, old_val, new_val):
+    """
+    Helper function to create and add a log entry to the session.
+    We convert values to string for generic storage.
+    """
+    if old_val is None:
+        old_val = "None"
+    if new_val is None:
+        new_val = "None"
+        
+    log_entry = TaskActivityLog(
+        task_id=task_id,
+        user_id=user_id,
+        field_changed=str(field).lower(),
+        old_value=str(old_val),
+        new_value=str(new_val),
+        timestamp=datetime.utcnow()
+    )
+    db.session.add(log_entry)
