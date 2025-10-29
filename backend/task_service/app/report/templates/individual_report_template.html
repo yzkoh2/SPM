@@ -1,68 +1,245 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>{{ report_title }}</title>
-    <style>
-        /* Basic styles can be embedded or linked via WeasyPrint */
-        .overdue { color: red; font-weight: bold; }
-    </style>
+<meta charset="UTF-8">
+<title>{{ report_title | default('Project Report') }}</title>
+<style>
+    /* --- General Setup --- */
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+    @page { size: A4; margin: 20mm 15mm; }
+    html, body { box-sizing: border-box; -webkit-text-size-adjust: none; }
+    *, *:before, *:after { box-sizing: inherit; }
+    h1, h2, h3 { color: #1a253c; font-weight: 600; margin-top: 0; }
+    h1 { font-size: 20px; margin-bottom: 5px; color: #3498db; }
+    h2 { font-size: 15px; margin-top: 20px; border-bottom: 1px solid #dbe3e0; padding-bottom: 5px; margin-bottom: 10px; }
+    h3 { font-size: 12px; margin-top: 15px; margin-bottom: 8px; color: #555; }
+    
+    /* ======================================================== */
+    /* --- THIS IS THE FIX --- */
+    /* ======================================================== */
+    table { 
+        width: 100%; 
+        border-collapse: collapse; 
+        margin-top: 10px; 
+        font-size: 9px;
+        table-layout: fixed; /* This is essential for word wrap to work with widths */
+        max-width: 100%;
+        overflow-wrap: break-word; /* Wrap long words (standard) */
+        word-wrap: break-word;     /* Wrap long words (legacy) */
+    }
+    th, td { 
+        border: 1px solid #dce3ea; 
+        padding: 5px 6px; 
+        text-align: left; 
+        vertical-align: top; 
+        /* Word wrapping is now inherited from the 'table' element */
+        max-width: 100%; /* Ensure cell respects its column width */
+    }
+    /* ======================================================== */
+    /* --- END OF FIX --- */
+    /* ======================================================== */
+
+    th { 
+        background-color: #f8faff; 
+        color: #2f3a56; 
+        font-weight: 600; 
+        text-transform: uppercase; 
+        font-size: 8px;
+        padding: 6px 6px;
+    }
+    tr:nth-child(even) { background-color: #fbfcfd; }
+
+    .report-header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #3498db; padding-bottom: 10px; margin-bottom: 15px; }
+    .report-meta { text-align: right; font-size: 10px; color: #555; }
+    .report-meta div { margin-bottom: 3px; }
+    .project-details-box { background: #fafafa; border: 1px solid #eef1f3; padding: 10px 12px; border-radius: 6px; font-size: 11px; line-height: 1.5; margin-bottom: 15px; }
+    
+    /* --- Grid Layout --- */
+    .grid-container { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px;}
+    .grid-item { background: #f9fbfd; border: 1px solid #eef1f3; border-radius: 6px; padding: 10px; }
+    .grid-item h3 { margin-top: 0; font-size: 12px; color: #5a6b8c; border-bottom: 1px solid #eee; padding-bottom: 4px; margin-bottom: 8px; }
+    .grid-item ul { list-style: none; padding: 0; margin: 0; font-size: 10px; }
+    .grid-item li { display: flex; justify-content: space-between; padding: 3px 0; }
+    .grid-item li strong { font-weight: 500; color: #444; }
+    
+    /* --- Overdue Box --- */
+    .overdue-box { background: #fff8f8; border: 1px solid #f3e0e0; border-radius: 6px; padding: 10px; grid-column: span 2; }
+    .overdue-box h3 { color: #c0392b; }
+    .overdue-box ul { list-style: none; padding: 0; margin: 0; }
+    .overdue-box li { color: #c0392b; font-size: 10px; }
+    .overdue-box li strong { color: #a13023; }
+
+    .completion-rate-bar { background-color: #e0e0e0; border-radius: 3px; height: 8px; overflow: hidden; margin-top: 4px; }
+    .completion-rate-fill { background-color: #27ae60; height: 100%; border-radius: 3px; }
+    .no-data { text-align: center; color: #888; font-style: italic; font-size: 10px; padding: 15px; }
+    .footer { margin-top: 20px; text-align: center; font-size: 9px; color: #999; border-top: 1px solid #eef1f3; padding-top: 8px; }
+
+    /* --- Charts --- */
+    .chart-placeholder {
+        border: 1px dashed #ccc;
+        background-color: #f0f0f0;
+        text-align: center;
+        padding: 40px 10px;
+        font-size: 12px;
+        color: #777;
+        margin-top: 10px;
+        border-radius: 4px;
+        min-height: 150px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .chart-image {
+        width: 100%;
+        max-width: 400px;
+        height: auto;
+        margin: 10px auto;
+        display: block;
+    }
+</style>
 </head>
 <body>
-    <h1>{{ report_title }}</h1>
-    <p>Report generated on: {{ generation_date }}</p>
-
-    <div class="summary-section">
-        <h2>Project Summary</h2>
-        <ul>
-            <li><strong>Project Owner:</strong> {{ project_owner }}</li>
-            <li><strong>Collaborators:</strong> {{ project_collaborators }}</li>
-            <li><strong>Total Tasks:</strong> {{ total_tasks }}</li>
-            <li><strong>Tasks Unassigned:</strong> {{ status_counts['Unassigned'] }}</li>
-            <li><strong>Tasks Ongoing:</strong> {{ status_counts['Ongoing'] }}</li>
-            <li><strong>Tasks Under Review:</strong> {{ status_counts['Under Review'] }}</li>
-            <li><strong>Tasks Completed:</strong> {{ status_counts['Completed'] }}</li>
-            <li><strong>Tasks Overdue:</strong> <span class="overdue">{{ overdue_count }}</span></li>
-            </ul>
+    <div class="report-header">
+        <h1>{{ report_title }}</h1>
+        <div class="report-meta">
+            <div><strong>Project:</strong> {{ project_details.title | default('N/A') }}</div>
+            <div><strong>Period:</strong> {{ report_period | default('N/A') }}</div>
+            <div><strong>Generated:</strong> {{ generation_date }}</div>
+        </div>
     </div>
 
-    <div class="details-section">
-        <h2>Task Details</h2>
-        <table>
-            <thead>
-                <tr>
-                    <th>Title</th>
-                    <th>Status</th>
-                    <th>Deadline</th>
-                    <th>Owner</th>
-                    <th>Collaborators</th>
-                    <th>Priority</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for task in tasks %}
-                <tr>
-                    <td>{{ task.title }}</td>
-                    <td>
-                        {% if task.is_overdue %}
-                            <span class="overdue">{{ task.status }} (Overdue)</span>
-                        {% else %}
-                            {{ task.status }}
-                        {% endif %}
-                    </td>
-                    <td>{{ task.deadline }}</td>
-                    <td>{{ task.owner_name }}</td>
-                    <td>{{ task.collaborator_names }}</td>
-                    <td>{{ task.priority }}</td>
-                </tr>
-                {% else %}
-                <tr>
-                    <td colspan="6">No tasks found for this project.</td>
-                </tr>
+    <div class="project-details-box">
+        <strong>Owner:</strong> {{ project_details.owner_name | default('N/A') }} |
+        <strong>Deadline:</strong> {{ project_details.deadline | default('N/A') }} <br>
+        <strong>Collaborators:</strong> {{ project_details.collaborator_names | default('None') }} <br>
+        <strong>Description:</strong> {{ project_details.description | default('No description.') }}
+    </div>
+
+    <h2>Section 1: Project Metrics ({{ report_period }})</h2>
+
+    <div class="grid-container">
+        <div class="grid-item">
+            <h3>Task Status Distribution</h3>
+            {% if charts.status_chart %}
+                <img src="data:image/png;base64,{{ charts.status_chart }}" class="chart-image">
+            {% else %}
+                <div class="chart-placeholder">[Status Chart N/A]</div>
+            {% endif %}
+            <ul>
+                {% for status, count in section1.status_distribution.items() %}
+                <li>{{ status }}: <strong>{{ count }}</strong></li>
                 {% endfor %}
-            </tbody>
-        </table>
+                 <li style="border-top: 1px solid #eee; padding-top: 4px; margin-top: 4px;">Total Tasks: <strong>{{ section1.total_relevant_tasks }}</strong></li>
+            </ul>
+        </div>
+
+        <div class="grid-item">
+            <h3>Task Priority Distribution</h3>
+            {% if charts.priority_chart %}
+                <img src="data:image/png;base64,{{ charts.priority_chart }}" class="chart-image">
+            {% else %}
+                <div class="chart-placeholder">[Priority Chart N/A]</div>
+            {% endif %}
+            <ul>
+                {% for priority, count in section1.priority_distribution.items() %}
+                    {% if count > 0 %}
+                    <li>Priority {{ priority }}: <strong>{{ count }}</strong></li>
+                    {% endif %}
+                {% endfor %}
+            </ul>
+        </div>
+
+        <div class="overdue-box">
+            <h3>Currently Overdue Tasks ({{ section1.overdue_count }})</h3>
+            {% if section1.overdue_tasks %}
+            <ul style="max-height: 150px; overflow-y: auto;">
+                {% for task in section1.overdue_tasks %}
+                <li><strong>({{ task.task_type }}) {{ task.title }}</strong> (Due: {{ task.deadline }}) - Owner: {{ task.owner_name }}</li>
+                {% endfor %}
+            </ul>
+            {% else %}
+            <div class="no-data">No overdue tasks.</div>
+            {% endif %}
+        </div>
     </div>
 
+
+    <h2>Collaborator Summary (Based on Task Ownership)</h2>
+    {% if collaborator_stats %}
+     <table>
+        <thead>
+            <tr>
+                <th style="width: 20%;">Collaborator</th>
+                <th style="width: 10%;">Tasks</th>
+                <th style="width: 10%;">Subtasks</th>
+                <th style="width: 15%;">In Progress</th>
+                <th style="width: 15%;">Under Review</th>
+                <th style="width: 15%;">Completed</th>
+                <th style="width: 15%;">Completion Rate</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for stat in collaborator_stats %}
+            <tr>
+                <td>{{ stat.name }}</td>
+                <td>{{ stat.main_tasks }}</td>
+                <td>{{ stat.sub_tasks }}</td>
+                <td>{{ stat.in_progress }}</td>
+                <td>{{ stat.under_review }}</td>
+                <td>{{ stat.completed }}</td>
+                <td>
+                    {{ stat.completion_rate }}%
+                    <div class="completion-rate-bar">
+                        <div class="completion-rate-fill" style="width: {{ stat.completion_rate }}%;"></div>
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+        <tfoot>
+            <tr>
+                <td colspan="6">Project Average Completion Rate:</td>
+                <td>{{ average_completion_rate }}%</td>
+            </tr>
+        </tfoot>
+     </table>
+    {% else %}
+     <div class="no-data">No collaborator task data available for this period.</div>
+    {% endif %}
+
+
+    <h2>Section 2: Individual Task Changes ({{ report_period }})</h2>
+    {% if section2 %}
+    <table>
+        <thead>
+            <tr>
+                <th style="width: 22%;">Task</th>
+                <th style="width: 15%;">Timestamp</th>
+                <th style="width: 15%;">User</th>
+                <th style="width: 15%;">Field Changed</th>
+                <th style="width: 16.5%;">Old Value</th>
+                <th style="width: 16.5%;">New Value</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for log in section2 %}
+            <tr>
+                <td>{{ log.task_title | default('N/A') }} (ID: {{ log.task_id }})</td>
+                <td>{{ log.timestamp }}</td>
+                <td>{{ log.user_name }}</td>
+                <td>{{ log.field_changed }}</td>
+                <td>{{ log.old_value }}</td>
+                <td>{{ log.new_value }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <div classs="no-data">No task changes recorded during this period.</div>
+    {% endif %}
+
+    <div class="footer">
+        End of Report
+    </div>
 </body>
 </html>
