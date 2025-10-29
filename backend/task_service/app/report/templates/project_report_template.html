@@ -17,16 +17,32 @@
     /* ======================================================== */
     /* --- THIS IS THE FIX --- */
     /* ======================================================== */
-    table { 
-        width: 100%; 
-        border-collapse: collapse; 
-        margin-top: 10px; 
-        font-size: 9px;
-        table-layout: fixed; /* This is essential for word wrap to work with widths */
-        max-width: 100%;
-        overflow-wrap: break-word; /* Wrap long words (standard) */
-        word-wrap: break-word;     /* Wrap long words (legacy) */
-    }
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 10px;
+    font-size: 9px;
+    table-layout: fixed;
+    max-width: 100%;
+    overflow-wrap: break-word;
+    word-wrap: break-word;
+    page-break-inside: auto;
+}
+
+thead {
+    display: table-header-group;
+}
+
+tfoot {
+    display: table-footer-group;
+}
+
+tr {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+    page-break-after: auto;
+}
+
     th, td { 
         border: 1px solid #dce3ea; 
         padding: 5px 6px; 

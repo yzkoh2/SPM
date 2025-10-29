@@ -23,7 +23,7 @@ def get_team_report(team_id):
         print(f"Error generating report: {e}")
         return jsonify({"error": "Could not generate report"}), 500
 
-@task_bp.route('/reports/project/<int:project_id>', methods=['GET'])
+@task_bp.route('/reports/project/<int:project_id>', methods=['POST'])
 def get_project_report(project_id):
     """
     Generates a PDF report for a specific project.
@@ -42,9 +42,15 @@ def get_project_report(project_id):
     except ValueError:
         return jsonify({"error": "'user_id' must be an integer"}), 400
 
-    start_date_str = request.args.get('start_date')
-    end_date_str = request.args.get('end_date')
+    start_date_str = None
+    end_date_str = None
+    
+    data = request.get_json()
+    if data:
+        start_date_str = data.get('start_date')
+        end_date_str = data.get('end_date')
 
+    # --- 3. Parse Dates (if provided) ---
     start_date = None
     end_date = None
 
