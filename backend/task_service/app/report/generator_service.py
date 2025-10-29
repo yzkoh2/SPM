@@ -170,15 +170,18 @@ def generate_project_pdf_report(project_id: int, user_id: int, start_date: datet
     for collab_id in project_collaborator_ids:
         if collab_id not in user_cache:
             user_cache[collab_id] = _fetch_user_details(collab_id)
-        if collab_id != project_owner_id:
-             project_collaborator_names.append(user_cache[collab_id]['name'])
+        # if collab_id != project_owner_id:
+        #      project_collaborator_names.append(user_cache[collab_id]['name'])
+        project_collaborator_names.append(user_cache[collab_id]['name'])
+    
+    unique_collaborator_names = sorted(list(set(project_collaborator_names)))
 
     project_details = {
         'title': project_title,
         'description': project_description,
         'deadline': project_deadline,
         'owner_name': project_owner_name,
-        'collaborator_names': ", ".join(project_collaborator_names) or "None",
+        'collaborator_names': ", ".join(unique_collaborator_names) or "None",
     }
 
     # --- 3. Fetch Relevant Tasks ---
