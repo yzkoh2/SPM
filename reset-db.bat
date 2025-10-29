@@ -7,9 +7,6 @@ docker exec -i user_db psql -U user -d user_db -f /docker-entrypoint-initdb.d/us
 # Reset Task DB
 docker exec -i task_db psql -U user -d task_db -f /docker-entrypoint-initdb.d/task.sql
 
-# Reset Project DB
-docker exec -i project_db psql -U user -d project_db -f /docker-entrypoint-initdb.d/project.sql
-
 # Reset Notification DB
 docker exec -i notification_db psql -U user -d notification_db -f /docker-entrypoint-initdb.d/notification.sql
 
