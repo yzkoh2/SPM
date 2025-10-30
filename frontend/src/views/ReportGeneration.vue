@@ -433,30 +433,24 @@ const generateReport = async () => {
     } else {
       if (!selectedProjectId.value) throw new Error('Please select a project.')
 
-      // Construct URL with user_id as query param
-      const endpoint = `${KONG_API_URL}/reports/project/${selectedProjectId.value}?user_id=${authStore.user.id}`
-
-      // JSON body for dates and timezone
-      const payload = {
+      endpoint = `${KONG_API_URL}/reports/project/${selectedProjectId.value}?user_id=${authStore.user.id}`
+      payload = {
         start_date: dateRange.start_date || null,
         end_date: dateRange.end_date || null,
-        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC', // user's browser timezone
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
       }
 
       const response = await fetch(endpoint, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       })
 
       if (!response.ok) {
-        const errorData = await response.json()
+        const errorData = await response.json().catch(() => ({}))
         throw new Error(errorData.error || 'Failed to generate project report')
       }
 
-      // Handle PDF download
       const blob = await response.blob()
       const url = window.URL.createObjectURL(blob)
       const a = document.createElement('a')
@@ -471,39 +465,6 @@ const generateReport = async () => {
       resetForm()
     }
 
-    const response = await fetch(endpoint, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(payload),
-    })
-
-    if (!response.ok) {
-      const errorData = await response.json()
-      throw new Error(errorData.error || 'Failed to generate report')
-    }
-
-    // Handle PDF download
-    const blob = await response.blob()
-    const url = window.URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-
-    const fileName =
-      reportType.value === 'individual'
-        ? `IndividualTaskPerformanceReport_${new Date().toISOString().split('T')[0]}.pdf`
-        : `ProjectTaskPerformanceReport_${new Date().toISOString().split('T')[0]}.pdf`
-
-    a.download = fileName
-    document.body.appendChild(a)
-    a.click()
-    window.URL.revokeObjectURL(url)
-    document.body.removeChild(a)
-
-    // Show success message
-    alert('Report generated successfully!')
-    resetForm()
   } catch (err) {
     console.error('Error generating report:', err)
     error.value = err.message || 'Failed to generate report. Please try again.'
