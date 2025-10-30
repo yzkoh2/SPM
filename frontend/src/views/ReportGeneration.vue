@@ -12,18 +12,9 @@
       <!-- Error Display -->
       <div v-if="error" class="bg-red-50 border border-red-200 rounded-md p-4 mb-6">
         <div class="flex items-center">
-          <svg
-            class="w-5 h-5 text-red-600 mr-2"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
-              d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-            ></path>
+          <svg class="w-5 h-5 text-red-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
           </svg>
           <p class="text-red-700 text-sm">{{ error }}</p>
         </div>
@@ -41,27 +32,18 @@
           <div class="mb-6">
             <label class="block text-sm font-medium text-gray-700 mb-3">Report Type</label>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <button
-                type="button"
-                @click="reportType = 'individual'"
-                :class="[
-                  'p-4 border-2 rounded-lg transition-all',
-                  reportType === 'individual'
-                    ? 'border-indigo-600 bg-indigo-50'
-                    : 'border-gray-300 hover:border-gray-400',
-                ]"
-              >
+              <button type="button" @click="reportType = 'individual'" :class="[
+                'p-4 border-2 rounded-lg transition-all',
+                reportType === 'individual'
+                  ? 'border-indigo-600 bg-indigo-50'
+                  : 'border-gray-300 hover:border-gray-400',
+              ]">
                 <div class="flex items-center">
-                  <div
-                    :class="[
-                      'w-5 h-5 rounded-full border-2 flex items-center justify-center mr-3',
-                      reportType === 'individual' ? 'border-indigo-600' : 'border-gray-300',
-                    ]"
-                  >
-                    <div
-                      v-if="reportType === 'individual'"
-                      class="w-3 h-3 rounded-full bg-indigo-600"
-                    ></div>
+                  <div :class="[
+                    'w-5 h-5 rounded-full border-2 flex items-center justify-center mr-3',
+                    reportType === 'individual' ? 'border-indigo-600' : 'border-gray-300',
+                  ]">
+                    <div v-if="reportType === 'individual'" class="w-3 h-3 rounded-full bg-indigo-600"></div>
                   </div>
                   <div class="text-left">
                     <p class="font-medium text-gray-900">Individual Report</p>
@@ -70,27 +52,18 @@
                 </div>
               </button>
 
-              <button
-                type="button"
-                @click="reportType = 'project'"
-                :class="[
-                  'p-4 border-2 rounded-lg transition-all',
-                  reportType === 'project'
-                    ? 'border-indigo-600 bg-indigo-50'
-                    : 'border-gray-300 hover:border-gray-400',
-                ]"
-              >
+              <button type="button" @click="reportType = 'project'" :class="[
+                'p-4 border-2 rounded-lg transition-all',
+                reportType === 'project'
+                  ? 'border-indigo-600 bg-indigo-50'
+                  : 'border-gray-300 hover:border-gray-400',
+              ]">
                 <div class="flex items-center">
-                  <div
-                    :class="[
-                      'w-5 h-5 rounded-full border-2 flex items-center justify-center mr-3',
-                      reportType === 'project' ? 'border-indigo-600' : 'border-gray-300',
-                    ]"
-                  >
-                    <div
-                      v-if="reportType === 'project'"
-                      class="w-3 h-3 rounded-full bg-indigo-600"
-                    ></div>
+                  <div :class="[
+                    'w-5 h-5 rounded-full border-2 flex items-center justify-center mr-3',
+                    reportType === 'project' ? 'border-indigo-600' : 'border-gray-300',
+                  ]">
+                    <div v-if="reportType === 'project'" class="w-3 h-3 rounded-full bg-indigo-600"></div>
                   </div>
                   <div class="text-left">
                     <p class="font-medium text-gray-900">Project Report</p>
@@ -109,23 +82,17 @@
                 Select User
                 <span class="text-red-500">*</span>
               </label>
-              <select
-                v-model="selectedUserId"
-                required
-                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              >
+              <select v-model="selectedUserId" required
+                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
                 <option value="">-- Select a user --</option>
                 <option v-for="user in availableUsers" :key="user.id" :value="user.id">
                   {{ user.name }} ({{ user.role }})
                 </option>
               </select>
               <p class="text-xs text-gray-500 mt-1">
-                <span v-if="currentUser.role === 'Manager'"
-                  >You can generate reports for your team members</span
-                >
-                <span v-else-if="currentUser.role === 'Director'"
-                  >You can generate reports for your department members</span
-                >
+                <span v-if="currentUser.role === 'Manager'">You can generate reports for your team members</span>
+                <span v-else-if="currentUser.role === 'Director'">You can generate reports for your department
+                  members</span>
               </p>
             </div>
 
@@ -147,15 +114,11 @@
                 Select Project
                 <span class="text-red-500">*</span>
               </label>
-              <select
-                v-model="selectedProjectId"
-                required
-                :disabled="loadingProjects"
-                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:bg-gray-100"
-              >
+              <select v-model="selectedProjectId" required :disabled="loadingProjects"
+                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:bg-gray-100">
                 <option value="">-- Select a project --</option>
                 <option v-for="project in userProjects" :key="project.id" :value="project.id">
-                  {{ project.name }}
+                  {{ project.title }}
                 </option>
               </select>
               <p class="text-xs text-gray-500 mt-1">Select a project you own or collaborate on</p>
@@ -171,82 +134,55 @@
 
             <!-- Predefined Timeframes -->
             <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
-              <button
-                type="button"
-                @click="selectTimeframe('this_month')"
-                :class="[
-                  'px-4 py-2 border rounded-md text-sm font-medium transition-colors',
-                  timeframe === 'this_month'
-                    ? 'bg-indigo-600 text-white border-indigo-600'
-                    : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50',
-                ]"
-              >
+              <button type="button" @click="selectTimeframe('this_month')" :class="[
+                'px-4 py-2 border rounded-md text-sm font-medium transition-colors',
+                timeframe === 'this_month'
+                  ? 'bg-indigo-600 text-white border-indigo-600'
+                  : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50',
+              ]">
                 This Month
               </button>
 
-              <button
-                type="button"
-                @click="selectTimeframe('last_month')"
-                :class="[
-                  'px-4 py-2 border rounded-md text-sm font-medium transition-colors',
-                  timeframe === 'last_month'
-                    ? 'bg-indigo-600 text-white border-indigo-600'
-                    : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50',
-                ]"
-              >
+              <button type="button" @click="selectTimeframe('last_month')" :class="[
+                'px-4 py-2 border rounded-md text-sm font-medium transition-colors',
+                timeframe === 'last_month'
+                  ? 'bg-indigo-600 text-white border-indigo-600'
+                  : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50',
+              ]">
                 Last Month
               </button>
 
-              <button
-                type="button"
-                @click="selectTimeframe('last_3_months')"
-                :class="[
-                  'px-4 py-2 border rounded-md text-sm font-medium transition-colors',
-                  timeframe === 'last_3_months'
-                    ? 'bg-indigo-600 text-white border-indigo-600'
-                    : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50',
-                ]"
-              >
+              <button type="button" @click="selectTimeframe('last_3_months')" :class="[
+                'px-4 py-2 border rounded-md text-sm font-medium transition-colors',
+                timeframe === 'last_3_months'
+                  ? 'bg-indigo-600 text-white border-indigo-600'
+                  : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50',
+              ]">
                 Last 3 Months
               </button>
 
-              <button
-                type="button"
-                @click="selectTimeframe('custom')"
-                :class="[
-                  'px-4 py-2 border rounded-md text-sm font-medium transition-colors',
-                  timeframe === 'custom'
-                    ? 'bg-indigo-600 text-white border-indigo-600'
-                    : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50',
-                ]"
-              >
+              <button type="button" @click="selectTimeframe('custom')" :class="[
+                'px-4 py-2 border rounded-md text-sm font-medium transition-colors',
+                timeframe === 'custom'
+                  ? 'bg-indigo-600 text-white border-indigo-600'
+                  : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50',
+              ]">
                 Custom Range
               </button>
             </div>
 
             <!-- Custom Date Range -->
-            <div
-              v-if="timeframe === 'custom'"
-              class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4 p-4 bg-gray-50 rounded-md"
-            >
+            <div v-if="timeframe === 'custom'"
+              class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4 p-4 bg-gray-50 rounded-md">
               <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
-                <input
-                  type="date"
-                  v-model="customStartDate"
-                  required
-                  class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                />
+                <input type="date" v-model="customStartDate" required
+                  class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500" />
               </div>
               <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">End Date</label>
-                <input
-                  type="date"
-                  v-model="customEndDate"
-                  required
-                  :min="customStartDate"
-                  class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                />
+                <input type="date" v-model="customEndDate" required :min="customStartDate"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500" />
               </div>
             </div>
 
@@ -258,37 +194,18 @@
 
           <!-- Action Buttons -->
           <div class="mt-8 flex justify-end space-x-3">
-            <button
-              type="button"
-              @click="resetForm"
-              class="px-6 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors"
-            >
+            <button type="button" @click="resetForm"
+              class="px-6 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors">
               Reset
             </button>
-            <button
-              type="submit"
-              :disabled="isGenerating || !isFormValid"
-              class="px-6 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center"
-            >
-              <svg
-                v-if="isGenerating"
-                class="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
-                fill="none"
-                viewBox="0 0 24 24"
-              >
-                <circle
-                  class="opacity-25"
-                  cx="12"
-                  cy="12"
-                  r="10"
-                  stroke="currentColor"
-                  stroke-width="4"
-                ></circle>
-                <path
-                  class="opacity-75"
-                  fill="currentColor"
-                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                ></path>
+            <button type="submit" :disabled="isGenerating || !isFormValid"
+              class="px-6 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center">
+              <svg v-if="isGenerating" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none"
+                viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor"
+                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
+                </path>
               </svg>
               {{ isGenerating ? 'Generating...' : 'Generate Report' }}
             </button>
@@ -299,18 +216,10 @@
       <!-- Info Box -->
       <div class="mt-6 bg-blue-50 border border-blue-200 rounded-md p-4">
         <div class="flex">
-          <svg
-            class="w-5 h-5 text-blue-600 mr-3 flex-shrink-0 mt-0.5"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
-              d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-            ></path>
+          <svg class="w-5 h-5 text-blue-600 mr-3 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor"
+            viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
           </svg>
           <div class="text-sm text-blue-700">
             <p class="font-medium mb-1">Report Information:</p>
@@ -436,6 +345,7 @@ const fetchUserProjects = async () => {
     const response = await fetch(`${KONG_API_URL}/projects/user/${authStore.user.id}`)
     if (!response.ok) throw new Error('Failed to fetch projects')
     userProjects.value = await response.json()
+    console.log('Fetched user projects:', userProjects.value)
   } catch (err) {
     console.error('Error fetching projects:', err)
     error.value = 'Failed to load projects'
@@ -521,12 +431,44 @@ const generateReport = async () => {
         ...dateRange,
       }
     } else {
-      endpoint = `${KONG_API_URL}/reports/project`
-      payload = {
-        project_id: selectedProjectId.value,
-        requester_id: authStore.user.id,
-        ...dateRange,
+      if (!selectedProjectId.value) throw new Error('Please select a project.')
+
+      // Construct URL with user_id as query param
+      const endpoint = `${KONG_API_URL}/reports/project/${selectedProjectId.value}?user_id=${authStore.user.id}`
+
+      // JSON body for dates and timezone
+      const payload = {
+        start_date: dateRange.start_date || null,
+        end_date: dateRange.end_date || null,
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC', // user's browser timezone
       }
+
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to generate project report')
+      }
+
+      // Handle PDF download
+      const blob = await response.blob()
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `ProjectTaskPerformanceReport_${new Date().toISOString().split('T')[0]}.pdf`
+      document.body.appendChild(a)
+      a.click()
+      window.URL.revokeObjectURL(url)
+      document.body.removeChild(a)
+
+      alert('Project report generated successfully!')
+      resetForm()
     }
 
     const response = await fetch(endpoint, {
