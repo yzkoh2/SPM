@@ -126,19 +126,6 @@ services:
       rabbitmq:
         condition: service_healthy
 
-  # project_service:
-  #   build: ./backend/project_service
-  #   image: spm/project_service:1.0
-  #   container_name: spm_project_service
-  #   restart: always
-  #   networks:
-  #     - spm-net
-  #   environment:
-  #     PROJECT_DATABASE_URL: ${PROJECT_DATABASE_URL}
-  #     SECRET_KEY: ${SECRET_KEY}
-  #   depends_on:
-  #     - project_db
-  
   # Notification Service
   notification_service:
     build: ./backend/notification_service
@@ -201,21 +188,6 @@ services:
       - "5435:5432"
     volumes:
       - ./backend/task_service/db:/docker-entrypoint-initdb.d
-
-  # project_db:
-  #   image: postgres:15
-  #   container_name: project_db
-  #   restart: always
-  #   networks:
-  #     - spm-net
-  #   environment:
-  #     POSTGRES_USER: user
-  #     POSTGRES_PASSWORD: user
-  #     POSTGRES_DB: project_db
-  #   ports:
-  #     - "5436:5432"
-  #   volumes:
-  #     - ./backend/project_service/db:/docker-entrypoint-initdb.d
 
   notification_db:
     image: postgres:15
