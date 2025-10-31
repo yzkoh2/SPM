@@ -170,16 +170,31 @@ SELECT id, owner_id FROM inserted_task;
 INSERT INTO task_collaborators (task_id, user_id) VALUES (4, 3);
 
 -- Subtasks for Task 4 (ID=5, 6)
-INSERT INTO tasks (title, status, owner_id, parent_task_id, created_at, updated_at) VALUES
-('Define API endpoints', 'ONGOING', 2, 4, '2025-10-01 08:00:00', '2025-10-01 08:00:00'),
-('Setup database models', 'ONGOING', 2, 4, '2025-10-01 08:00:00', '2025-10-01 08:00:00');
+WITH inserted_task AS (
+  INSERT INTO tasks (title, status, owner_id, parent_task_id, created_at, updated_at) VALUES
+  ('Define API endpoints', 'ONGOING', 2, 4, '2025-10-01 08:00:00', '2025-10-01 08:00:00'),
+  ('Setup database models', 'UNASSIGNED', 2, 4, '2025-10-01 08:00:00', '2025-10-01 08:00:00'), 
+  ('Add in proxy data', 'UNDER_REVIEW', 2, 4, '2025-10-01 08:00:00', '2025-10-01 08:00:00')
+  RETURNING id, owner_id
+)
+INSERT INTO task_collaborators (task_id, user_id)
+SELECT id, owner_id FROM inserted_task;
+INSERT INTO task_collaborators (task_id, user_id) VALUES (5, 1);
+INSERT INTO task_collaborators (task_id, user_id) VALUES (5, 2);
+INSERT INTO task_collaborators (task_id, user_id) VALUES (5, 3);
+INSERT INTO task_collaborators (task_id, user_id) VALUES (6, 1);
+INSERT INTO task_collaborators (task_id, user_id) VALUES (6, 2);
+INSERT INTO task_collaborators (task_id, user_id) VALUES (6, 3);
+INSERT INTO task_collaborators (task_id, user_id) VALUES (7, 1);
+INSERT INTO task_collaborators (task_id, user_id) VALUES (7, 2);
+INSERT INTO task_collaborators (task_id, user_id) VALUES (7, 3);
 
 -- Attachment for Task 4
 INSERT INTO attachments (filename, url, task_id) VALUES
 ('Change Document', 'Change_Document_Week_6.pdf', 4);
 
 
--- Task 7: Frontend Development (ID=7, Project 1, Initial Status: UNASSIGNED, P5, Owner 3)
+-- Task 8: Frontend Development (ID=8, Project 1, Initial Status: UNASSIGNED, P5, Owner 3)
 WITH inserted_task AS (
   INSERT INTO tasks (title, description, deadline, status, owner_id, project_id, created_at, updated_at)
   VALUES ('Frontend Development', 'Develop the frontend using Vue.js', '2025-11-13', 'UNASSIGNED', 3, 1, '2025-10-01 08:00:00', '2025-10-01 08:00:00')
@@ -187,7 +202,7 @@ WITH inserted_task AS (
 )
 INSERT INTO task_collaborators (task_id, user_id)
 SELECT id, owner_id FROM inserted_task;
-INSERT INTO task_collaborators (task_id, user_id) VALUES (7, 1);
+INSERT INTO task_collaborators (task_id, user_id) VALUES (8, 1);
 
 -- Noti_004 test
 INSERT INTO tasks (title, description, deadline, status, owner_id, project_id, created_at, updated_at)
@@ -232,12 +247,12 @@ INSERT INTO task_activity_log (task_id, user_id, "timestamp", field_changed, old
 VALUES
 -- SGT Date: 2025-10-26 (Sunday)
 (1, 1, '2025-10-25 16:00:00', 'priority', '5', '8'),               -- Task 1: P5 -> P8
-(7, 3, '2025-10-26 12:00:00', 'owner_id', '3', '1'),               -- Task 7: Owner 3 -> 1
+(8, 3, '2025-10-26 12:00:00', 'owner_id', '3', '1'),               -- Task 8: Owner 3 -> 1
 -- SGT Date: 2025-10-27 (Monday)
-(7, 1, '2025-10-27 15:59:59', 'status', 'Unassigned', 'Ongoing'),  -- Task 7: Unassigned -> Ongoing
+(8, 1, '2025-10-27 15:59:59', 'status', 'Unassigned', 'Ongoing'),  -- Task 8: Unassigned -> Ongoing
 -- SGT Date: 2025-10-28 (Tuesday)
 (1, 2, '2025-10-27 16:00:00', 'status', 'Ongoing', 'Under Review'), -- Task 1: Ongoing -> Under Review (Correctly follows initial state)
 -- SGT Date: 2025-10-29 (Wednesday)
 (1, 1, '2025-10-29 07:00:00', 'status', 'Under Review', 'Completed'),-- Task 1: Under Review -> Completed
 -- SGT Date: 2025-10-30 (Thursday)
-(7, 1, '2025-10-30 08:00:00', 'priority', '5', '6');               -- Task 7: P5 -> P6
+(8, 1, '2025-10-30 08:00:00', 'priority', '5', '6');               -- Task 8: P5 -> P6
