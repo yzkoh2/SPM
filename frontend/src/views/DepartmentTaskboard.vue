@@ -10,7 +10,24 @@
 
       <TaskboardNavigation />
 
-      <!-- Error State -->
+      <div
+        v-if="showEditForm"
+        class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 flex justify-center items-start p-8"
+      >
+        <div class="relative w-full max-w-2xl">
+          <TaskForm
+            :task-to-edit="taskToEdit"
+            :all-users="allUsers"
+            :is-submitting="isUpdating"
+            :current-collaborators="collaboratorDetails"
+            submit-button-text="Update Task"
+            submit-button-loading-text="Updating..."
+            @submit="updateTask"
+            @cancel="closeEditModal"
+          />
+        </div>
+      </div>
+
       <div v-if="error" class="bg-red-50 border border-red-200 rounded-md p-6 mb-6">
         <div class="flex items-center mb-4">
           <svg
@@ -39,12 +56,10 @@
         </div>
       </div>
 
-      <!-- Loading State -->
       <div v-if="loading" class="flex justify-center items-center py-12">
         <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
       </div>
 
-      <!-- Empty State -->
       <div v-else-if="tasks.length === 0 && !error" class="text-center py-12">
         <svg
           class="mx-auto h-12 w-12 text-gray-400"
@@ -65,9 +80,7 @@
         </p>
       </div>
 
-      <!-- Task Dashboard -->
       <div v-else>
-        <!-- Filters and Sorting Section -->
         <div class="bg-white rounded-lg shadow-md p-6 mb-6">
           <div
             class="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0"
@@ -75,7 +88,6 @@
             <div
               class="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-4"
             >
-              <!-- Filter by Department Member -->
               <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1"
                   >Filter by Department Member</label
@@ -92,7 +104,6 @@
                 </select>
               </div>
 
-              <!-- Filter by Status -->
               <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Filter by Status</label>
                 <select
@@ -108,7 +119,6 @@
                 </select>
               </div>
 
-              <!-- Filter by Priority -->
               <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1"
                   >Filter by Priority</label
@@ -125,7 +135,6 @@
                 </select>
               </div>
 
-              <!-- Sort by Deadline -->
               <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Sort by Deadline</label>
                 <select
@@ -139,7 +148,6 @@
                 </select>
               </div>
 
-              <!-- Sort by Priority -->
               <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Sort by Priority</label>
                 <select
@@ -173,7 +181,6 @@
           </div>
         </div>
 
-        <!-- Status Summary Cards -->
         <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
           <div class="bg-white rounded-lg shadow-md p-6">
             <div class="flex items-center">
@@ -280,13 +287,14 @@
           </div>
         </div>
 
-        <!-- Task Cards Grid -->
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           <TaskCard
             v-for="task in filteredAndSortedTasks"
             :key="task.id"
             :task="task"
             @view="viewTaskDetails"
+            @edit="editTask"
+            @delete="deleteTask"
           />
         </div>
       </div>
@@ -300,6 +308,7 @@ import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import TaskboardNavigation from '@/components/TaskboardNavigation.vue'
 import TaskCard from '@/components/TaskCard.vue'
+import TaskForm from '@/components/TaskForm.vue' // <-- IMPORT TASKFORM
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -311,6 +320,14 @@ const departmentMembers = ref([])
 const departmentMemberIds = ref([])
 const loading = ref(false)
 const error = ref(null)
+
+// --- ADDED FOR EDIT MODAL ---
+const allUsers = ref([])
+const collaboratorDetails = ref([])
+const showEditForm = ref(false)
+const isUpdating = ref(false)
+const taskToEdit = ref(null)
+// --- END ---
 
 // Filters
 const filters = ref({
@@ -410,6 +427,152 @@ const viewTaskDetails = (taskId) => {
   router.push(`/tasks/${taskId}`)
 }
 
+// --- ADDED METHODS FOR EDIT/DELETE ---
+
+const fetchAllUsers = async () => {
+  try {
+    const response = await fetch(`${KONG_API_URL}/user`)
+    if (response.ok) {
+      allUsers.value = await response.json()
+    } else {
+      console.error('Failed to fetch all users.')
+    }
+  } catch (err) {
+    console.error('Error fetching all users:', err)
+  }
+}
+
+const fetchCollaboratorsForTask = async (taskId) => {
+  try {
+    const response = await fetch(`${KONG_API_URL}/tasks/${taskId}/collaborators`)
+    if (!response.ok) {
+      throw new Error('Failed to fetch collaborators')
+    }
+    const collaborators = await response.json()
+
+    const detailsPromises = collaborators.map((collab) =>
+      fetch(`${KONG_API_URL}/user/${collab.user_id}`).then((res) => {
+        if (res.ok) return res.json()
+        return null
+      }),
+    )
+    const details = (await Promise.all(detailsPromises)).filter(Boolean)
+
+    collaboratorDetails.value = collaborators.map((collab) => {
+      const userDetail = details.find((d) => d.id === collab.user_id)
+      return {
+        ...collab,
+        name: userDetail?.name || `User ${collab.user_id}`,
+        role: userDetail?.role || 'Unknown',
+      }
+    })
+  } catch (err) {
+    console.error('Error fetching collaborator details:', err)
+    collaboratorDetails.value = []
+    alert('Could not load collaborator details for the task.')
+  }
+}
+
+const updateTask = async (formData) => {
+  isUpdating.value = true
+  try {
+    const originalTask = taskToEdit.value
+    const changedFields = {}
+
+    for (const key in formData) {
+      if (key === 'id') continue
+
+      let originalValue = originalTask[key]
+      let currentValue = formData[key]
+
+      if (key === 'deadline' || key === 'recurrence_end_date') {
+        originalValue = originalValue ? new Date(originalValue).toISOString().slice(0, 16) : null
+        currentValue = currentValue || null
+      }
+
+      if (originalValue !== currentValue) {
+        changedFields[key] = currentValue
+      }
+    }
+
+    if (Object.keys(changedFields).length === 0) {
+      closeEditModal()
+      return // No changes to update
+    }
+
+    const payload = {
+      ...changedFields,
+      user_id: authStore.user.id,
+    }
+
+    const response = await fetch(`${KONG_API_URL}/tasks/${formData.id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    })
+
+    if (!response.ok) {
+      const errorData = await response.json()
+      throw new Error(errorData.error || 'Failed to update task')
+    }
+
+    await loadDepartmentTasks() // <-- Refresh department tasks
+    closeEditModal()
+  } catch (err) {
+    console.error('Error updating task:', err)
+    alert('Failed to update task: ' + err.message)
+  } finally {
+    isUpdating.value = false
+  }
+}
+
+const editTask = async (task) => {
+  if (authStore.user.id != task.owner_id) {
+    alert('You do not have permission to edit the task.')
+    return
+  }
+  taskToEdit.value = { ...task }
+  await fetchCollaboratorsForTask(task.id) // This one now populates collaboratorDetails
+  showEditForm.value = true
+}
+
+const closeEditModal = () => {
+  showEditForm.value = false
+  taskToEdit.value = null
+  collaboratorDetails.value = []
+}
+
+const deleteTask = async (taskId) => {
+  if (!confirm('Are you sure you want to delete this task? This action cannot be undone.')) {
+    return
+  }
+
+  try {
+    const response = await fetch(`${KONG_API_URL}/tasks/${taskId}`, {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        user_id: authStore.user.id,
+      }),
+    })
+
+    const data = await response.json()
+
+    if (response.ok) {
+      alert(data.message || 'Task deleted successfully')
+      await loadDepartmentTasks() // Refresh the task list
+    } else {
+      throw new Error(data.error || `Failed to delete: ${response.status}`)
+    }
+  } catch (err) {
+    console.error('Error deleting task:', err)
+    alert('Failed to delete task: ' + err.message)
+  }
+}
+// --- END OF ADDED METHODS ---
+
 const getDepartmentMemberIds = async (teamId) => {
   const teamsResponse = await fetch(`${KONG_API_URL}/user/teams`)
   if (!teamsResponse.ok) throw new Error('Failed to fetch teams')
@@ -431,7 +594,8 @@ const getDepartmentMemberIds = async (teamId) => {
   return members.map((user) => user.id)
 }
 
-const fetchCollaboratorsForTask = async (taskId) => {
+const fetchCollaboratorsForTaskLocal = async (taskId) => {
+  // Renamed to avoid conflict
   try {
     const response = await fetch(`${KONG_API_URL}/tasks/${taskId}/collaborators`)
     if (response.ok) {
@@ -486,7 +650,7 @@ const loadDepartmentTasks = async () => {
     })
 
     const collaboratorPromises = Array.from(taskMap.keys()).map(async (taskId) => {
-      const collaboratorIds = await fetchCollaboratorsForTask(taskId)
+      const collaboratorIds = await fetchCollaboratorsForTaskLocal(taskId) // Use renamed local function
       return { taskId, collaboratorIds }
     })
 
@@ -522,5 +686,6 @@ const loadDepartmentTasks = async () => {
 
 onMounted(() => {
   loadDepartmentTasks()
+  fetchAllUsers() // <-- Fetch all users for the edit modal
 })
 </script>
