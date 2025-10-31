@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>{{ report_title | default('Project Report') }}</title>
+<title>{{ report_title | default('Individual Task Performance Report') }}</title>
 <style>
     /* --- General Setup --- */
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
@@ -13,37 +13,46 @@
     h1 { font-size: 20px; margin-bottom: 5px; color: #3498db; }
     h2 { font-size: 15px; margin-top: 20px; border-bottom: 1px solid #dbe3e0; padding-bottom: 5px; margin-bottom: 10px; }
     h3 { font-size: 12px; margin-top: 15px; margin-bottom: 8px; color: #555; }
-    
-    /* ======================================================== */
-    /* --- THIS IS THE FIX --- */
-    /* ======================================================== */
-    table { 
-        width: 100%; 
-        border-collapse: collapse; 
-        margin-top: 10px; 
-        font-size: 9px;
-        table-layout: fixed; /* This is essential for word wrap to work with widths */
-        max-width: 100%;
-        overflow-wrap: break-word; /* Wrap long words (standard) */
-        word-wrap: break-word;     /* Wrap long words (legacy) */
-    }
-    th, td { 
-        border: 1px solid #dce3ea; 
-        padding: 5px 6px; 
-        text-align: left; 
-        vertical-align: top; 
-        /* Word wrapping is now inherited from the 'table' element */
-        max-width: 100%; /* Ensure cell respects its column width */
-    }
-    /* ======================================================== */
-    /* --- END OF FIX --- */
-    /* ======================================================== */
 
-    th { 
-        background-color: #f8faff; 
-        color: #2f3a56; 
-        font-weight: 600; 
-        text-transform: uppercase; 
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 10px;
+    font-size: 9px;
+    table-layout: fixed;
+    max-width: 100%;
+    overflow-wrap: break-word;
+    word-wrap: break-word;
+    page-break-inside: auto;
+}
+
+thead {
+    display: table-header-group;
+}
+
+tfoot {
+    display: table-footer-group;
+}
+
+tr {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+    page-break-after: auto;
+}
+
+    th, td {
+        border: 1px solid #dce3ea;
+        padding: 5px 6px;
+        text-align: left;
+        vertical-align: top;
+        max-width: 100%;
+    }
+
+    th {
+        background-color: #f8faff;
+        color: #2f3a56;
+        font-weight: 600;
+        text-transform: uppercase;
         font-size: 8px;
         padding: 6px 6px;
     }
@@ -52,8 +61,8 @@
     .report-header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #3498db; padding-bottom: 10px; margin-bottom: 15px; }
     .report-meta { text-align: right; font-size: 10px; color: #555; }
     .report-meta div { margin-bottom: 3px; }
-    .project-details-box { background: #fafafa; border: 1px solid #eef1f3; padding: 10px 12px; border-radius: 6px; font-size: 11px; line-height: 1.5; margin-bottom: 15px; }
-    
+    .user-details-box { background: #fafafa; border: 1px solid #eef1f3; padding: 10px 12px; border-radius: 6px; font-size: 11px; line-height: 1.5; margin-bottom: 15px; }
+
     /* --- Grid Layout --- */
     .grid-container { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px;}
     .grid-item { background: #f9fbfd; border: 1px solid #eef1f3; border-radius: 6px; padding: 10px; }
@@ -61,7 +70,7 @@
     .grid-item ul { list-style: none; padding: 0; margin: 0; font-size: 10px; }
     .grid-item li { display: flex; justify-content: space-between; padding: 3px 0; }
     .grid-item li strong { font-weight: 500; color: #444; }
-    
+
     /* --- Overdue Box --- */
     .overdue-box { background: #fff8f8; border: 1px solid #f3e0e0; border-radius: 6px; padding: 10px; grid-column: span 2; }
     .overdue-box h3 { color: #c0392b; }
@@ -96,150 +105,163 @@
         margin: 10px auto;
         display: block;
     }
+    .overdue-row td {
+        background-color: #fff2f2 !important;
+        color: #a13023;
+        font-weight: 500;
+    }
+    .overdue-row strong {
+        font-weight: 600;
+    }
+
+    /* --- Performance Metrics Box --- */
+    .metrics-box { background: #f0f8ff; border: 1px solid #d0e8f7; border-radius: 6px; padding: 10px; margin-bottom: 15px; }
+    .metrics-box h3 { margin-top: 0; font-size: 12px; color: #2c5aa0; border-bottom: 1px solid #d0e8f7; padding-bottom: 4px; margin-bottom: 8px; }
+    .metrics-box .metrics-grid { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr 1fr; gap: 10px; font-size: 10px; }
+    .metrics-box .metric-item { text-align: center; padding: 8px; background: white; border-radius: 4px; }
+    .metrics-box .metric-value { font-size: 18px; font-weight: 700; color: #2c5aa0; display: block; }
+    .metrics-box .metric-label { font-size: 8px; color: #666; text-transform: uppercase; margin-top: 4px; }
 </style>
 </head>
 <body>
     <div class="report-header">
         <h1>{{ report_title }}</h1>
         <div class="report-meta">
-            <div><strong>Project:</strong> {{ project_details.title | default('N/A') }}</div>
-            <div><strong>Period:</strong> {{ report_period | default('N/A') }}</div>
+            <div><strong>User:</strong> {{ user_details.name | default('N/A') }}</div>
+            <div><strong>Snapshot As Of:</strong> {{ report_period | default('N/A') }}</div>
             <div><strong>Generated:</strong> {{ generation_date }}</div>
         </div>
     </div>
 
-    <div class="project-details-box">
-        <strong>Owner:</strong> {{ project_details.owner_name | default('N/A') }} |
-        <strong>Deadline:</strong> {{ project_details.deadline | default('N/A') }} <br>
-        <strong>Collaborators:</strong> {{ project_details.collaborator_names | default('None') }} <br>
-        <strong>Description:</strong> {{ project_details.description | default('No description.') }}
+    <div class="user-details-box">
+        <strong>Name:</strong> {{ user_details.name | default('N/A') }} |
+        <strong>Role:</strong> {{ user_details.role | default('N/A') }} |
+        <strong>User ID:</strong> {{ user_details.user_id | default('N/A') }}
     </div>
 
-    <h2>Section 1: Project Metrics ({{ report_period }})</h2>
+    <!-- Performance Metrics Summary -->
+    <div class="metrics-box">
+        <h3>Performance Metrics Summary</h3>
+        <div class="metrics-grid">
+            <div class="metric-item">
+                <span class="metric-value">{{ section1.total_tasks }}</span>
+                <span class="metric-label">Total Tasks</span>
+            </div>
+            <div class="metric-item">
+                <span class="metric-value">{{ section1.completed_tasks }}</span>
+                <span class="metric-label">Completed</span>
+            </div>
+            <div class="metric-item">
+                <span class="metric-value">{{ section1.completion_rate }}%</span>
+                <span class="metric-label">Completion Rate</span>
+            </div>
+            <div class="metric-item">
+                <span class="metric-value">{{ section1.average_completion_time }}</span>
+                <span class="metric-label">Avg Days to Complete</span>
+            </div>
+            <div class="metric-item">
+                <span class="metric-value">{{ section1.overdue_count }}</span>
+                <span class="metric-label">Overdue Tasks</span>
+            </div>
+        </div>
+    </div>
+
+    <h2>Section 1: Task Performance Snapshot (As of {{ report_period }})</h2>
 
     <div class="grid-container">
         <div class="grid-item">
             <h3>Task Status Distribution</h3>
-            {% if charts.status_chart %}
-                <img src="data:image/png;base64,{{ charts.status_chart }}" class="chart-image">
-            {% else %}
-                <div class="chart-placeholder">[Status Chart N/A]</div>
-            {% endif %}
+            {% if charts.status_chart %} <img src="data:image/png;base64,{{ charts.status_chart }}" class="chart-image">
+            {% else %} <div class="chart-placeholder">[Status Chart N/A]</div> {% endif %}
             <ul>
                 {% for status, count in section1.status_distribution.items() %}
                 <li>{{ status }}: <strong>{{ count }}</strong></li>
                 {% endfor %}
-                 <li style="border-top: 1px solid #eee; padding-top: 4px; margin-top: 4px;">Total Tasks: <strong>{{ section1.total_relevant_tasks }}</strong></li>
+                 <li style="border-top: 1px solid #eee; padding-top: 4px; margin-top: 4px;">Total Tasks: <strong>{{ section1.total_tasks }}</strong></li>
             </ul>
         </div>
 
         <div class="grid-item">
             <h3>Task Priority Distribution</h3>
-            {% if charts.priority_chart %}
-                <img src="data:image/png;base64,{{ charts.priority_chart }}" class="chart-image">
-            {% else %}
-                <div class="chart-placeholder">[Priority Chart N/A]</div>
-            {% endif %}
-            <ul>
-                {% for priority, count in section1.priority_distribution.items() %}
-                    {% if count > 0 %}
-                    <li>Priority {{ priority }}: <strong>{{ count }}</strong></li>
-                    {% endif %}
-                {% endfor %}
-            </ul>
+            {% if charts.priority_chart %} <img src="data:image/png;base64,{{ charts.priority_chart }}" class="chart-image" style="max-width: 300px;">
+            {% else %} <div class="chart-placeholder">[Priority Chart N/A]</div> {% endif %}
         </div>
 
         <div class="overdue-box">
-            <h3>Currently Overdue Tasks ({{ section1.overdue_count }})</h3>
+            <h3>Overdue Tasks (As of {{ report_period }}) ({{ section1.overdue_count }})</h3>
             {% if section1.overdue_tasks %}
             <ul style="max-height: 150px; overflow-y: auto;">
                 {% for task in section1.overdue_tasks %}
-                <li><strong>({{ task.task_type }}) {{ task.title }}</strong> (Due: {{ task.deadline }}) - Owner: {{ task.owner_name }}</li>
+                <li><strong>({{ task.task_type }}) {{ task.title }}</strong> (Due: {{ task.deadline }}) - Project: {{ task.project_name }}</li>
                 {% endfor %}
             </ul>
-            {% else %}
-            <div class="no-data">No overdue tasks.</div>
-            {% endif %}
+            {% else %} <div class="no-data">No overdue tasks as of this date.</div> {% endif %}
         </div>
     </div>
 
 
-    <h2>Collaborator Summary (Based on Task Ownership)</h2>
-    {% if collaborator_stats %}
-     <table>
-        <thead>
-            <tr>
-                <th style="width: 20%;">Collaborator</th>
-                <th style="width: 10%;">Tasks</th>
-                <th style="width: 10%;">Subtasks</th>
-                <th style="width: 15%;">In Progress</th>
-                <th style="width: 15%;">Under Review</th>
-                <th style="width: 15%;">Completed</th>
-                <th style="width: 15%;">Completion Rate</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for stat in collaborator_stats %}
-            <tr>
-                <td>{{ stat.name }}</td>
-                <td>{{ stat.main_tasks }}</td>
-                <td>{{ stat.sub_tasks }}</td>
-                <td>{{ stat.in_progress }}</td>
-                <td>{{ stat.under_review }}</td>
-                <td>{{ stat.completed }}</td>
-                <td>
-                    {{ stat.completion_rate }}%
-                    <div class="completion-rate-bar">
-                        <div class="completion-rate-fill" style="width: {{ stat.completion_rate }}%;"></div>
-                    </div>
-                </td>
-            </tr>
-            {% endfor %}
-        </tbody>
-        <tfoot>
-            <tr>
-                <td colspan="6">Project Average Completion Rate:</td>
-                <td>{{ average_completion_rate }}%</td>
-            </tr>
-        </tfoot>
-     </table>
-    {% else %}
-     <div class="no-data">No collaborator task data available for this period.</div>
-    {% endif %}
-
-
-    <h2>Section 2: Individual Task Changes ({{ report_period }})</h2>
+    <h2>Section 2: Task Activity Log (Status Changes Only)
+        {% if activity_period != 'N/A' %} ({{ activity_period }})
+        {% else %} (No Date Range Specified) {% endif %}
+    </h2>
     {% if section2 %}
     <table>
         <thead>
             <tr>
-                <th style="width: 22%;">Task</th>
-                <th style="width: 15%;">Timestamp</th>
-                <th style="width: 15%;">User</th>
-                <th style="width: 15%;">Field Changed</th>
-                <th style="width: 16.5%;">Old Value</th>
-                <th style="width: 16.5%;">New Value</th>
+                <th style="width: 22%;">Task</th> <th style="width: 15%;">Timestamp</th> <th style="width: 15%;">User</th>
+                <th style="width: 15%;">Field Changed</th> <th style="width: 16.5%;">Old Value</th> <th style="width: 16.5%;">New Value</th>
             </tr>
         </thead>
         <tbody>
             {% for log in section2 %}
             <tr>
-                <td>{{ log.task_title | default('N/A') }} (ID: {{ log.task_id }})</td>
-                <td>{{ log.timestamp }}</td>
-                <td>{{ log.user_name }}</td>
-                <td>{{ log.field_changed }}</td>
-                <td>{{ log.old_value }}</td>
-                <td>{{ log.new_value }}</td>
+                <td>{{ log.task_title | default('N/A') }} (ID: {{ log.task_id }})</td> <td>{{ log.timestamp }}</td> <td>{{ log.user_name }}</td>
+                <td>{{ log.field_changed }}</td> <td>{{ log.old_value }}</td> <td>{{ log.new_value }}</td>
             </tr>
             {% endfor %}
         </tbody>
     </table>
     {% else %}
-    <div classs="no-data">No task changes recorded during this period.</div>
+        {% if activity_period != 'N/A' %}
+            <div class="no-data">No task changes recorded during this period.</div>
+        {% else %}
+             <div class="no-data">No date range specified for activity log.</div>
+        {% endif %}
     {% endif %}
 
+
+    <h2>Section 3: Tasks (Active or Updated)
+        {% if activity_period != 'N/A' %} - Period: {{ activity_period }}
+        {% endif %}
+    </h2>
+    {% if section3_tasks %}
+    <table>
+        <thead>
+            <tr>
+                <th style="width: 25%;">Title (Type)</th>
+                <th style="width: 20%;">Project</th>
+                <th style="width: 15%;">Deadline</th>
+                <th style="width: 15%;">Status</th>
+                <th style="width: 10%;">Priority</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for task in section3_tasks %}
+            <tr class="{{ 'overdue-row' if task.is_overdue_as_of else '' }}">
+                <td><strong>{{ task.title }}</strong> ({{ task.task_type }})</td>
+                <td>{{ task.project_name }}</td>
+                <td>{{ task.deadline }}</td>
+                <td>{{ task.status }}</td>
+                <td>{{ task.priority }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+     <div class="no-data">No tasks found for the selected timeframe.</div>
+    {% endif %}
     <div class="footer">
-        End of Report
+        End of Report - Generated: {{ generation_date }}
     </div>
 </body>
 </html>

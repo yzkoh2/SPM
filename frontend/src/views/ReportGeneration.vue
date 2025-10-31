@@ -424,12 +424,37 @@ const generateReport = async () => {
     let endpoint, payload
 
     if (reportType.value === 'individual') {
-      endpoint = `${KONG_API_URL}/reports/individual`
+      const targetUserId = selectedUserId.value || currentUser.value.id
+      endpoint = `${KONG_API_URL}/reports/individual/${targetUserId}?requesting_user_id=${authStore.user.id}`
       payload = {
-        user_id: selectedUserId.value || currentUser.value.id,
-        requester_id: authStore.user.id,
-        ...dateRange,
+        start_date: dateRange.start_date || null,
+        end_date: dateRange.end_date || null,
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
       }
+
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.error || 'Failed to generate individual report')
+      }
+
+      const blob = await response.blob()
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `IndividualTaskPerformanceReport_${new Date().toISOString().split('T')[0]}.pdf`
+      document.body.appendChild(a)
+      a.click()
+      window.URL.revokeObjectURL(url)
+      document.body.removeChild(a)
+
+      alert('Individual report generated successfully!')
+      resetForm()
     } else {
       if (!selectedProjectId.value) throw new Error('Please select a project.')
 
