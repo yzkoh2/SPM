@@ -144,9 +144,15 @@ INSERT INTO task_collaborators (task_id, user_id) VALUES (1, 2);
 
 
 -- Subtasks for Task 1 (ID=2, 3)
-INSERT INTO tasks (title, description, deadline, status, owner_id, project_id, parent_task_id, created_at, updated_at) VALUES
-('Wireframe layout', 'Create wireframes', '2025-10-01', 'ONGOING', 1, 1, 1, '2025-10-01 08:00:00', '2025-10-01 08:00:00'),
-('Define color scheme', 'Design UI', '2025-11-01', 'ONGOING', 1, 1, 1, '2025-10-01 08:00:00', '2025-10-01 08:00:00');
+WITH inserted_task AS (
+  INSERT INTO tasks (title, description, deadline, status, owner_id, project_id, parent_task_id, created_at, updated_at) 
+  VALUES ('Wireframe layout', 'Create wireframes', '2025-10-01', 'ONGOING', 1, 1, 1, '2025-10-01 08:00:00', '2025-10-01 08:00:00'),
+  ('Define color scheme', 'Design UI', '2025-11-01', 'ONGOING', 1, 1, 1, '2025-10-01 08:00:00', '2025-10-01 08:00:00')
+  RETURNING id, owner_id
+)
+INSERT INTO task_collaborators (task_id, user_id)
+SELECT id, owner_id FROM inserted_task;
+INSERT INTO task_collaborators (task_id, user_id) VALUES (2, 2);
 
 -- Attachment for Task 1
 INSERT INTO attachments (filename, url, task_id) VALUES
@@ -183,6 +189,13 @@ INSERT INTO task_collaborators (task_id, user_id)
 SELECT id, owner_id FROM inserted_task;
 INSERT INTO task_collaborators (task_id, user_id) VALUES (7, 1);
 
+-- Noti_004 test
+INSERT INTO tasks (title, description, deadline, status, owner_id, project_id, created_at, updated_at)
+VALUES ('Test 4', 'Unassigned to Ongoing', '2026-11-11', 'UNASSIGNED', 1, 1, '2025-10-01 08:00:00', '2025-10-01 08:00:00');
+
+-- Noti_006 test
+INSERT INTO tasks (title, description, deadline, status, owner_id, project_id, created_at, updated_at)
+VALUES ('Test 6', 'Under Review to Completed', '2026-11-11', 'UNDER_REVIEW', 1, 1, '2025-10-01 08:00:00', '2025-10-01 08:00:00');
 
 -- Project 2 (ID=2)
 WITH inserted_project AS (
