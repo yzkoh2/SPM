@@ -283,6 +283,8 @@
             :key="task.id"
             :task="task"
             @view="viewTaskDetails"
+            @edit="editTask"
+            @delete="deleteTask"
           />
         </div>
       </div>
@@ -497,6 +499,36 @@ const loadTeamTasks = async () => {
     tasks.value = []
   } finally {
     loading.value = false
+  }
+}
+
+const deleteTask = async (taskId) => {
+  if (!confirm('Are you sure you want to delete this task? This action cannot be undone.')) {
+    return
+  }
+
+  try {
+    const response = await fetch(`${KONG_API_URL}/tasks/${taskId}`, {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        user_id: authStore.user.id,
+      }),
+    })
+
+    const data = await response.json()
+
+    if (response.ok) {
+      alert(data.message || 'Task deleted successfully')
+      await loadTeamTasks()
+    } else {
+      throw new Error(data.error || `Failed to delete: ${response.status}`)
+    }
+  } catch (err) {
+    console.error('Error deleting task:', err)
+    alert('Failed to delete task: ' + err.message)
   }
 }
 

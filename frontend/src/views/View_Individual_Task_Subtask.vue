@@ -1234,11 +1234,7 @@ const deleteTask = async () => {
 
     if (response.ok) {
       alert(data.message || 'Task deleted successfully')
-      if (isSubtask.value) {
-        router.push(`/tasks/${parentTaskId.value}/subtasks`)
-      } else {
-        router.push('/')
-      }
+      router.push('/')
     } else {
       throw new Error(data.error || `Failed to delete: ${response.status}`)
     }
