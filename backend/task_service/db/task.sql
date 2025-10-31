@@ -89,7 +89,12 @@ CREATE TABLE comment_mentions (
 CREATE TABLE report_history (
     id SERIAL PRIMARY KEY,
     filename VARCHAR(255) NOT NULL,
-    url VARCHAR(500) NOT NULL
+    url VARCHAR(500) NOT NULL,
+    user_id INT NOT NULL,
+    target_user_id INT,
+    project_id INT,
+    report_type VARCHAR(100) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE FUNCTION trigger_set_timestamp()

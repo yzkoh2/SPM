@@ -1,6 +1,5 @@
 <template>
   <div>
-    <!-- Filters -->
     <div class="bg-white shadow rounded-lg p-4 mb-6">
       <div class="flex flex-col sm:flex-row gap-4">
         <div class="flex-1">
@@ -39,7 +38,6 @@
       </div>
     </div>
 
-    <!-- Loading State -->
     <div v-if="loading" class="text-center py-12">
       <div
         class="inline-block animate-spin rounded-full h-10 w-10 border-b-2 border-indigo-600"
@@ -47,12 +45,10 @@
       <p class="mt-4 text-gray-600">Loading reports...</p>
     </div>
 
-    <!-- Error State -->
     <div v-else-if="error" class="bg-red-50 border border-red-200 rounded-md p-4 text-red-700">
       {{ error }}
     </div>
 
-    <!-- Empty State -->
     <div
       v-else-if="filteredReports.length === 0"
       class="text-center py-12 bg-white shadow rounded-lg"
@@ -82,13 +78,11 @@
       </div>
     </div>
 
-    <!-- Reports List -->
     <div v-else class="bg-white shadow rounded-lg overflow-hidden">
       <ul class="divide-y divide-gray-200">
         <li v-for="report in filteredReports" :key="report.id" class="hover:bg-gray-50">
           <div class="px-6 py-4">
             <div class="flex items-start justify-between">
-              <!-- Report Info -->
               <div class="flex-1 min-w-0">
                 <div class="flex items-center gap-2 mb-2">
                   <span
@@ -103,7 +97,7 @@
                   </span>
                 </div>
 
-                <h3 class="text-sm font-medium text-gray-900 truncate">{{ report.file_name }}</h3>
+                <h3 class="text-sm font-medium text-gray-900 truncate">{{ report.filename }}</h3>
 
                 <div class="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-gray-500">
                   <span class="flex items-center">
@@ -159,14 +153,13 @@
                 </div>
               </div>
 
-              <!-- Actions -->
               <div class="ml-4 flex items-center gap-2">
                 <button
-                  @click="downloadReport(report.id, report.file_name)"
+                  @click="previewReport(report.id, report.file_name)"
                   :disabled="downloading === report.id"
                   class="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
                 >
-                  <svg
+                <svg
                     v-if="downloading !== report.id"
                     class="h-4 w-4 mr-1"
                     fill="none"
@@ -177,14 +170,20 @@
                       stroke-linecap="round"
                       stroke-linejoin="round"
                       stroke-width="2"
-                      d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
-                    ></path>
+                      d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                    />
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+                    />
                   </svg>
                   <div
                     v-else
                     class="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-700 mr-1"
                   ></div>
-                  Download
+                  Preview
                 </button>
 
                 <button
@@ -207,18 +206,21 @@
       </ul>
     </div>
 
-    <!-- Delete Confirmation Modal -->
-    <div v-if="showDeleteModal" class="fixed z-10 inset-0 overflow-y-auto">
-      <div
+    <div v-if="showDeleteModal" class="fixed z-50 inset-0 overflow-y-auto"> <div
         class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0"
       >
         <div
           class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"
           @click="showDeleteModal = false"
+          aria-hidden="true"
         ></div>
 
+        <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true"
+          >&#8203;</span
+        >
+
         <div
-          class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full"
+          class="relative inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full"
         >
           <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
             <div class="sm:flex sm:items-start">
@@ -310,7 +312,7 @@ const loadReports = async () => {
 
   try {
     const response = await fetch(
-      `${KONG_API_URL}/reports/history?user_id=${authStore.user.id}&limit=100`,
+      `${KONG_API_URL}/reports/history/${authStore.user.id}`,
     )
 
     if (!response.ok) {
@@ -318,7 +320,7 @@ const loadReports = async () => {
     }
 
     const data = await response.json()
-    reports.value = data.reports || []
+    reports.value = data
     sortReports()
   } catch (err) {
     console.error('Error loading reports:', err)
@@ -336,27 +338,22 @@ const sortReports = () => {
   })
 }
 
-const downloadReport = async (reportId, fileName) => {
+const previewReport = async (reportId) => {
   downloading.value = reportId
 
   try {
     const response = await fetch(
-      `${KONG_API_URL}/reports/history/${reportId}/download?user_id=${authStore.user.id}`,
+      `${KONG_API_URL}/reports/retrieve/${reportId}?user_id=${authStore.user.id}`,
     )
 
     if (!response.ok) {
       throw new Error('Failed to download report')
     }
 
-    const blob = await response.blob()
-    const url = window.URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = fileName
-    document.body.appendChild(a)
-    a.click()
-    window.URL.revokeObjectURL(url)
-    document.body.removeChild(a)
+    const data = await response.json()
+    const presignedUrl = data.url
+    window.open(presignedUrl, '_blank')
+
   } catch (err) {
     console.error('Error downloading report:', err)
     alert('Failed to download report. Please try again.')
@@ -375,7 +372,7 @@ const deleteReport = async () => {
 
   try {
     const response = await fetch(
-      `${KONG_API_URL}/reports/history/${reportToDelete.value.id}?user_id=${authStore.user.id}`,
+      `${KONG_API_URL}/reports/delete/${reportToDelete.value.id}?user_id=${authStore.user.id}`,
       {
         method: 'DELETE',
       },

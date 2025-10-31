@@ -1,7 +1,6 @@
 <template>
   <div class="min-h-screen bg-gray-50">
     <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <!-- Header -->
       <div class="mb-8">
         <h1 class="text-3xl font-bold text-gray-900">Generate Performance Report</h1>
         <p class="text-sm text-gray-600 mt-1">
@@ -9,7 +8,6 @@
         </p>
       </div>
 
-      <!-- Error Display -->
       <div v-if="error" class="bg-red-50 border border-red-200 rounded-md p-4 mb-6">
         <div class="flex items-center">
           <svg class="w-5 h-5 text-red-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -20,15 +18,12 @@
         </div>
       </div>
 
-      <!-- Loading State -->
       <div v-if="loadingUser" class="flex justify-center items-center py-12">
         <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
       </div>
 
-      <!-- Main Form Card -->
       <div v-else class="bg-white rounded-lg shadow-md p-6">
         <form @submit.prevent="generateReport">
-          <!-- Report Type Selection -->
           <div class="mb-6">
             <label class="block text-sm font-medium text-gray-700 mb-3">Report Type</label>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -74,9 +69,7 @@
             </div>
           </div>
 
-          <!-- Individual Report Options -->
           <div v-if="reportType === 'individual'" class="space-y-6">
-            <!-- User Selection (for Managers and Directors) -->
             <div v-if="canSelectOtherUsers">
               <label class="block text-sm font-medium text-gray-700 mb-2">
                 Select User
@@ -106,9 +99,7 @@
             </div>
           </div>
 
-          <!-- Project Report Options -->
           <div v-if="reportType === 'project'" class="space-y-6">
-            <!-- Project Selection -->
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-2">
                 Select Project
@@ -125,14 +116,12 @@
             </div>
           </div>
 
-          <!-- Timeframe Selection (Common for both types) -->
           <div class="mt-6 space-y-4">
             <label class="block text-sm font-medium text-gray-700 mb-2">
               Timeframe
               <span class="text-red-500">*</span>
             </label>
 
-            <!-- Predefined Timeframes -->
             <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
               <button type="button" @click="selectTimeframe('this_month')" :class="[
                 'px-4 py-2 border rounded-md text-sm font-medium transition-colors',
@@ -171,7 +160,6 @@
               </button>
             </div>
 
-            <!-- Custom Date Range -->
             <div v-if="timeframe === 'custom'"
               class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4 p-4 bg-gray-50 rounded-md">
               <div>
@@ -186,13 +174,11 @@
               </div>
             </div>
 
-            <!-- Selected Timeframe Display -->
             <div v-if="timeframe && timeframe !== 'custom'" class="text-sm text-gray-600">
               <span class="font-medium">Selected period:</span> {{ getTimeframeDisplay() }}
             </div>
           </div>
 
-          <!-- Action Buttons -->
           <div class="mt-8 flex justify-end space-x-3">
             <button type="button" @click="resetForm"
               class="px-6 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors">
@@ -213,7 +199,6 @@
         </form>
       </div>
 
-      <!-- Info Box -->
       <div class="mt-6 bg-blue-50 border border-blue-200 rounded-md p-4">
         <div class="flex">
           <svg class="w-5 h-5 text-blue-600 mr-3 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor"
@@ -224,7 +209,7 @@
           <div class="text-sm text-blue-700">
             <p class="font-medium mb-1">Report Information:</p>
             <ul class="list-disc list-inside space-y-1 text-xs">
-              <li>Reports are generated in PDF format and will download automatically</li>
+              <li>Reports are generated in PDF format</li>
               <li>Individual reports show personal task performance metrics</li>
               <li>Project reports show team performance across all project tasks</li>
               <li>
@@ -235,13 +220,20 @@
         </div>
       </div>
     </div>
+
+    <PdfPreviewModal
+      v-if="showPdfModal"
+      :pdf-url="pdfPreviewUrl"
+      :filename="pdfDownloadName"
+      @close="closePdfModal"
+    />
   </div>
 </template>
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useAuthStore } from '@/stores/auth'
-import TaskboardNavigation from '@/components/TaskboardNavigation.vue'
+import PdfPreviewModal from '@/components/PdfPreviewModal.vue' // <-- Import new component
 
 const authStore = useAuthStore()
 
@@ -262,6 +254,12 @@ const isGenerating = ref(false)
 const loadingProjects = ref(false)
 const loadingUser = ref(true)
 const error = ref(null)
+
+// --- New state for PDF Modal ---
+const showPdfModal = ref(false)
+const pdfPreviewUrl = ref(null)
+const pdfDownloadName = ref('')
+// ------------------------------
 
 // Computed properties
 const canSelectOtherUsers = computed(() => {
@@ -415,14 +413,37 @@ const calculateDateRange = () => {
   }
 }
 
+// --- Helper function to parse filename from headers ---
+const getFilenameFromHeaders = (response) => {
+  const disposition = response.headers.get('content-disposition')
+  if (disposition && disposition.indexOf('attachment') !== -1) {
+    const filenameRegex = /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/
+    const matches = filenameRegex.exec(disposition)
+    if (matches != null && matches[1]) {
+      return matches[1].replace(/['"]/g, '')
+    }
+  }
+  // Fallback
+  return `${reportType.value}_report_${new Date().toISOString().split('T')[0]}.pdf`
+}
+
+// --- *** MODIFIED generateReport function *** ---
 const generateReport = async () => {
   error.value = null
   isGenerating.value = true
+
+  // Clear previous PDF URL if any
+  if (pdfPreviewUrl.value) {
+    window.URL.revokeObjectURL(pdfPreviewUrl.value)
+    pdfPreviewUrl.value = null
+  }
 
   try {
     const dateRange = calculateDateRange()
     let endpoint, payload
 
+    // --- Common Request Logic ---
+    let response
     if (reportType.value === 'individual') {
       const targetUserId = selectedUserId.value || currentUser.value.id
       endpoint = `${KONG_API_URL}/reports/individual/${targetUserId}?requesting_user_id=${authStore.user.id}`
@@ -431,71 +452,58 @@ const generateReport = async () => {
         end_date: dateRange.end_date || null,
         timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
       }
-
-      const response = await fetch(endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      })
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}))
-        throw new Error(errorData.error || 'Failed to generate individual report')
-      }
-
-      const blob = await response.blob()
-      const url = window.URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = `IndividualTaskPerformanceReport_${new Date().toISOString().split('T')[0]}.pdf`
-      document.body.appendChild(a)
-      a.click()
-      window.URL.revokeObjectURL(url)
-      document.body.removeChild(a)
-
-      alert('Individual report generated successfully!')
-      resetForm()
     } else {
+      // Project Report
       if (!selectedProjectId.value) throw new Error('Please select a project.')
-
       endpoint = `${KONG_API_URL}/reports/project/${selectedProjectId.value}?user_id=${authStore.user.id}`
       payload = {
         start_date: dateRange.start_date || null,
         end_date: dateRange.end_date || null,
         timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
       }
-
-      const response = await fetch(endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      })
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}))
-        throw new Error(errorData.error || 'Failed to generate project report')
-      }
-
-      const blob = await response.blob()
-      const url = window.URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = `ProjectTaskPerformanceReport_${new Date().toISOString().split('T')[0]}.pdf`
-      document.body.appendChild(a)
-      a.click()
-      window.URL.revokeObjectURL(url)
-      document.body.removeChild(a)
-
-      alert('Project report generated successfully!')
-      resetForm()
     }
 
+    // --- Make API Call ---
+    response = await fetch(endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    })
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}))
+      throw new Error(errorData.error || `Failed to generate ${reportType.value} report`)
+    }
+
+    // --- Handle Successful Response ---
+    const filename = getFilenameFromHeaders(response)
+    const blob = await response.blob()
+    const url = window.URL.createObjectURL(blob)
+
+    // --- Show the Modal ---
+    pdfPreviewUrl.value = url
+    pdfDownloadName.value = filename
+    showPdfModal.value = true
+
+    // Note: We no longer show alert() or resetForm() here.
+    // This will be handled when the user closes the modal.
   } catch (err) {
     console.error('Error generating report:', err)
     error.value = err.message || 'Failed to generate report. Please try again.'
   } finally {
     isGenerating.value = false
   }
+}
+
+// --- New function to close the modal ---
+const closePdfModal = () => {
+  showPdfModal.value = false
+  if (pdfPreviewUrl.value) {
+    window.URL.revokeObjectURL(pdfPreviewUrl.value)
+  }
+  pdfPreviewUrl.value = null
+  pdfDownloadName.value = ''
+  resetForm() // Reset the form after closing the modal
 }
 
 const resetForm = () => {

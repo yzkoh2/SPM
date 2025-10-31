@@ -14,6 +14,9 @@ from .. import service as task_service
 from sqlalchemy import or_, and_
 import numpy as np
 import pytz
+import uuid
+from botocore.exceptions import BotoCoreError, ClientError
+from werkzeug.utils import secure_filename
 
 # Set matplotlib backend
 matplotlib.use('Agg')
@@ -278,15 +281,15 @@ def generate_project_pdf_report(project_id: int, user_id: int, start_date: datet
     section3_for_sort = []
     for task in section3_tasks:
         try:
-            deadline_sort = datetime.fromisoformat(task['deadline'].replace('SGT', '').strip()) if task['deadline'] != 'N/A' else datetime.max
+            deadline_sort = datetime.fromisoformat(task['deadline'].strip()) if task['deadline'] != 'N/A' else datetime.max
         except:
             deadline_sort = datetime.max
         
         priority_sort = int(task['priority']) if task['priority'] != '-' else 0
         
         section3_for_sort.append((deadline_sort, priority_sort, task))
-
-    section3_tasks = [item[2] for item in sorted(section3_for_sort)]
+    sorted_list = sorted(section3_for_sort, key=lambda item: (item[0], item[1]))
+    section3_tasks = [item[2] for item in sorted_list]
 
 
     # --- 5. Format Metrics and Generate Charts ---
@@ -306,12 +309,12 @@ def generate_project_pdf_report(project_id: int, user_id: int, start_date: datet
     collaborator_stats_formatted = []
     total_project_tasks_as_of = 0
     total_project_completed_as_of = 0
-    for user_id, stats in collaborator_stats_as_of.items():
+    for collab_id, stats in collaborator_stats_as_of.items():
         total = stats['total_tasks']; completed = stats['completed']
         rate = (completed / total * 100) if total > 0 else 0
         total_project_tasks_as_of += total; total_project_completed_as_of += completed
         collaborator_stats_formatted.append({
-            'name': user_cache.get(user_id, {}).get('name', f"User {user_id}"),
+            'name': user_cache.get(collab_id, {}).get('name', f"User {collab_id}"),
             'total_tasks': total, 'main_tasks': stats['main_tasks'], 'sub_tasks': stats['sub_tasks'],
             'in_progress': stats['in_progress'], 'under_review': stats['under_review'],
             'completed': completed, 'completion_rate': round(rate, 1)
@@ -360,8 +363,13 @@ def generate_project_pdf_report(project_id: int, user_id: int, start_date: datet
 
     generation_date_user_tz = datetime.now(user_tz).strftime('%Y-%m-%d %H:%M:%S %Z')
 
+    project_title_safe = secure_filename(project_details.get('title', f"Project_{project_id}"))
+    report_date_str = datetime.now(user_tz).strftime('%d%m%Y')
+    filename_to_save = f"{project_title_safe}_Report_{report_date_str}.pdf"
+
     context = {
         "report_title": f"Project Report: {project_title}",
+        "report_filename": filename_to_save,
         "project_details": project_details,
         "report_period": report_period_str, 
         "activity_period": activity_period_str, 
@@ -388,9 +396,10 @@ def generate_project_pdf_report(project_id: int, user_id: int, start_date: datet
     try:
         pdf_bytes = HTML(string=html_string).write_pdf()
         print(f"Successfully generated PDF ({len(pdf_bytes)} bytes) for project {project_id}.")
+
+        save_report(pdf_bytes, filename_to_save, user_id, "project", None, project_id=project_id)
         return pdf_bytes, None
     except Exception as e: print(f"Error generating PDF: {e}"); return None, f"PDF Generation Error: {e}"
-
 
 def generate_individual_pdf_report(target_user_id: int, requesting_user_id: int, start_date: datetime = None, end_date: datetime = None, timezone_str: str = "UTC"):
     """
@@ -576,13 +585,14 @@ def generate_individual_pdf_report(target_user_id: int, requesting_user_id: int,
     tasks_for_sort = []
     for task in tasks_to_display:
         try:
-            deadline_sort = datetime.fromisoformat(task['deadline'].replace('SGT', '').strip()) if task['deadline'] != 'N/A' else datetime.max
+            deadline_sort = datetime.fromisoformat(task['deadline'].strip()) if task['deadline'] != 'N/A' else datetime.max
         except:
             deadline_sort = datetime.max
         priority_sort = int(task['priority']) if task['priority'] != '-' else 0
         tasks_for_sort.append((deadline_sort, priority_sort, task))
 
-    tasks_to_display = [item[2] for item in sorted(tasks_for_sort)]
+    sorted_list = sorted(tasks_for_sort, key=lambda item: (item[0], item[1]))
+    tasks_to_display = [item[2] for item in sorted_list]
 
     # --- 5. Calculate Performance Metrics (Based on Displayed Tasks Only) ---
     # Total tasks: count of tasks shown in the report
@@ -702,7 +712,137 @@ def generate_individual_pdf_report(target_user_id: int, requesting_user_id: int,
     try:
         pdf_bytes = HTML(string=html_string).write_pdf()
         print(f"Successfully generated PDF ({len(pdf_bytes)} bytes) for user {target_user_id}.")
+
+        filename = context['report_filename'] + ".pdf"
+        print(requesting_user_id, target_user_id)
+        save_report(pdf_bytes, filename, requesting_user_id, "individual", target_user_id)
+
         return pdf_bytes, None
     except Exception as e:
         print(f"Error generating PDF: {e}")
         return None, f"PDF Generation Error: {e}"
+
+def save_report(report_content: bytes, filename: str, requesting_user_id: int, report_type: str, target_user_id: int = None, project_id: int = None):
+    """
+    Atomically uploads report to S3 and saves metadata to the database.
+    Includes rollback logic if the database save fails.
+    """
+
+    s3_object_key = None
+    safe_filename = secure_filename(filename)
+
+    try:
+        s3_object_key = f"reports/{uuid.uuid4()}_{safe_filename}"
+
+        current_app.s3_client.upload_fileobj(
+            BytesIO(report_content),
+            current_app.config['S3_BUCKET_NAME'],
+            s3_object_key,
+            ExtraArgs={'ContentType': 'application/pdf'}
+        )
+
+        print(f"Successfully saved report to S3: {s3_object_key}")
+    except (BotoCoreError, ClientError) as e:
+        print(f"Error saving report to S3: {e}")
+        return None
+    
+    try:
+        
+
+        new_report_history = models.ReportHistory(
+            filename=safe_filename,
+            url=s3_object_key,
+            user_id=requesting_user_id,
+            target_user_id=target_user_id,
+            report_type=report_type,
+            project_id=project_id
+        )
+
+        models.db.session.add(new_report_history)
+        models.db.session.commit()
+        print(f"Report history recorded in database for report: {filename}")
+
+        return s3_object_key
+
+    except Exception as e:
+# 4. DB SAVE FAILED! We must roll back the S3 upload.
+        models.db.session.rollback()
+        print(f"DATABASE SAVE FAILED: {e}. Rolling back session.")
+        
+        if s3_object_key: # s3_object_key will exist from the 'try' block
+            print(f"Attempting to delete orphaned S3 file: {s3_object_key}")
+            try:
+                current_app.s3_client.delete_object(
+                    Bucket=current_app.config['S3_BUCKET_NAME'],
+                    Key=s3_object_key
+                )
+                print("Orphaned file deleted.")
+            except Exception as del_e:
+                print(f"CRITICAL: Failed to delete orphaned S3 file {s3_object_key}: {del_e}")
+        
+        return None # Total Failure
+    
+def get_all_reports_for_user(user_id):
+    """
+    Fetches all report history entries for a given user.
+    """
+    try:
+        reports = models.ReportHistory.query.filter(models.ReportHistory.user_id == user_id).order_by(models.ReportHistory.created_at.desc()).all()
+
+        return reports, None
+    except Exception as e:
+        print(f"Error fetching reports for user {user_id}: {e}")
+        return None, f"Could not fetch reports: {e}"
+
+def get_report_by_id(report_id: int, user_id: int):
+    """
+    Fetches a specific report by ID, ensuring it belongs to the requesting user.
+    """
+    try:
+        report = models.ReportHistory.query.get(report_id)
+
+        if not report:
+            return None, "Report not found."
+        if report.user_id != int(user_id):
+            return None, "Unauthorized access to report."
+
+        presigned_url = current_app.s3_client.generate_presigned_url(
+            'get_object',
+            Params={
+                'Bucket': current_app.config['S3_BUCKET_NAME'],
+                'Key': report.url
+            },
+            ExpiresIn=3600  # URL valid for 1 hour
+        )
+
+        return presigned_url, None
+    except Exception as e:
+        print(f"Error fetching report {report_id} for user {user_id}: {e}")
+        return None, f"Could not fetch report: {e}"
+    
+def delete_report_by_id(report_id: int, user_id: int):
+    """
+    Deletes a specific report by ID, ensuring it belongs to the requesting user.
+    Also deletes the report file from S3.
+    """
+    try:
+        report = models.ReportHistory.query.get(report_id)
+
+        if not report:
+            return False, "Report not found."
+        if report.user_id != int(user_id):
+            return False, "Unauthorized access to report."
+
+        current_app.s3_client.delete_object(
+            Bucket=current_app.config['S3_BUCKET_NAME'],
+            Key=report.url
+        )
+
+        models.db.session.delete(report)
+        models.db.session.commit()
+
+        return True, None
+    except Exception as e:
+        print(f"Error deleting report {report_id} for user {user_id}: {e}")
+        models.db.session.rollback()
+        return False, f"Could not delete report: {e}"
