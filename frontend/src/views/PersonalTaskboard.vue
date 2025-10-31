@@ -54,19 +54,17 @@
         </div>
       </div>
 
+      <!-- Filters & Sort Section -->
       <div class="bg-white rounded-lg shadow-md p-6 mb-6">
-        <div
-          class="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0"
-        >
-          <div
-            class="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-4"
-          >
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Filter by Status</label>
+        <h3 class="text-lg font-semibold text-gray-900 mb-4">Filters & Sort</h3>
+        <div class="flex flex-col lg:flex-row lg:items-end lg:justify-between space-y-4 lg:space-y-0 lg:space-x-4">
+          <!-- Filters -->
+          <div class="flex flex-col sm:flex-row sm:items-end space-y-3 sm:space-y-0 sm:space-x-3 flex-1">
+            <div class="flex-1">
+              <label class="block text-sm font-medium text-gray-700 mb-1">Status</label>
               <select
                 v-model="filters.status"
-                @change="applyFilters"
-                class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
               >
                 <option value="">All Statuses</option>
                 <option value="Unassigned">Unassigned</option>
@@ -76,12 +74,24 @@
               </select>
             </div>
 
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Filter by Deadline</label>
+            <div class="flex-1">
+              <label class="block text-sm font-medium text-gray-700 mb-1">Priority</label>
+              <select
+                v-model="filters.priority"
+                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              >
+                <option value="">All Priorities</option>
+                <option value="high">High (8-10)</option>
+                <option value="medium">Medium (4-7)</option>
+                <option value="low">Low (1-3)</option>
+              </select>
+            </div>
+
+            <div class="flex-1">
+              <label class="block text-sm font-medium text-gray-700 mb-1">Deadline</label>
               <select
                 v-model="filters.deadline"
-                @change="applyFilters"
-                class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
               >
                 <option value="">All Deadlines</option>
                 <option value="overdue">Overdue</option>
@@ -90,41 +100,29 @@
                 <option value="month">Due This Month</option>
               </select>
             </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Filter by Priority</label>
-              <select
-                v-model="filters.priority"
-                @change="applyFilters"
-                class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              >
-                <option value="">All Priorities</option>
-                <option value="high">High (8-10)</option>
-                <option value="medium">Medium (4-7)</option>
-                <option value="low">Low (1-3)</option>
-              </select>
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Sort by Priority</label>
+
+            <div class="flex-1">
+              <label class="block text-sm font-medium text-gray-700 mb-1">Sort By</label>
               <select
                 v-model="sortBy"
-                @change="applyFilters"
-                class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
               >
                 <option value="default">Default Order</option>
-                <option value="priority-high">Priority (Highest First)</option>
-                <option value="priority-low">Priority (Lowest First)</option>
+                <option value="deadline-asc">Deadline: Earliest First</option>
+                <option value="deadline-desc">Deadline: Latest First</option>
+                <option value="priority-high">Priority: Highest First</option>
+                <option value="priority-low">Priority: Lowest First</option>
               </select>
             </div>
           </div>
 
-          <div
-            class="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-4"
-          >
+          <!-- Action Buttons -->
+          <div class="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-3">
             <button
               @click="clearFilters"
               class="px-4 py-2 text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors"
             >
-              Clear Filters
+              Clear All
             </button>
             <button
               @click="fetchTasks(authStore.user.id)"
@@ -390,8 +388,20 @@ const filteredTasks = computed(() => {
     })
   }
 
-  // ADD SORTING LOGIC HERE
-  if (sortBy.value === 'priority-high') {
+  // SORTING LOGIC (Single criterion at a time)
+  if (sortBy.value === 'deadline-asc') {
+    filtered.sort((a, b) => {
+      if (!a.deadline) return 1
+      if (!b.deadline) return -1
+      return new Date(a.deadline) - new Date(b.deadline) // Earliest first
+    })
+  } else if (sortBy.value === 'deadline-desc') {
+    filtered.sort((a, b) => {
+      if (!a.deadline) return 1
+      if (!b.deadline) return -1
+      return new Date(b.deadline) - new Date(a.deadline) // Latest first
+    })
+  } else if (sortBy.value === 'priority-high') {
     filtered.sort((a, b) => {
       const priorityA = a.priority || 5
       const priorityB = b.priority || 5

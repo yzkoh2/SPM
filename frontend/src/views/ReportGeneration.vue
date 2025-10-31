@@ -91,8 +91,8 @@
               </select>
               <p class="text-xs text-gray-500 mt-1">
                 <span v-if="currentUser.role === 'Manager'">You can generate reports for your team members</span>
-                <span v-else-if="currentUser.role === 'Director'">You can generate reports for your department
-                  members</span>
+                <span v-else-if="currentUser.role === 'Director'">You can generate reports for your department members</span>
+                <span v-else-if="currentUser.role === 'HR' || currentUser.role === 'Senior Management'">You can generate reports for all company employees</span>
               </p>
             </div>
 
@@ -177,11 +177,14 @@
               <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
                 <input type="date" v-model="customStartDate" required
+                  :max="maxDate"
                   class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500" />
               </div>
               <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">End Date</label>
-                <input type="date" v-model="customEndDate" required :min="customStartDate"
+                <input type="date" v-model="customEndDate" required
+                  :min="customStartDate"
+                  :max="maxDate"
                   class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500" />
               </div>
             </div>
@@ -260,6 +263,19 @@ const customStartDate = ref('')
 const customEndDate = ref('')
 const isGenerating = ref(false)
 const loadingProjects = ref(false)
+
+// Helper to format a Date object to YYYY-MM-DD in local timezone
+const formatDateLocal = (date) => {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+// Helper to get today's date in local timezone (YYYY-MM-DD format)
+const getTodayLocalDate = () => formatDateLocal(new Date())
+
+const maxDate = computed(() => getTodayLocalDate())
 const loadingUser = ref(true)
 const error = ref(null)
 
@@ -267,7 +283,10 @@ const error = ref(null)
 const canSelectOtherUsers = computed(() => {
   return (
     currentUser.value &&
-    (currentUser.value.role === 'Manager' || currentUser.value.role === 'Director')
+    (currentUser.value.role === 'Manager' ||
+     currentUser.value.role === 'Director' ||
+     currentUser.value.role === 'HR' ||
+     currentUser.value.role === 'Senior Management')
   )
 })
 
@@ -300,11 +319,13 @@ const fetchCurrentUser = async () => {
     selectedUserId.value = currentUser.value.id
     console.log('Current user details:', currentUser.value)
 
-    // Fetch appropriate users based on role
+    // Fetch appropriate users based on role (RBAC)
     if (currentUser.value.role === 'Manager') {
       await fetchTeamMembers()
     } else if (currentUser.value.role === 'Director') {
       await fetchDepartmentMembers()
+    } else if (currentUser.value.role === 'HR' || currentUser.value.role === 'Senior Management') {
+      await fetchAllCompanyUsers()
     }
   } catch (err) {
     console.error('Error fetching current user:', err)
@@ -336,6 +357,18 @@ const fetchDepartmentMembers = async () => {
   } catch (err) {
     console.error('Error fetching department members:', err)
     error.value = 'Failed to load department members'
+  }
+}
+
+const fetchAllCompanyUsers = async () => {
+  try {
+    console.log('Fetching all company users (HR/SM role)')
+    const response = await fetch(`${KONG_API_URL}/user`)
+    if (!response.ok) throw new Error('Failed to fetch all users')
+    availableUsers.value = await response.json()
+  } catch (err) {
+    console.error('Error fetching all users:', err)
+    error.value = 'Failed to load users'
   }
 }
 
@@ -395,7 +428,8 @@ const calculateDateRange = () => {
   switch (timeframe.value) {
     case 'this_month':
       startDate = new Date(now.getFullYear(), now.getMonth(), 1)
-      endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0)
+      // For current month, use today as end date (not end of month)
+      endDate = now
       break
     case 'last_month':
       startDate = new Date(now.getFullYear(), now.getMonth() - 1, 1)
@@ -410,8 +444,8 @@ const calculateDateRange = () => {
   }
 
   return {
-    start_date: startDate.toISOString().split('T')[0],
-    end_date: endDate.toISOString().split('T')[0],
+    start_date: formatDateLocal(startDate),
+    end_date: formatDateLocal(endDate),
   }
 }
 

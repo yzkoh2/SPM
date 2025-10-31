@@ -133,6 +133,31 @@ def get_task_state_as_of(task, end_date_utc):
 
     return state
 
+def get_task_completion_timestamp(task, end_date_utc):
+    """
+    Gets the timestamp when a task was completed (status changed to COMPLETED).
+    Only considers activity logs up to end_date_utc.
+    Returns None if task was never completed or completion was after end_date_utc.
+    """
+    utc_tz = pytz.utc
+
+    # Find the first log where status changed to COMPLETED
+    completion_log = models.TaskActivityLog.query.filter(
+        models.TaskActivityLog.task_id == task.id,
+        models.TaskActivityLog.field_changed == 'status',
+        models.TaskActivityLog.new_value == 'Completed',
+        models.TaskActivityLog.timestamp <= end_date_utc
+    ).order_by(models.TaskActivityLog.timestamp.asc()).first()
+
+    if completion_log:
+        completion_time = completion_log.timestamp
+        if completion_time.tzinfo is None:
+            completion_time = utc_tz.localize(completion_time)
+        return completion_time
+
+    return None
+
+
 def generate_project_pdf_report(project_id: int, user_id: int, start_date: datetime = None, end_date: datetime = None, timezone_str: str = "UTC"):
     """
     Generates a PDF report snapshot as of end_date, activity log for date range,
@@ -209,20 +234,32 @@ def generate_project_pdf_report(project_id: int, user_id: int, start_date: datet
 
     # --- 4. Calculate "As Of" Metrics (Section 1) & Prepare Section 3 Data ---
     status_distribution_as_of = {status.value: 0 for status in models.TaskStatusEnum}
-    priority_distribution_as_of = {p: 0 for p in range(1, 11)} 
+    priority_distribution_as_of = {p: 0 for p in range(1, 11)}
     overdue_tasks_as_of_list = []
-    section3_tasks = [] 
+    section3_tasks = []
 
     collaborator_stats_as_of = defaultdict(lambda: {
         'total_tasks': 0, 'main_tasks': 0, 'sub_tasks': 0,
         'in_progress': 0, 'under_review': 0, 'completed': 0
     })
-    for collab_id in project_collaborator_ids: _ = collaborator_stats_as_of[collab_id] 
+    for collab_id in project_collaborator_ids: _ = collaborator_stats_as_of[collab_id]
 
     print(f"DEBUG: generator - Received start_date (UTC): {start_date}")
     print(f"DEBUG: generator - Received end_date (UTC): {end_date}") # <-- Check this value carefully!
     print(f"DEBUG: generator - Received timezone_str: {timezone_str}")
     print(f"DEBUG: generator - Calculated as_of_date_utc: {as_of_date_utc}")
+
+    # Find tasks with ANY activity up to end date (for overall section 3)
+    overall_tasks_with_activity = set()
+    try:
+        activity_logs_overall = models.TaskActivityLog.query.join(models.Task).filter(
+            models.Task.project_id == project_id,
+            models.TaskActivityLog.timestamp <= as_of_date_utc
+        ).all()
+        overall_tasks_with_activity = {log.task_id for log in activity_logs_overall}
+        print(f"Found {len(overall_tasks_with_activity)} tasks with activity from project start to {as_of_date_utc}")
+    except Exception as e:
+        print(f"Error finding tasks with overall activity: {e}")
 
     for task in all_project_tasks:
         # 1. Get the task state as of the report snapshot date
@@ -244,8 +281,22 @@ def generate_project_pdf_report(project_id: int, user_id: int, start_date: datet
 
         task_deadline_utc = task.deadline
         if task_deadline_utc and task_deadline_utc.tzinfo is None: task_deadline_utc = utc_tz.localize(task_deadline_utc)
-        is_overdue_as_of = task_deadline_utc and task_deadline_utc < as_of_date_utc and status_as_of != models.TaskStatusEnum.COMPLETED
-        
+
+        # Check if task is/was overdue:
+        # 1. Currently incomplete AND past deadline, OR
+        # 2. Was completed AFTER its deadline
+        is_overdue_as_of = False
+        if task_deadline_utc and task_deadline_utc < as_of_date_utc:
+            if status_as_of != models.TaskStatusEnum.COMPLETED:
+                # Task is currently overdue (incomplete and past deadline)
+                is_overdue_as_of = True
+            else:
+                # Task is completed - check if it was completed after deadline
+                completion_time = get_task_completion_timestamp(task, as_of_date_utc)
+                if completion_time and completion_time > task_deadline_utc:
+                    # Task was completed late (after deadline)
+                    is_overdue_as_of = True
+
         if is_overdue_as_of:
             if owner_id_as_of not in user_cache: user_cache[owner_id_as_of] = _fetch_user_details(owner_id_as_of)
             owner_name_as_of = user_cache[owner_id_as_of]['name']
@@ -263,8 +314,11 @@ def generate_project_pdf_report(project_id: int, user_id: int, start_date: datet
             if status_as_of == models.TaskStatusEnum.ONGOING: stats['in_progress'] += 1
             elif status_as_of == models.TaskStatusEnum.UNDER_REVIEW: stats['under_review'] += 1
             elif status_as_of == models.TaskStatusEnum.COMPLETED: stats['completed'] += 1
-            
-        if status_as_of != models.TaskStatusEnum.COMPLETED:
+
+        # Section 3: Show tasks with activity OR incomplete (similar to timeframe logic)
+        should_display_overall = (task.id in overall_tasks_with_activity) or (status_as_of != models.TaskStatusEnum.COMPLETED)
+
+        if should_display_overall:
             if owner_id_as_of not in user_cache: user_cache[owner_id_as_of] = _fetch_user_details(owner_id_as_of)
             owner_name_as_of = user_cache[owner_id_as_of]['name']
             task_type = "Subtask" if task.parent_task_id is not None else "Task"
@@ -319,37 +373,253 @@ def generate_project_pdf_report(project_id: int, user_id: int, start_date: datet
     collaborator_stats_formatted.sort(key=lambda x: x['name'])
     average_completion_rate_as_of = (total_project_completed_as_of / total_project_tasks_as_of * 100) if total_project_tasks_as_of > 0 else 0
 
-    # --- 6. Fetch Section 2 Activity Details (Uses original start_date/end_date for range) ---
-    section2_details = []
-    if start_date and end_date: 
+    # Calculate average completion time for completed tasks
+    completion_times = []
+    for task in all_project_tasks:
+        state_as_of = get_task_state_as_of(task, as_of_date_utc)
+        if state_as_of and state_as_of['status'] == models.TaskStatusEnum.COMPLETED:
+            completion_time = get_task_completion_timestamp(task, as_of_date_utc)
+            if completion_time:
+                task_created_at = task.created_at
+                if task_created_at.tzinfo is None:
+                    task_created_at = utc_tz.localize(task_created_at)
+                time_to_complete = (completion_time - task_created_at).total_seconds() / 86400  # Convert to days
+                completion_times.append(time_to_complete)
+
+    average_completion_time = sum(completion_times) / len(completion_times) if completion_times else 0
+
+    # Create overall summary metrics
+    overall_summary_metrics = {
+        'total_tasks': len(all_project_tasks),
+        'completed_tasks': total_project_completed_as_of,
+        'completion_rate': round(average_completion_rate_as_of, 1),
+        'average_completion_time': round(average_completion_time, 1),
+        'overdue_count': len(overdue_tasks_as_of_list)
+    }
+
+    # --- 6. Calculate Timeframe-Specific Data (Complete Duplicate) ---
+    timeframe_section1 = None
+    timeframe_collaborator_stats = None
+    timeframe_avg_completion_rate = 0
+    timeframe_section2 = []
+    timeframe_section3 = []
+    timeframe_summary_metrics = None
+
+    if start_date and end_date:
+        # Find tasks with activity during the timeframe
+        tasks_with_activity = set()
+        try:
+            activity_logs_in_range = models.TaskActivityLog.query.join(models.Task).filter(
+                models.Task.project_id == project_id,
+                models.TaskActivityLog.timestamp >= start_date,
+                models.TaskActivityLog.timestamp <= end_date
+            ).all()
+            tasks_with_activity = {log.task_id for log in activity_logs_in_range}
+            print(f"Found {len(tasks_with_activity)} tasks with activity in timeframe")
+        except Exception as e:
+            print(f"Error finding tasks with activity: {e}")
+
+        # Timeframe-specific calculations
+        tf_status_dist = {status.value: 0 for status in models.TaskStatusEnum}
+        tf_priority_dist = {p: 0 for p in range(1, 11)}
+        tf_overdue_list = []
+        tf_section3_tasks = []
+
+        tf_collaborator_stats = defaultdict(lambda: {
+            'total_tasks': 0, 'main_tasks': 0, 'sub_tasks': 0,
+            'in_progress': 0, 'under_review': 0, 'completed': 0
+        })
+        for collab_id in project_collaborator_ids: _ = tf_collaborator_stats[collab_id]
+
+        for task in all_project_tasks:
+            state_as_of = get_task_state_as_of(task, as_of_date_utc)
+            if state_as_of is None:
+                continue
+
+            status_as_of = state_as_of['status']
+            priority_as_of = state_as_of['priority']
+            owner_id_as_of = state_as_of['owner_id']
+
+            # Include task if it has activity OR is incomplete
+            should_include = (task.id in tasks_with_activity) or (status_as_of != models.TaskStatusEnum.COMPLETED)
+
+            if should_include:
+                tf_status_dist[status_as_of.value] += 1
+                if priority_as_of and 1 <= priority_as_of <= 10:
+                    tf_priority_dist[priority_as_of] += 1
+
+                # Check if task is/was overdue (same logic as overall section)
+                task_deadline_utc = task.deadline
+                if task_deadline_utc and task_deadline_utc.tzinfo is None:
+                    task_deadline_utc = utc_tz.localize(task_deadline_utc)
+
+                is_overdue_as_of = False
+                if task_deadline_utc and task_deadline_utc < as_of_date_utc:
+                    if status_as_of != models.TaskStatusEnum.COMPLETED:
+                        # Task is currently overdue (incomplete and past deadline)
+                        is_overdue_as_of = True
+                    else:
+                        # Task is completed - check if it was completed after deadline
+                        completion_time = get_task_completion_timestamp(task, as_of_date_utc)
+                        if completion_time and completion_time > task_deadline_utc:
+                            # Task was completed late (after deadline)
+                            is_overdue_as_of = True
+
+                if is_overdue_as_of:
+                    if owner_id_as_of not in user_cache: user_cache[owner_id_as_of] = _fetch_user_details(owner_id_as_of)
+                    owner_name_as_of = user_cache[owner_id_as_of]['name']
+                    task_type = "Subtask" if task.parent_task_id is not None else "Task"
+                    tf_overdue_list.append({
+                        'title': task.title, 'deadline': convert_to_user_tz(task.deadline),
+                        'owner_name': owner_name_as_of, 'status': status_as_of.value, 'task_type': task_type
+                    })
+
+                # Collaborator stats
+                if owner_id_as_of in tf_collaborator_stats:
+                    stats = tf_collaborator_stats[owner_id_as_of]
+                    stats['total_tasks'] += 1
+                    if task.parent_task_id is None: stats['main_tasks'] += 1
+                    else: stats['sub_tasks'] += 1
+                    if status_as_of == models.TaskStatusEnum.ONGOING: stats['in_progress'] += 1
+                    elif status_as_of == models.TaskStatusEnum.UNDER_REVIEW: stats['under_review'] += 1
+                    elif status_as_of == models.TaskStatusEnum.COMPLETED: stats['completed'] += 1
+
+                # Section 3 tasks (active or updated)
+                if owner_id_as_of not in user_cache: user_cache[owner_id_as_of] = _fetch_user_details(owner_id_as_of)
+                owner_name_as_of = user_cache[owner_id_as_of]['name']
+                task_type = "Subtask" if task.parent_task_id is not None else "Task"
+                tf_section3_tasks.append({
+                    'title': task.title, 'task_type': task_type, 'owner_name': owner_name_as_of,
+                    'deadline': convert_to_user_tz(task.deadline), 'status': status_as_of.value,
+                    'priority': priority_as_of or '-', 'is_overdue_as_of': is_overdue_as_of
+                })
+
+        # Sort timeframe section3 tasks
+        tf_section3_for_sort = []
+        for task in tf_section3_tasks:
+            try:
+                deadline_sort = datetime.fromisoformat(task['deadline'].replace('SGT', '').strip()) if task['deadline'] != 'N/A' else datetime.max
+            except:
+                deadline_sort = datetime.max
+            priority_sort = int(task['priority']) if task['priority'] != '-' else 0
+            tf_section3_for_sort.append((deadline_sort, priority_sort, task))
+        timeframe_section3 = [item[2] for item in sorted(tf_section3_for_sort)]
+
+        # Timeframe collaborator stats formatted
+        tf_collaborator_stats_formatted = []
+        tf_total_project_tasks = 0
+        tf_total_project_completed = 0
+        for user_id, stats in tf_collaborator_stats.items():
+            total = stats['total_tasks']; completed = stats['completed']
+            rate = (completed / total * 100) if total > 0 else 0
+            tf_total_project_tasks += total; tf_total_project_completed += completed
+            tf_collaborator_stats_formatted.append({
+                'name': user_cache.get(user_id, {}).get('name', f"User {user_id}"),
+                'total_tasks': total, 'main_tasks': stats['main_tasks'], 'sub_tasks': stats['sub_tasks'],
+                'in_progress': stats['in_progress'], 'under_review': stats['under_review'],
+                'completed': completed, 'completion_rate': round(rate, 1)
+            })
+        tf_collaborator_stats_formatted.sort(key=lambda x: x['name'])
+        timeframe_avg_completion_rate = (tf_total_project_completed / tf_total_project_tasks * 100) if tf_total_project_tasks > 0 else 0
+
+        # Timeframe section1 metrics
+        timeframe_section1 = {
+            'status_distribution': tf_status_dist,
+            'priority_distribution': dict(sorted(tf_priority_dist.items())),
+            'overdue_tasks': tf_overdue_list,
+            'overdue_count': len(tf_overdue_list),
+            'total_relevant_tasks': sum(tf_status_dist.values())
+        }
+        timeframe_collaborator_stats = tf_collaborator_stats_formatted
+
+        # Calculate average completion time for timeframe
+        tf_completion_times = []
+        for task in all_project_tasks:
+            # Check if task has activity in timeframe AND was completed
+            if task.id in tasks_with_activity:
+                state_as_of = get_task_state_as_of(task, as_of_date_utc)
+                if state_as_of and state_as_of['status'] == models.TaskStatusEnum.COMPLETED:
+                    completion_time = get_task_completion_timestamp(task, as_of_date_utc)
+                    if completion_time:
+                        task_created_at = task.created_at
+                        if task_created_at.tzinfo is None:
+                            task_created_at = utc_tz.localize(task_created_at)
+                        time_to_complete = (completion_time - task_created_at).total_seconds() / 86400  # Convert to days
+                        tf_completion_times.append(time_to_complete)
+
+        tf_average_completion_time = sum(tf_completion_times) / len(tf_completion_times) if tf_completion_times else 0
+
+        # Create timeframe summary metrics
+        timeframe_summary_metrics = {
+            'total_tasks': sum(tf_status_dist.values()),
+            'completed_tasks': tf_total_project_completed,
+            'completion_rate': round(timeframe_avg_completion_rate, 1),
+            'average_completion_time': round(tf_average_completion_time, 1),
+            'overdue_count': len(tf_overdue_list)
+        }
+
+        # Timeframe section2 - activity log (status changes only)
         try:
             activity_query = models.TaskActivityLog.query.join(models.Task).filter(
                 models.Task.project_id == project_id,
-                models.TaskActivityLog.timestamp >= start_date, 
-                models.TaskActivityLog.timestamp <= end_date    
+                models.TaskActivityLog.timestamp >= start_date,
+                models.TaskActivityLog.timestamp <= end_date,
+                models.TaskActivityLog.field_changed == 'status'
             )
-            activity_logs = activity_query.order_by(models.TaskActivityLog.task_id, models.TaskActivityLog.timestamp.asc()).all()
-            print(f"Found {len(activity_logs)} activity log entries in the date range {start_date} to {end_date}.")
+            tf_activity_logs = activity_query.order_by(models.TaskActivityLog.task_id, models.TaskActivityLog.timestamp.asc()).all()
+            print(f"Found {len(tf_activity_logs)} status change log entries for timeframe.")
 
-            task_titles_cache = {} 
-            for log in activity_logs:
+            task_titles_cache = {}
+            for log in tf_activity_logs:
                 task_id = log.task_id
                 if task_id not in task_titles_cache:
-                    task = models.Task.query.get(task_id); task_titles_cache[task_id] = task.title if task else f"Task {task_id}"
+                    task = models.Task.query.get(task_id)
+                    task_titles_cache[task_id] = task.title if task else f"Task {task_id}"
                 task_title = task_titles_cache[task_id]
                 user_id_changed = log.user_id
                 if user_id_changed not in user_cache: user_cache[user_id_changed] = _fetch_user_details(user_id_changed)
                 user_name_changed = user_cache[user_id_changed]['name']
-                section2_details.append({
+                timeframe_section2.append({
                     'task_id': task_id, 'task_title': task_title,
-                    'timestamp': convert_to_user_tz(log.timestamp), 
+                    'timestamp': convert_to_user_tz(log.timestamp),
                     'user_name': user_name_changed, 'field_changed': log.field_changed.replace('_', ' ').title(),
                     'old_value': log.old_value if log.old_value != "None" else "-",
                     'new_value': log.new_value if log.new_value != "None" else "-",
                 })
-        except Exception as e: print(f"Error fetching activity logs for project {project_id}: {e}"); return None, f"Could not fetch activity logs: {e}"
-    else:
-        print("No date range provided, skipping Section 2 Activity Log.")
+        except Exception as e:
+            print(f"Error fetching timeframe activity logs: {e}")
+
+    # --- 7. Fetch Overall Section 2 Activity Details (Status Changes Only - From Project Start to End Date) ---
+    section2_details = []
+    try:
+        # Overall section: Show ALL status changes from project start to end_date (not limited by start_date)
+        activity_query = models.TaskActivityLog.query.join(models.Task).filter(
+            models.Task.project_id == project_id,
+            models.TaskActivityLog.timestamp <= as_of_date_utc,  # From project start to snapshot date
+            models.TaskActivityLog.field_changed == 'status'  # Only status changes
+        )
+        activity_logs = activity_query.order_by(models.TaskActivityLog.task_id, models.TaskActivityLog.timestamp.asc()).all()
+        print(f"Found {len(activity_logs)} status change log entries from project start to {as_of_date_utc}.")
+
+        task_titles_cache = {}
+        for log in activity_logs:
+            task_id = log.task_id
+            if task_id not in task_titles_cache:
+                task = models.Task.query.get(task_id); task_titles_cache[task_id] = task.title if task else f"Task {task_id}"
+            task_title = task_titles_cache[task_id]
+            user_id_changed = log.user_id
+            if user_id_changed not in user_cache: user_cache[user_id_changed] = _fetch_user_details(user_id_changed)
+            user_name_changed = user_cache[user_id_changed]['name']
+            section2_details.append({
+                'task_id': task_id, 'task_title': task_title,
+                'timestamp': convert_to_user_tz(log.timestamp),
+                'user_name': user_name_changed, 'field_changed': log.field_changed.replace('_', ' ').title(),
+                'old_value': log.old_value if log.old_value != "None" else "-",
+                'new_value': log.new_value if log.new_value != "None" else "-",
+            })
+    except Exception as e:
+        print(f"Error fetching overall activity logs for project {project_id}: {e}")
+        # Don't return error, just continue with empty logs
 
 
     # --- 7. Prepare Template Context ---
@@ -360,18 +630,38 @@ def generate_project_pdf_report(project_id: int, user_id: int, start_date: datet
 
     generation_date_user_tz = datetime.now(user_tz).strftime('%Y-%m-%d %H:%M:%S %Z')
 
+    # Generate charts for timeframe if available
+    timeframe_charts = None
+    if timeframe_section1:
+        timeframe_charts = {
+            'status_chart': _generate_pie_chart_base64(timeframe_section1['status_distribution'], f"Timeframe Task Status"),
+            'priority_chart': _generate_hbar_chart_base64(timeframe_section1['priority_distribution'], f"Timeframe Task Priority")
+        }
+
     context = {
         "report_title": f"Project Report: {project_title}",
         "project_details": project_details,
-        "report_period": report_period_str, 
-        "activity_period": activity_period_str, 
+        "report_period": report_period_str,
+        "activity_period": activity_period_str,
         "generation_date": generation_date_user_tz,
+
+        # Overall data (from project start to end date)
         "section1": section1_metrics,
-        "collaborator_stats": collaborator_stats_formatted, 
+        "collaborator_stats": collaborator_stats_formatted,
         "average_completion_rate": round(average_completion_rate_as_of, 1),
         "section2": section2_details,
-        "section3_tasks": section3_tasks, 
+        "section3_tasks": section3_tasks,
         "charts": charts,
+        "overall_summary_metrics": overall_summary_metrics,
+
+        # Timeframe-specific data (from start date to end date)
+        "timeframe_section1": timeframe_section1,
+        "timeframe_collaborator_stats": timeframe_collaborator_stats,
+        "timeframe_avg_completion_rate": round(timeframe_avg_completion_rate, 1) if timeframe_section1 else 0,
+        "timeframe_section2": timeframe_section2,
+        "timeframe_section3": timeframe_section3,
+        "timeframe_charts": timeframe_charts,
+        "timeframe_summary_metrics": timeframe_summary_metrics,
     }
 
     # --- 8. Render HTML Template ---

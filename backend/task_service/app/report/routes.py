@@ -41,8 +41,31 @@ def get_project_report(project_id):
     except ValueError:
         return jsonify({"error": "'user_id' must be an integer"}), 400
 
-    
-    # --- 2. Get Dates and Timezone from JSON Request Body ---
+    # --- 2. RBAC Authorization - Check if user is owner or collaborator ---
+    from app import models
+    try:
+        project = models.Project.query.get(project_id)
+        if not project:
+            return jsonify({"error": "Project not found"}), 404
+
+        # Get project collaborators (including owner)
+        project_owner_id = project.owner_id
+        project_collaborator_ids = project.collaborator_ids()  # Returns list of collaborator IDs
+
+        # Check if requesting user is owner or collaborator
+        is_owner = (user_id == project_owner_id)
+        is_collaborator = (user_id in project_collaborator_ids)
+
+        if not (is_owner or is_collaborator):
+            return jsonify({"error": "Unauthorized: Only project owner and collaborators can generate project reports"}), 403
+
+        print(f"User {user_id} authorized to generate report for project {project_id} (Owner: {is_owner}, Collaborator: {is_collaborator})")
+
+    except Exception as e:
+        print(f"Error checking project authorization: {e}")
+        return jsonify({"error": "Authorization check failed"}), 500
+
+    # --- 3. Get Dates and Timezone from JSON Request Body ---
     start_date_str = None
     end_date_str = None
     timezone_str = None 
@@ -57,7 +80,7 @@ def get_project_report(project_id):
     if not timezone_str:
         timezone_str = "UTC"
 
-    # --- 3. Parse Dates and Convert to UTC for Querying ---
+    # --- 4. Parse Dates and Convert to UTC for Querying ---
     utc_start_date = None
     utc_end_date = None
     try:
@@ -84,7 +107,7 @@ def get_project_report(project_id):
             user_end_date = user_tz.localize(naive_end)
             # Convert to UTC
             utc_end_date = user_end_date.astimezone(pytz.utc)
-            
+
         # Basic validation
         if utc_start_date and utc_end_date and utc_start_date > utc_end_date:
              return jsonify({"error": "start_date cannot be after end_date"}), 400
@@ -99,7 +122,7 @@ def get_project_report(project_id):
         return jsonify({"error": f"Non-existent timestamp provided near DST change in {timezone_str}. Please use a valid time."}), 400
 
 
-    # --- 4. Call Generator Service ---
+    # --- 5. Call Generator Service ---
     try:
         # Pass the UTC datetimes for filtering, and the timezone string for display
         print(f"DEBUG: routes.py - Calculated utc_start_date: {utc_start_date}")
@@ -122,7 +145,7 @@ def get_project_report(project_id):
         if not pdf_data:
              return jsonify({"error": "Report generation resulted in empty data."}), 500
 
-        # --- 5. Create and send the file response ---
+        # --- 6. Create and send the file response ---
         response = make_response(pdf_data)
         response.headers['Content-Type'] = 'application/pdf'
         response.headers['Content-Disposition'] = f'attachment; filename=project_{project_id}_report.pdf'
@@ -152,7 +175,74 @@ def get_individual_report(user_id):
     except ValueError:
         return jsonify({"error": "'requesting_user_id' must be an integer"}), 400
 
-    # --- 2. Get Dates and Timezone from JSON Request Body ---
+    # --- 2. RBAC Authorization ---
+    # Fetch requesting user details
+    requesting_user = generator._fetch_user_details(requesting_user_id)
+    if "Not Found" in requesting_user['name'] or "Service Down" in requesting_user['name']:
+        return jsonify({"error": "Could not verify requesting user"}), 403
+
+    requesting_user_role = requesting_user['role']
+
+    # Authorization logic based on role
+    if requesting_user_role == 'Staff':
+        # Staff can only generate their own report
+        if requesting_user_id != user_id:
+            return jsonify({"error": "Unauthorized: Staff can only generate their own reports"}), 403
+
+    elif requesting_user_role == 'Manager':
+        # Manager can generate reports for their team members
+        if requesting_user_id != user_id:  # If not generating own report
+            # Fetch requesting user's full details to get team_id
+            import requests
+            try:
+                user_service_url = current_app.config.get('USER_SERVICE_URL', 'http://spm_user_service:6000')
+                req_user_response = requests.get(f"{user_service_url}/user/{requesting_user_id}", timeout=5)
+                target_user_response = requests.get(f"{user_service_url}/user/{user_id}", timeout=5)
+
+                if req_user_response.status_code != 200 or target_user_response.status_code != 200:
+                    return jsonify({"error": "Could not verify user relationships"}), 403
+
+                req_user_data = req_user_response.json()
+                target_user_data = target_user_response.json()
+
+                # Check if target user is in the same team
+                if req_user_data.get('team_id') != target_user_data.get('team_id'):
+                    return jsonify({"error": "Unauthorized: Managers can only generate reports for their team members"}), 403
+            except Exception as e:
+                print(f"Error verifying team membership: {e}")
+                return jsonify({"error": "Authorization check failed"}), 500
+
+    elif requesting_user_role == 'Director':
+        # Director can generate reports for their department members
+        if requesting_user_id != user_id:  # If not generating own report
+            import requests
+            try:
+                user_service_url = current_app.config.get('USER_SERVICE_URL', 'http://spm_user_service:6000')
+                req_user_response = requests.get(f"{user_service_url}/user/{requesting_user_id}", timeout=5)
+                target_user_response = requests.get(f"{user_service_url}/user/{user_id}", timeout=5)
+
+                if req_user_response.status_code != 200 or target_user_response.status_code != 200:
+                    return jsonify({"error": "Could not verify user relationships"}), 403
+
+                req_user_data = req_user_response.json()
+                target_user_data = target_user_response.json()
+
+                # Check if target user is in the same department
+                if req_user_data.get('department_id') != target_user_data.get('department_id'):
+                    return jsonify({"error": "Unauthorized: Directors can only generate reports for their department members"}), 403
+            except Exception as e:
+                print(f"Error verifying department membership: {e}")
+                return jsonify({"error": "Authorization check failed"}), 500
+
+    elif requesting_user_role in ['HR', 'Senior Management']:
+        # HR and Senior Management can generate reports for anyone - no additional checks needed
+        pass
+
+    else:
+        # Unknown role - deny access
+        return jsonify({"error": f"Unauthorized: Unknown role '{requesting_user_role}'"}), 403
+
+    # --- 3. Get Dates and Timezone from JSON Request Body ---
     start_date_str = None
     end_date_str = None
     timezone_str = None

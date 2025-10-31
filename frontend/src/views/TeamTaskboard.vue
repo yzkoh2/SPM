@@ -63,23 +63,17 @@
 
       <!-- Task Dashboard -->
       <div v-else>
-        <!-- Filters and Sorting Section -->
+        <!-- Filters & Sort Section -->
         <div class="bg-white rounded-lg shadow-md p-6 mb-6">
-          <div
-            class="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0"
-          >
-            <div
-              class="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-4"
-            >
-              <!-- Filter by Team Member -->
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1"
-                  >Filter by Team Member</label
-                >
+          <h3 class="text-lg font-semibold text-gray-900 mb-4">Filters & Sort</h3>
+          <div class="flex flex-col lg:flex-row lg:items-end lg:justify-between space-y-4 lg:space-y-0 lg:space-x-4">
+            <!-- Filters -->
+            <div class="flex flex-col sm:flex-row sm:items-end space-y-3 sm:space-y-0 sm:space-x-3 flex-1">
+              <div class="flex-1">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Team Member</label>
                 <select
                   v-model="filters.teamMember"
-                  @change="applyFilters"
-                  class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 >
                   <option value="">All Team Members</option>
                   <option v-for="member in teamMembers" :key="member.id" :value="member.id">
@@ -88,13 +82,11 @@
                 </select>
               </div>
 
-              <!-- Filter by Status -->
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Filter by Status</label>
+              <div class="flex-1">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Status</label>
                 <select
                   v-model="filters.status"
-                  @change="applyFilters"
-                  class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 >
                   <option value="">All Statuses</option>
                   <option value="Unassigned">Unassigned</option>
@@ -104,15 +96,11 @@
                 </select>
               </div>
 
-              <!-- Filter by Priority -->
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1"
-                  >Filter by Priority</label
-                >
+              <div class="flex-1">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Priority</label>
                 <select
                   v-model="filters.priority"
-                  @change="applyFilters"
-                  class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 >
                   <option value="">All Priorities</option>
                   <option value="high">High (8-10)</option>
@@ -121,43 +109,29 @@
                 </select>
               </div>
 
-              <!-- Sort by Deadline -->
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Sort by Deadline</label>
+              <div class="flex-1">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Sort By</label>
                 <select
                   v-model="sortBy"
-                  @change="applyFilters"
-                  class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 >
                   <option value="default">Default Order</option>
-                  <option value="deadline-asc">Deadline (Earliest First)</option>
-                  <option value="deadline-desc">Deadline (Latest First)</option>
-                </select>
-              </div>
-
-              <!-- Sort by Priority -->
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Sort by Priority</label>
-                <select
-                  v-model="prioritySort"
-                  @change="applyFilters"
-                  class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                >
-                  <option value="default">Default Order</option>
-                  <option value="priority-high">Highest First</option>
-                  <option value="priority-low">Lowest First</option>
+                  <option value="deadline-asc">Deadline: Earliest First</option>
+                  <option value="deadline-desc">Deadline: Latest First</option>
+                  <option value="priority-high">Priority: Highest First</option>
+                  <option value="priority-low">Priority: Lowest First</option>
                 </select>
               </div>
             </div>
 
-            <div
-              class="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-4"
+            <!-- Action Buttons -->
+            <div class="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-3"
             >
               <button
                 @click="clearFilters"
                 class="px-4 py-2 text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors"
               >
-                Clear Filters
+                Clear All
               </button>
               <button
                 @click="loadTeamTasks"
@@ -316,7 +290,6 @@ const filters = ref({
 })
 
 const sortBy = ref('default')
-const prioritySort = ref('default') // For priority sorting
 
 // Computed properties
 const filteredAndSortedTasks = computed(() => {
@@ -354,32 +327,30 @@ const filteredAndSortedTasks = computed(() => {
     })
   }
 
+  // SORTING LOGIC (Single criterion at a time)
   if (sortBy.value === 'deadline-asc') {
     filtered.sort((a, b) => {
       if (!a.deadline) return 1
       if (!b.deadline) return -1
-      return new Date(a.deadline) - new Date(b.deadline)
+      return new Date(a.deadline) - new Date(b.deadline) // Earliest first
     })
   } else if (sortBy.value === 'deadline-desc') {
     filtered.sort((a, b) => {
       if (!a.deadline) return 1
       if (!b.deadline) return -1
-      return new Date(b.deadline) - new Date(a.deadline)
+      return new Date(b.deadline) - new Date(a.deadline) // Latest first
     })
-  }
-
-  // Apply priority sorting
-  else if (prioritySort.value === 'priority-high') {
+  } else if (sortBy.value === 'priority-high') {
     filtered.sort((a, b) => {
       const priorityA = a.priority || 5
       const priorityB = b.priority || 5
-      return priorityB - priorityA
+      return priorityB - priorityA // Highest first (10 to 1)
     })
-  } else if (prioritySort.value === 'priority-low') {
+  } else if (sortBy.value === 'priority-low') {
     filtered.sort((a, b) => {
       const priorityA = a.priority || 5
       const priorityB = b.priority || 5
-      return priorityA - priorityB
+      return priorityA - priorityB // Lowest first (1 to 10)
     })
   }
 
@@ -397,7 +368,6 @@ const clearFilters = () => {
   filters.value.status = ''
   filters.value.priority = ''
   sortBy.value = 'default'
-  prioritySort.value = 'default'
 }
 
 const viewTaskDetails = (taskId) => {
