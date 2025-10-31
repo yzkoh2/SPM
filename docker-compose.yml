@@ -73,6 +73,7 @@ services:
     environment:
       RABBITMQ_DEFAULT_USER: "admin"
       RABBITMQ_DEFAULT_PASS: "admin123"
+      RABBITMQ_ERLANG_COOKIE: "SPM_RABBITMQ_SECRET_COOKIE_2024"
     ports:
       - "5672:5672"
       - "15672:15672"
