@@ -42,6 +42,9 @@ INSERT INTO users (username, name, password_hash, email, role, team_id) VALUES
 ('john_staff', 'John', 'scrypt:32768:8:1$dCPdgoTqcJd1S7lY$5cc719af753d37f8c64580c227d4ce985fe2e1aaf7f8a204293d48d0e45e41479f819d62652d24a477fa65b4f34bb1667641b80bdc697b837e90d2c283bb2b74', 'john.spm.g3@gmail.com', 'STAFF',1),
 ('jane_manager', 'Jane', 'scrypt:32768:8:1$dCPdgoTqcJd1S7lY$5cc719af753d37f8c64580c227d4ce985fe2e1aaf7f8a204293d48d0e45e41479f819d62652d24a477fa65b4f34bb1667641b80bdc697b837e90d2c283bb2b74', 'jane.spm.g3@gmail.com', 'MANAGER',1),
 ('susan_director', 'Susan', 'scrypt:32768:8:1$dCPdgoTqcJd1S7lY$5cc719af753d37f8c64580c227d4ce985fe2e1aaf7f8a204293d48d0e45e41479f819d62652d24a477fa65b4f34bb1667641b80bdc697b837e90d2c283bb2b74', 'c@c.com', 'DIRECTOR', 1),
+('harry_hr', 'Harry', 'scrypt:32768:8:1$dCPdgoTqcJd1S7lY$5cc719af753d37f8c64580c227d4ce985fe2e1aaf7f8a204293d48d0e45e41479f819d62652d24a477fa65b4f34bb1667641b80bdc697b837e90d2c283bb2b74', 'harry.spm.g3@gmail.com', 'HR', 1),
+('tom_sm', 'Tom', 'scrypt:32768:8:1$dCPdgoTqcJd1S7lY$5cc719af753d37f8c64580c227d4ce985fe2e1aaf7f8a204293d48d0e45e41479f819d62652d24a477fa65b4f34bb1667641b80bdc697b837e90d2c283bb2b74', 'tom.spm.g3@gmail.com', 'SM', 1),
+
 -- finance team 2
 ('d_staff', 'D', 'scrypt:32768:8:1$dCPdgoTqcJd1S7lY$5cc719af753d37f8c64580c227d4ce985fe2e1aaf7f8a204293d48d0e45e41479f819d62652d24a477fa65b4f34bb1667641b80bdc697b837e90d2c283bb2b74', 'd@d.com', 'STAFF', 2),
 ('e_manager', 'E', 'scrypt:32768:8:1$dCPdgoTqcJd1S7lY$5cc719af753d37f8c64580c227d4ce985fe2e1aaf7f8a204293d48d0e45e41479f819d62652d24a477fa65b4f34bb1667641b80bdc697b837e90d2c283bb2b74', 'e@e.com', 'MANAGER', 2),

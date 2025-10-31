@@ -9,7 +9,7 @@ from unittest.mock import patch, MagicMock, ANY
 import os
 import sys
 import jwt
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 # Add the parent directory to the sys.path to allow for absolute imports
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))

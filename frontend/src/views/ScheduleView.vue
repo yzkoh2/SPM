@@ -7,10 +7,11 @@
         <p class="text-sm text-gray-600 mt-1">View tasks across different scopes</p>
       </div>
 
-      <!-- Tab Navigation -->
+      <!-- Tab Navigation with RBAC -->
       <div class="bg-white rounded-lg shadow-md mb-6">
         <div class="border-b border-gray-200">
           <nav class="flex -mb-px overflow-x-auto" aria-label="Tabs">
+            <!-- Personal Schedule - Available to ALL roles -->
             <router-link
               to="/schedule/personal"
               :class="[
@@ -33,7 +34,9 @@
               </div>
             </router-link>
 
+            <!-- Team Schedule - Available to Staff, Manager, Director, HR -->
             <router-link
+              v-if="canViewTeamSchedule"
               to="/schedule/team"
               :class="[
                 'whitespace-nowrap py-4 px-6 border-b-2 font-medium text-sm transition-colors',
@@ -55,7 +58,9 @@
               </div>
             </router-link>
 
+            <!-- Project Schedule - Available to Staff, Manager, Director, HR -->
             <router-link
+              v-if="canViewProjectSchedule"
               to="/schedule/project"
               :class="[
                 'whitespace-nowrap py-4 px-6 border-b-2 font-medium text-sm transition-colors',
@@ -77,7 +82,9 @@
               </div>
             </router-link>
 
+            <!-- Department Schedule - Available to Director and HR -->
             <router-link
+              v-if="canViewDepartmentSchedule"
               to="/schedule/department"
               :class="[
                 'whitespace-nowrap py-4 px-6 border-b-2 font-medium text-sm transition-colors',
@@ -98,6 +105,30 @@
                 Department Schedule
               </div>
             </router-link>
+
+            <!-- Company Schedule - Available to HR ONLY -->
+            <router-link
+              v-if="canViewCompanySchedule"
+              to="/schedule/company"
+              :class="[
+                'whitespace-nowrap py-4 px-6 border-b-2 font-medium text-sm transition-colors',
+                isActiveTab('company')
+                  ? 'border-indigo-600 text-indigo-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300',
+              ]"
+            >
+              <div class="flex items-center">
+                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+                  ></path>
+                </svg>
+                Company Schedule
+              </div>
+            </router-link>
           </nav>
         </div>
       </div>
@@ -109,9 +140,36 @@
 </template>
 
 <script setup>
+import { computed } from 'vue'
 import { useRoute } from 'vue-router'
+import { useAuthStore } from '@/stores/auth'
 
 const route = useRoute()
+const authStore = useAuthStore()
+
+// Get user role from auth store
+const userRole = computed(() => authStore.user?.role?.toUpperCase() || 'STAFF')
+
+// RBAC: Define which roles can view which schedules
+const canViewTeamSchedule = computed(() => {
+  const allowedRoles = ['STAFF', 'MANAGER', 'DIRECTOR', 'HR', 'SM']
+  return allowedRoles.includes(userRole.value)
+})
+
+const canViewProjectSchedule = computed(() => {
+  const allowedRoles = ['STAFF', 'MANAGER', 'DIRECTOR', 'HR', 'SM']
+  return allowedRoles.includes(userRole.value)
+})
+
+const canViewDepartmentSchedule = computed(() => {
+  const allowedRoles = ['DIRECTOR', 'HR', 'SM']
+  return allowedRoles.includes(userRole.value)
+})
+
+const canViewCompanySchedule = computed(() => {
+  const allowedRoles = ['HR', 'SM']
+  return allowedRoles.includes(userRole.value)
+})
 
 const isActiveTab = (tab) => {
   return route.path.includes(`/schedule/${tab}`)

@@ -7,6 +7,13 @@ import PersonalSchedule from '@/views/PersonalSchedule.vue'
 import TeamSchedule from '@/views/TeamSchedule.vue'
 import ProjectSchedule from '@/views/ProjectSchedule.vue'
 import DepartmentSchedule from '@/views/DepartmentSchedule.vue'
+import CompanySchedule from '@/views/CompanySchedule.vue'
+
+// RBAC Helper function
+const hasAccess = (userRole, allowedRoles) => {
+  if (!userRole) return false
+  return allowedRoles.includes(userRole.toUpperCase())
+}
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -27,25 +34,46 @@ const router = createRouter({
           path: 'personal',
           name: 'schedule-personal',
           component: PersonalSchedule,
-          meta: { requiresAuth: true },
+          meta: { 
+            requiresAuth: true,
+            // Personal schedule is available to all authenticated users
+          },
         },
         {
           path: 'team',
           name: 'schedule-team',
           component: TeamSchedule,
-          meta: { requiresAuth: true },
+          meta: { 
+            requiresAuth: true,
+            allowedRoles: ['STAFF', 'MANAGER', 'DIRECTOR', 'HR', 'SM']
+          },
         },
         {
           path: 'project',
           name: 'schedule-project',
           component: ProjectSchedule,
-          meta: { requiresAuth: true },
+          meta: { 
+            requiresAuth: true,
+            allowedRoles: ['STAFF', 'MANAGER', 'DIRECTOR', 'HR', 'SM']
+          },
         },
         {
           path: 'department',
           name: 'schedule-department',
           component: DepartmentSchedule,
-          meta: { requiresAuth: true },
+          meta: { 
+            requiresAuth: true,
+            allowedRoles: ['DIRECTOR', 'HR', 'SM']
+          },
+        },
+        {
+          path: 'company',
+          name: 'schedule-company',
+          component: CompanySchedule,
+          meta: { 
+            requiresAuth: true,
+            allowedRoles: ['HR', 'SM']
+          },
         },
       ],
     },
@@ -168,9 +196,9 @@ const router = createRouter({
   ],
 })
 
-// Navigation Guard with JWT Token Verification
+// Navigation Guard with JWT Token Verification and RBAC
 router.beforeEach(async (to, from, next) => {
-  const authStore = useAuthStore() // Get auth store instance
+  const authStore = useAuthStore()
   const token = localStorage.getItem('authToken')
   const requiresAuth = to.matched.some((record) => record.meta.requiresAuth)
 
@@ -190,17 +218,28 @@ router.beforeEach(async (to, from, next) => {
         throw new Error('Token verification failed')
       }
 
+      // RBAC: Check if user has required role for this route
+      const allowedRoles = to.meta.allowedRoles
+      if (allowedRoles && allowedRoles.length > 0) {
+        const userRole = authStore.user?.role
+        if (!hasAccess(userRole, allowedRoles)) {
+          alert(`Access denied. This page requires one of the following roles: ${allowedRoles.join(', ')}`)
+          // Redirect to personal schedule (available to all)
+          return next({ name: 'schedule-personal' })
+        }
+      }
+
       // If trying to access login page while authenticated, redirect to dashboard
       if (to.name === 'login') {
         return next({ name: 'dashboard' })
       }
 
-      // Token is valid, proceed to route
+      // Token is valid and user has access, proceed to route
       return next()
     } catch (error) {
       console.error('Auth check failed:', error)
 
-      // CRITICAL FIX: Clear auth store state AND localStorage
+      // Clear auth store state AND localStorage
       authStore.user = null
       authStore.token = null
       localStorage.removeItem('authToken')
