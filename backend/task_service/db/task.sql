@@ -117,116 +117,114 @@ EXECUTE PROCEDURE trigger_set_timestamp();
 
 -- Project 1 (Assuming a project context for the first task)
 -- Project 1: Owner (2) is auto-added as collaborator
+------------------------------------------------------------------
+-- STANDARDIZED SAMPLE DATA MIGRATION (Base Time: 2025-10-01 08:00:00 UTC)
+------------------------------------------------------------------
+
+-- Project 1 (ID=1)
 WITH inserted_project AS (
-  INSERT INTO projects (title, description, deadline, owner_id)
-  VALUES ('Website Redesign', 'A project to overhaul the company homepage.', '2025-11-15', 2)
+  INSERT INTO projects (title, description, deadline, owner_id, created_at, updated_at)
+  VALUES ('Website Redesign', 'A project to overhaul the company homepage.', '2025-11-15', 2, '2025-10-01 08:00:00', '2025-10-01 08:00:00')
   RETURNING id, owner_id
 )
 INSERT INTO project_collaborators (project_id, user_id)
 SELECT id, owner_id FROM inserted_project;
-
--- Add other collaborators for Project 1 (User 1 and 3)
 INSERT INTO project_collaborators (project_id, user_id) VALUES (1, 1), (1, 3);
 
 
--- Task 1: Owner (1) is auto-added as collaborator
+-- Task 1: Design Homepage (ID=1, Initial Status: ONGOING, P5)
 WITH inserted_task AS (
-  INSERT INTO tasks (title, description, deadline, status, owner_id, project_id)
-  VALUES ('Design Homepage', 'Create wireframes and UI for homepage', '2025-11-02', 'ONGOING', 1, 1)
+  INSERT INTO tasks (title, description, deadline, status, owner_id, project_id, created_at, updated_at)
+  VALUES ('Design Homepage', 'Create wireframes and UI for homepage', '2025-11-02', 'ONGOING', 1, 1, '2025-10-01 08:00:00', '2025-10-01 08:00:00')
   RETURNING id, owner_id
 )
 INSERT INTO task_collaborators (task_id, user_id)
 SELECT id, owner_id FROM inserted_task;
-
--- Add other collaborators for Task 1 (User 2)
 INSERT INTO task_collaborators (task_id, user_id) VALUES (1, 2);
 
 
--- Subtasks for Task 1 (Task ID 1)
-INSERT INTO tasks (title, description, deadline, status, owner_id, project_id, parent_task_id) VALUES
-('Wireframe layout', 'Create wireframes', '2025-10-01', 'ONGOING', 1, 1, 1),
-('Define color scheme', 'Design UI', '2025-11-01', 'ONGOING', 1, 1, 1);
+-- Subtasks for Task 1 (ID=2, 3)
+INSERT INTO tasks (title, description, deadline, status, owner_id, project_id, parent_task_id, created_at, updated_at) VALUES
+('Wireframe layout', 'Create wireframes', '2025-10-01', 'ONGOING', 1, 1, 1, '2025-10-01 08:00:00', '2025-10-01 08:00:00'),
+('Define color scheme', 'Design UI', '2025-11-01', 'ONGOING', 1, 1, 1, '2025-10-01 08:00:00', '2025-10-01 08:00:00');
 
 -- Attachment for Task 1
 INSERT INTO attachments (filename, url, task_id) VALUES
 ('Week 04 Project Instructions', 'Week_04_Project_Instructions.pdf', 1);
 
 
--- Task 2: Owner (2) is auto-added as collaborator
+-- Task 4: Backend API Setup (ID=4, NO Project ID)
 WITH inserted_task AS (
-  INSERT INTO tasks (title, description, deadline, status, owner_id)
-  VALUES ('Backend API Setup', 'Setup Flask API for task management', '2025-10-05', 'ONGOING', 2)
+  INSERT INTO tasks (title, description, deadline, status, owner_id, created_at, updated_at)
+  VALUES ('Backend API Setup', 'Setup Flask API for task management', '2025-10-05', 'ONGOING', 2, '2025-10-01 08:00:00', '2025-10-01 08:00:00')
   RETURNING id, owner_id
 )
 INSERT INTO task_collaborators (task_id, user_id)
 SELECT id, owner_id FROM inserted_task;
-
--- Add other collaborators for Task 2 (which is ID 4) (User 3)
 INSERT INTO task_collaborators (task_id, user_id) VALUES (4, 3);
 
--- Subtasks for Task 2 (Task ID 4)
-INSERT INTO tasks (title, status, owner_id, parent_task_id) VALUES
-('Define API endpoints', 'ONGOING', 2, 4),
-('Setup database models', 'ONGOING', 2, 4);
+-- Subtasks for Task 4 (ID=5, 6)
+INSERT INTO tasks (title, status, owner_id, parent_task_id, created_at, updated_at) VALUES
+('Define API endpoints', 'ONGOING', 2, 4, '2025-10-01 08:00:00', '2025-10-01 08:00:00'),
+('Setup database models', 'ONGOING', 2, 4, '2025-10-01 08:00:00', '2025-10-01 08:00:00');
 
--- Attachment for Task 2 (Task ID 4)
+-- Attachment for Task 4
 INSERT INTO attachments (filename, url, task_id) VALUES
 ('Change Document', 'Change_Document_Week_6.pdf', 4);
 
 
--- Comments for Task 1 ('Design Homepage')
-INSERT INTO comments (body, author_id, task_id) VALUES
-('I''ve uploaded a new mockup in the attachments. Let me know what you think!', 1, 1),
-('Looks great! I think the call-to-action button could be a bit more prominent.', 2, 1);
-
--- Reply comment
-INSERT INTO comments (body, author_id, task_id, parent_comment_id) VALUES
-('Good point, I''ll make that adjustment.', 1, 1, 2);
-
-INSERT INTO comments (body, author_id, task_id) VALUES
-('Great work everyone. @john_staff can you check the final design and @jane_manager I will approve?', 2, 1);
-
-
--- The corresponding mention records for the comment above (id = 4)
-INSERT INTO comment_mentions (comment_id, user_id) VALUES
-(4, 1), -- Mentions user_id 1
-(4, 2); -- Mentions user_id 3
-
--- Comment for Task 4 ('Backend API Setup')
-INSERT INTO comments (body, author_id, task_id) VALUES
-('I''ve defined the initial user and task endpoints in the attached markdown file.', 2, 4);
-
--- Comment for a subtask (task_id 5: 'Define API endpoints')
-INSERT INTO comments (body, author_id, task_id) VALUES
-('Should we include a route for collaborators or handle that within the main task endpoint?', 3, 5);
-
--- Task 3: Owner (3) is auto-added as collaborator (along with User 1)
--- This query already correctly included the owner.
+-- Task 7: Frontend Development (ID=7, Project 1, Initial Status: UNASSIGNED, P5, Owner 3)
 WITH inserted_task AS (
-  INSERT INTO tasks (title, description, deadline, status, owner_id, project_id)
-  VALUES ('Frontend Development', 'Develop the frontend using Vue.js', '2025-11-13', 'UNASSIGNED', 3, 1)
-  RETURNING id
+  INSERT INTO tasks (title, description, deadline, status, owner_id, project_id, created_at, updated_at)
+  VALUES ('Frontend Development', 'Develop the frontend using Vue.js', '2025-11-13', 'UNASSIGNED', 3, 1, '2025-10-01 08:00:00', '2025-10-01 08:00:00')
+  RETURNING id, owner_id
 )
 INSERT INTO task_collaborators (task_id, user_id)
-SELECT
-  it.id,         -- The new task's ID from the CTE
-  c.user_id      -- Each user ID from the VALUES list
-FROM inserted_task AS it
-CROSS JOIN (
-  VALUES
-    (1),         -- The first collaborator
-    (3)          -- The owner
-) AS c(user_id);
+SELECT id, owner_id FROM inserted_task;
+INSERT INTO task_collaborators (task_id, user_id) VALUES (7, 1);
 
--- Project 2: Owner (3) and Collaborator (2) are both added
+
+-- Project 2 (ID=2)
 WITH inserted_project AS (
-  INSERT INTO projects (title, description, deadline, owner_id)
-  VALUES ('Marketing Campaign', 'Plan and execute the fall marketing campaign.', '2025-12-01', 3)
+  INSERT INTO projects (title, description, deadline, owner_id, created_at, updated_at)
+  VALUES ('Marketing Campaign', 'Plan and execute the fall marketing campaign.', '2025-12-01', 3, '2025-10-01 08:00:00', '2025-10-01 08:00:00')
   RETURNING id, owner_id
 )
 INSERT INTO project_collaborators (project_id, user_id)
--- Insert the owner (3)
 SELECT id, owner_id FROM inserted_project
 UNION
--- Insert the other collaborator (2)
 SELECT id, 2 FROM inserted_project;
+
+
+-- Comments (IDs 1-6 assumed sequentially)
+INSERT INTO comments (body, author_id, task_id) VALUES
+('I''ve uploaded a new mockup in the attachments. Let me know what you think!', 1, 1),
+('Looks great! I think the call-to-action button could be a bit more prominent.', 2, 1);
+INSERT INTO comments (body, author_id, task_id, parent_comment_id) VALUES
+('Good point, I''ll make that adjustment.', 1, 1, 2);
+INSERT INTO comments (body, author_id, task_id) VALUES
+('Great work everyone. @john_staff can you check the final design and @jane_manager I will approve?', 2, 1);
+INSERT INTO comments (body, author_id, task_id) VALUES
+('I''ve defined the initial user and task endpoints in the attached markdown file.', 2, 4);
+INSERT INTO comments (body, author_id, task_id) VALUES
+('Should we include a route for collaborators or handle that within the main task endpoint?', 3, 5);
+
+-- The corresponding mention records for the comment ID 4
+INSERT INTO comment_mentions (comment_id, user_id) VALUES
+(4, 1),
+(4, 3);
+
+-- Task Activity Log (Reflects sequential updates in October 2025, using correct old_values)
+INSERT INTO task_activity_log (task_id, user_id, "timestamp", field_changed, old_value, new_value)
+VALUES
+-- SGT Date: 2025-10-26 (Sunday)
+(1, 1, '2025-10-25 16:00:00', 'priority', '5', '8'),               -- Task 1: P5 -> P8
+(7, 3, '2025-10-26 12:00:00', 'owner_id', '3', '1'),               -- Task 7: Owner 3 -> 1
+-- SGT Date: 2025-10-27 (Monday)
+(7, 1, '2025-10-27 15:59:59', 'status', 'Unassigned', 'Ongoing'),  -- Task 7: Unassigned -> Ongoing
+-- SGT Date: 2025-10-28 (Tuesday)
+(1, 2, '2025-10-27 16:00:00', 'status', 'Ongoing', 'Under Review'), -- Task 1: Ongoing -> Under Review (Correctly follows initial state)
+-- SGT Date: 2025-10-29 (Wednesday)
+(1, 1, '2025-10-29 07:00:00', 'status', 'Under Review', 'Completed'),-- Task 1: Under Review -> Completed
+-- SGT Date: 2025-10-30 (Thursday)
+(7, 1, '2025-10-30 08:00:00', 'priority', '5', '6');               -- Task 7: P5 -> P6

@@ -1460,7 +1460,6 @@ def _log_task_activity(user_id, task_id, field, old_val, new_val):
         user_id=user_id,
         field_changed=str(field).lower(),
         old_value=str(old_val),
-        new_value=str(new_val),
-        timestamp=datetime.utcnow()
+        new_value=str(new_val)
     )
     db.session.add(log_entry)
