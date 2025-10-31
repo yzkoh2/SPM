@@ -204,11 +204,29 @@ INSERT INTO task_collaborators (task_id, user_id)
 SELECT id, owner_id FROM inserted_task;
 INSERT INTO task_collaborators (task_id, user_id) VALUES (8, 1);
 
--- Noti_004 test
-INSERT INTO tasks (title, description, deadline, status, owner_id, project_id, created_at, updated_at)
-VALUES ('Test 4', 'Unassigned to Ongoing', '2026-11-11', 'UNASSIGNED', 1, 1, '2025-10-01 08:00:00', '2025-10-01 08:00:00');
+-- Noti_004 test (ID=9)
+WITH inserted_task AS (
+  INSERT INTO tasks (title, description, deadline, status, owner_id, project_id, created_at, updated_at)
+  VALUES ('Test 4', 'Unassigned to Ongoing', '2026-11-11', 'UNASSIGNED', 1, 1, '2025-10-01 08:00:00', '2025-10-01 08:00:00')
+  RETURNING id, owner_id
+)
+INSERT INTO task_collaborators (task_id, user_id)
+SELECT id, owner_id FROM inserted_task;
+INSERT INTO task_collaborators (task_id, user_id) VALUES (9, 1);
+INSERT INTO task_collaborators (task_id, user_id) VALUES (9, 2);
 
--- Noti_006 test
+-- Subtasks for Task 9 (ID=10)
+WITH inserted_task AS (
+  INSERT INTO tasks (title, status, owner_id, parent_task_id, created_at, updated_at) VALUES
+  ('Testing Subtask', 'ONGOING', 1, 9, '2025-10-01 08:00:00', '2025-10-01 08:00:00')
+  RETURNING id, owner_id
+)
+INSERT INTO task_collaborators (task_id, user_id)
+SELECT id, owner_id FROM inserted_task;
+INSERT INTO task_collaborators (task_id, user_id) VALUES (10, 1);
+INSERT INTO task_collaborators (task_id, user_id) VALUES (10, 2);
+
+-- Noti_006 test (ID=11)
 INSERT INTO tasks (title, description, deadline, status, owner_id, project_id, created_at, updated_at)
 VALUES ('Test 6', 'Under Review to Completed', '2026-11-11', 'UNDER_REVIEW', 1, 1, '2025-10-01 08:00:00', '2025-10-01 08:00:00');
 
