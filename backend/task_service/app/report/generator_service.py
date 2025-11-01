@@ -504,12 +504,13 @@ def generate_project_pdf_report(project_id: int, user_id: int, start_date: datet
         tf_section3_for_sort = []
         for task in tf_section3_tasks:
             try:
-                deadline_sort = datetime.fromisoformat(task['deadline'].replace('SGT', '').strip()) if task['deadline'] != 'N/A' else datetime.max
+                deadline_sort = datetime.fromisoformat(task['deadline'].strip()) if task['deadline'] != 'N/A' else datetime.max
             except:
                 deadline_sort = datetime.max
             priority_sort = int(task['priority']) if task['priority'] != '-' else 0
             tf_section3_for_sort.append((deadline_sort, priority_sort, task))
-        timeframe_section3 = [item[2] for item in sorted(tf_section3_for_sort)]
+        sorted_tf_list = sorted(tf_section3_for_sort, key=lambda item: (item[0], item[1]))
+        timeframe_section3 = [item[2] for item in sorted_tf_list]
 
         # Timeframe collaborator stats formatted
         tf_collaborator_stats_formatted = []
