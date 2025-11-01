@@ -402,7 +402,7 @@ const viewTaskDetails = (taskId) => {
   router.push(`/tasks/${taskId}`)
 }
 
-const fetchCollaboratorsForTask = async (taskId) => {
+const fetchCollaboratorsForTask = async (taskId, loadDetails = false) => {
   try {
     const response = await fetch(`${KONG_API_URL}/tasks/${taskId}/collaborators`)
     if (!response.ok) {
@@ -410,26 +410,35 @@ const fetchCollaboratorsForTask = async (taskId) => {
     }
     const collaborators = await response.json()
 
-    const detailsPromises = collaborators.map((collab) =>
-      fetch(`${KONG_API_URL}/user/${collab.user_id}`).then((res) => {
-        if (res.ok) return res.json()
-        return null
-      }),
-    )
-    const details = (await Promise.all(detailsPromises)).filter(Boolean)
+    // If loadDetails is true, fetch full user details and set collaboratorDetails
+    if (loadDetails) {
+      const detailsPromises = collaborators.map((collab) =>
+        fetch(`${KONG_API_URL}/user/${collab.user_id}`).then((res) => {
+          if (res.ok) return res.json()
+          return null
+        }),
+      )
+      const details = (await Promise.all(detailsPromises)).filter(Boolean)
 
-    collaboratorDetails.value = collaborators.map((collab) => {
-      const userDetail = details.find((d) => d.id === collab.user_id)
-      return {
-        ...collab,
-        name: userDetail?.name || `User ${collab.user_id}`,
-        role: userDetail?.role || 'Unknown',
-      }
-    })
+      collaboratorDetails.value = collaborators.map((collab) => {
+        const userDetail = details.find((d) => d.id === collab.user_id)
+        return {
+          ...collab,
+          name: userDetail?.name || `User ${collab.user_id}`,
+          role: userDetail?.role || 'Unknown',
+        }
+      })
+    }
+
+    // Always return collaborator IDs for use in loadTeamTasks
+    return collaborators.map((c) => c.user_id)
   } catch (err) {
     console.error('Error fetching collaborator details:', err)
-    collaboratorDetails.value = []
-    alert('Could not load collaborator details for the task.')
+    if (loadDetails) {
+      collaboratorDetails.value = []
+      alert('Could not load collaborator details for the task.')
+    }
+    return []
   }
 }
 
@@ -496,7 +505,7 @@ const editTask = async (task) => {
     return
   }
   taskToEdit.value = { ...task }
-  await fetchCollaboratorsForTask(task.id)
+  await fetchCollaboratorsForTask(task.id, true)  // Pass true to load full details
   showEditForm.value = true
 }
 
