@@ -13,7 +13,7 @@
                 to="/"
                 class="px-3 py-2 rounded-md text-sm font-medium transition-colors"
                 :class="
-                  isActiveRoute('/') && !isActiveRoute('/projects') && !isActiveRoute('/schedule')
+                  (isActiveRoute('/') || isActiveRoute('/taskboard')) && !isActiveRoute('/projects') && !isActiveRoute('/schedule')
                     ? 'bg-indigo-100 text-indigo-700'
                     : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
                 "

@@ -142,8 +142,6 @@ def _log_task_activity(user_id, task_id, field, old_val, new_val):
     )
     db.session.add(log_entry)
 
-# --- YOUR MODIFIED update_task FUNCTION ---
-
 def update_task(task_id, user_id, task_data):
     #Update an existing task
     try:

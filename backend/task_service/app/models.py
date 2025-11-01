@@ -231,15 +231,24 @@ class Comment(db.Model):
     
 class ReportHistory(db.Model):
     """Represents a file attachment linked to a task."""
-    __tablename__ = 'reporthistory'
+    __tablename__ = 'report_history'
 
     id = db.Column(db.Integer, primary_key=True)
     filename = db.Column(db.String(255), nullable=False)
     url = db.Column(db.String(500), nullable=False)
+    user_id = db.Column(db.Integer, nullable=False)
+    target_user_id = db.Column(db.Integer, nullable=True)
+    report_type = db.Column(db.String(100), nullable=False)
+    project_id = db.Column(db.Integer, nullable=True)
+    created_at = db.Column(db.DateTime, server_default=db.func.now())
 
     def to_json(self):
         return {
             'id': self.id,
             'filename': self.filename,
             'url': self.url,
+            'user_id': self.user_id,
+            'target_user_id': self.target_user_id,
+            'report_type': self.report_type,
+            'created_at': self.created_at.isoformat(),
         }

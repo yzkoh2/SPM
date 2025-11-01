@@ -1,28 +1,9 @@
+from fileinput import filename
 from ..routes import task_bp 
 from . import generator_service as generator
 from flask import make_response, jsonify, request
 from datetime import datetime
 import pytz
-
-@task_bp.route('/reports/team/<int:team_id>', methods=['GET'])
-def get_team_report(team_id):
-    """
-    Generates a PDF report for a specific team.
-    """
-    try:
-        # Call your generator function to get the raw PDF data
-        pdf_data = generator.get_project_by_id(team_id)
-
-        # Create a Flask response to send the file
-        response = make_response(pdf_data)
-        response.headers['Content-Type'] = 'application/pdf'
-        response.headers['Content-Disposition'] = f'attachment; filename=team_{team_id}_report.pdf'
-        
-        return response
-
-    except Exception as e:
-        print(f"Error generating report: {e}")
-        return jsonify({"error": "Could not generate report"}), 500
 
 @task_bp.route('/reports/project/<int:project_id>', methods=['POST'])
 def get_project_report(project_id):
@@ -124,10 +105,6 @@ def get_project_report(project_id):
 
     # --- 5. Call Generator Service ---
     try:
-        # Pass the UTC datetimes for filtering, and the timezone string for display
-        print(f"DEBUG: routes.py - Calculated utc_start_date: {utc_start_date}")
-        print(f"DEBUG: routes.py - Calculated utc_end_date: {utc_end_date}")
-        print(f"DEBUG: routes.py - Passing timezone_str: {timezone_str}")
         # Call generator...
         pdf_data, error = generator.generate_project_pdf_report(
             project_id=project_id, 
@@ -329,4 +306,68 @@ def get_individual_report(user_id):
 
     except Exception as e:
         print(f"Unhandled error in get_individual_report: {e}")
+        return jsonify({"error": "An internal server error occurred"}), 500
+
+@task_bp.route('/reports/history/<int:user_id>', methods=['GET'])
+def retrieve_all_reports(user_id):
+    """
+    Retrieves all report metadata for a specific user.
+    """
+    try:
+        reports_list, error = generator.get_all_reports_for_user(user_id)
+        
+        if error:
+            return jsonify({"error": error}), 500
+        
+        # Now, 'reports_list' is a list, and this will work
+        reports_json = [report.to_json() for report in reports_list]
+        return jsonify(reports_json), 200
+        
+    except Exception as e:
+        print(f"Unhandled error in retrieve_all_reports: {e}")
+        return jsonify({"error": "An internal server error occurred"}), 500
+
+@task_bp.route('/reports/retrieve/<int:report_id>', methods=['GET'])
+def retrieve_report(report_id):
+    """
+    Retrieves a specific report file by its ID.
+    """
+    user_id = request.args.get('user_id')
+    if not user_id:
+        return jsonify({"error": "Missing 'user_id' query parameter"}), 400
+    
+    try:
+        presigned_url, error = generator.get_report_by_id(report_id, user_id)
+        
+        if error:
+            return jsonify({"error": error}), 500
+        if not presigned_url:
+            return jsonify({"error": "Report file is empty or could not be retrieved."}), 404
+
+        return jsonify({"url": presigned_url}), 200
+
+    except Exception as e:
+        print(f"Unhandled error in retrieve_report: {e}")
+        return jsonify({"error": "An internal server error occurred"}), 500
+
+@task_bp.route('/reports/delete/<int:report_id>', methods=['DELETE'])
+def delete_report(report_id):
+    """
+    Deletes a specific report by its ID.
+    """
+    user_id = request.args.get('user_id')
+    if not user_id:
+        return jsonify({"error": "Missing 'user_id' query parameter"}), 400
+    try:
+        success, error = generator.delete_report_by_id(report_id, user_id)
+        
+        if error:
+            return jsonify({"error": error}), 500
+        if not success:
+            return jsonify({"error": "Report could not be deleted."}), 404
+
+        return jsonify({"message": "Report deleted successfully."}), 200
+
+    except Exception as e:
+        print(f"Unhandled error in delete_report: {e}")
         return jsonify({"error": "An internal server error occurred"}), 500

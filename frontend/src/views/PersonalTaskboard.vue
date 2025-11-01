@@ -583,7 +583,9 @@ const viewTaskDetails = (taskId) => {
 }
 
 const deleteTask = async (taskId) => {
-  if (!confirm('Are you sure you want to delete this task?')) return
+  if (!confirm('Are you sure you want to delete this task? This action cannot be undone.')) {
+    return
+  }
 
   try {
     const response = await fetch(`${KONG_API_URL}/tasks/${taskId}`, {
@@ -596,10 +598,13 @@ const deleteTask = async (taskId) => {
       }),
     })
 
-    if (response.ok || response.status === 404) {
+    const data = await response.json()
+
+    if (response.ok) {
+      alert(data.message || 'Task deleted successfully')
       await fetchTasks(authStore.user.id)
     } else {
-      throw new Error(`Failed to delete task: ${response.status}`)
+      throw new Error(data.error || `Failed to delete: ${response.status}`)
     }
   } catch (err) {
     console.error('Error deleting task:', err)
