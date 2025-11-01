@@ -187,7 +187,10 @@ def generate_project_pdf_report(project_id: int, user_id: int, start_date: datet
             try: dt_to_convert = datetime.fromisoformat(utc_dt.replace('Z', '+00:00'))
             except ValueError: return 'Invalid Date'
         if dt_to_convert.tzinfo is None:
-            dt_to_convert = utc_tz.localize(dt_to_convert)
+            # IMPORTANT: Naive datetimes (like task deadlines) are assumed to be in user's timezone
+            # They were entered by the user in their timezone, so display them as-is
+            return dt_to_convert.strftime('%Y-%m-%d %H:%M:%S')
+        # For timezone-aware datetimes, convert to user's timezone
         return dt_to_convert.astimezone(user_tz).strftime('%Y-%m-%d %H:%M:%S')
 
     user_cache = {} 
@@ -723,7 +726,10 @@ def generate_individual_pdf_report(target_user_id: int, requesting_user_id: int,
             try: dt_to_convert = datetime.fromisoformat(utc_dt.replace('Z', '+00:00'))
             except ValueError: return 'Invalid Date'
         if dt_to_convert.tzinfo is None:
-            dt_to_convert = utc_tz.localize(dt_to_convert)
+            # IMPORTANT: Naive datetimes (like task deadlines) are assumed to be in user's timezone
+            # They were entered by the user in their timezone, so display them as-is
+            return dt_to_convert.strftime('%Y-%m-%d %H:%M:%S')
+        # For timezone-aware datetimes, convert to user's timezone
         return dt_to_convert.astimezone(user_tz).strftime('%Y-%m-%d %H:%M:%S')
 
     user_cache = {}
