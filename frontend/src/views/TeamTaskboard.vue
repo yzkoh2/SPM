@@ -8,6 +8,24 @@
 
       <TaskboardNavigation />
 
+      <div
+        v-if="showEditForm"
+        class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 flex justify-center items-start p-8"
+      >
+        <div class="relative w-full max-w-2xl">
+          <TaskForm
+            :task-to-edit="taskToEdit"
+            :all-users="allUsers"
+            :is-submitting="isUpdating"
+            :current-collaborators="collaboratorDetails"
+            submit-button-text="Update Task"
+            submit-button-loading-text="Updating..."
+            @submit="updateTask"
+            @cancel="closeEditModal"
+          />
+        </div>
+      </div>
+
       <!-- Error State -->
       <div v-if="error" class="bg-red-50 border border-red-200 rounded-md p-6 mb-6">
         <div class="flex items-center mb-4">
@@ -257,6 +275,8 @@
             :key="task.id"
             :task="task"
             @view="viewTaskDetails"
+            @edit="editTask"
+            @delete="deleteTask"
           />
         </div>
       </div>
@@ -270,6 +290,7 @@ import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import TaskboardNavigation from '@/components/TaskboardNavigation.vue'
 import TaskCard from '@/components/TaskCard.vue'
+import TaskForm from '@/components/TaskForm.vue'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -281,6 +302,13 @@ const teamMembers = ref([])
 const teamMemberIds = ref([])
 const loading = ref(false)
 const error = ref(null)
+
+// Edit modal state
+const allUsers = ref([])
+const collaboratorDetails = ref([])
+const showEditForm = ref(false)
+const isUpdating = ref(false)
+const taskToEdit = ref(null)
 
 // Filters
 const filters = ref({
@@ -372,6 +400,136 @@ const clearFilters = () => {
 
 const viewTaskDetails = (taskId) => {
   router.push(`/tasks/${taskId}`)
+}
+
+const fetchCollaboratorsForTask = async (taskId) => {
+  try {
+    const response = await fetch(`${KONG_API_URL}/tasks/${taskId}/collaborators`)
+    if (!response.ok) {
+      throw new Error('Failed to fetch collaborators')
+    }
+    const collaborators = await response.json()
+
+    const detailsPromises = collaborators.map((collab) =>
+      fetch(`${KONG_API_URL}/user/${collab.user_id}`).then((res) => {
+        if (res.ok) return res.json()
+        return null
+      }),
+    )
+    const details = (await Promise.all(detailsPromises)).filter(Boolean)
+
+    collaboratorDetails.value = collaborators.map((collab) => {
+      const userDetail = details.find((d) => d.id === collab.user_id)
+      return {
+        ...collab,
+        name: userDetail?.name || `User ${collab.user_id}`,
+        role: userDetail?.role || 'Unknown',
+      }
+    })
+  } catch (err) {
+    console.error('Error fetching collaborator details:', err)
+    collaboratorDetails.value = []
+    alert('Could not load collaborator details for the task.')
+  }
+}
+
+const updateTask = async (formData) => {
+  isUpdating.value = true
+  try {
+    const originalTask = taskToEdit.value
+    const changedFields = {}
+
+    for (const key in formData) {
+      if (key === 'id') continue
+
+      let originalValue = originalTask[key]
+      let currentValue = formData[key]
+
+      if (key === 'deadline' || key === 'recurrence_end_date') {
+        originalValue = originalValue ? new Date(originalValue).toISOString().slice(0, 16) : null
+        currentValue = currentValue || null
+      }
+
+      if (originalValue !== currentValue) {
+        changedFields[key] = currentValue
+      }
+    }
+
+    if (Object.keys(changedFields).length === 0) {
+      closeEditModal()
+      return
+    }
+
+    const payload = {
+      ...changedFields,
+      user_id: authStore.user.id,
+    }
+
+    const response = await fetch(`${KONG_API_URL}/tasks/${formData.id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    })
+
+    if (!response.ok) {
+      const errorData = await response.json()
+      throw new Error(errorData.error || 'Failed to update task')
+    }
+
+    await loadTeamTasks()
+    closeEditModal()
+  } catch (err) {
+    console.error('Error updating task:', err)
+    alert('Failed to update task: ' + err.message)
+  } finally {
+    isUpdating.value = false
+  }
+}
+
+const editTask = async (task) => {
+  if (authStore.user.id != task.owner_id) {
+    alert('You do not have permission to edit the task.')
+    return
+  }
+  taskToEdit.value = { ...task }
+  await fetchCollaboratorsForTask(task.id)
+  showEditForm.value = true
+}
+
+const closeEditModal = () => {
+  showEditForm.value = false
+  taskToEdit.value = null
+  collaboratorDetails.value = []
+}
+
+const deleteTask = async (taskId) => {
+  if (!confirm('Are you sure you want to delete this task? This action cannot be undone.')) {
+    return
+  }
+
+  try {
+    const response = await fetch(`${KONG_API_URL}/tasks/${taskId}`, {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        user_id: authStore.user.id,
+      }),
+    })
+
+    const data = await response.json()
+
+    if (response.ok) {
+      alert(data.message || 'Task deleted successfully')
+      await loadTeamTasks()
+    } else {
+      throw new Error(data.error || `Failed to delete: ${response.status}`)
+    }
+  } catch (err) {
+    console.error('Error deleting task:', err)
+    alert('Failed to delete task: ' + err.message)
+  }
 }
 
 const getTeamMemberIds = async (teamId) => {
