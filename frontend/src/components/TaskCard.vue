@@ -44,7 +44,7 @@
 
         <div class="flex items-center space-x-1 ml-4">
           <button
-            v-if="task.owner_id == authStore.user.id"
+            v-if="authStore.user && task.owner_id == authStore.user.id"
             @click.stop="emit('edit', task)"
             class="text-gray-400 hover:text-indigo-600 transition-colors p-1 rounded-full hover:bg-gray-100"
             title="Edit Task"
@@ -59,7 +59,7 @@
             </svg>
           </button>
           <button
-            v-if="task.owner_id == authStore.user.id"
+            v-if="authStore.user && task.owner_id == authStore.user.id"
             @click.stop="emit('delete', task.id)"
             class="text-gray-400 hover:text-red-600 transition-colors p-1 rounded-full hover:bg-red-50"
             title="Delete Task"

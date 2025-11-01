@@ -487,6 +487,10 @@ const updateTask = async (formData) => {
 }
 
 const editTask = async (task) => {
+  console.log('editTask called with task:', task)
+  console.log('Current user ID:', authStore.user.id)
+  console.log('Task owner ID:', task.owner_id)
+
   if (authStore.user.id != task.owner_id) {
     alert('You do not have permission to edit the task.')
     return
@@ -503,6 +507,8 @@ const closeEditModal = () => {
 }
 
 const deleteTask = async (taskId) => {
+  console.log('deleteTask called with taskId:', taskId)
+
   if (!confirm('Are you sure you want to delete this task? This action cannot be undone.')) {
     return
   }
@@ -539,20 +545,6 @@ const getTeamMemberIds = async (teamId) => {
   const members = await response.json()
   teamMembers.value = members
   return members.map((member) => member.id)
-}
-
-const fetchCollaboratorsForTask = async (taskId) => {
-  try {
-    const response = await fetch(`${KONG_API_URL}/tasks/${taskId}/collaborators`)
-    if (response.ok) {
-      const collaborators = await response.json()
-      return collaborators.map((c) => c.user_id)
-    }
-    return []
-  } catch (err) {
-    console.error(`Error fetching collaborators for task ${taskId}:`, err)
-    return []
-  }
 }
 
 const loadTeamTasks = async () => {
