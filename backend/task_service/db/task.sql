@@ -171,8 +171,11 @@ WITH inserted_task AS (
   RETURNING id, owner_id
 )
 INSERT INTO task_collaborators (task_id, user_id)
-SELECT id, owner_id FROM inserted_task;
-INSERT INTO task_collaborators (task_id, user_id) VALUES (4, 3);
+SELECT id, owner_id FROM inserted_task
+UNION ALL
+SELECT id, 1 FROM inserted_task
+UNION ALL
+SELECT id, 3 FROM inserted_task;
 
 -- Subtasks for Task 4 (ID=5, 6)
 WITH inserted_task AS (
@@ -206,8 +209,9 @@ WITH inserted_task AS (
   RETURNING id, owner_id
 )
 INSERT INTO task_collaborators (task_id, user_id)
-SELECT id, owner_id FROM inserted_task;
-INSERT INTO task_collaborators (task_id, user_id) VALUES (8, 1);
+SELECT id, owner_id FROM inserted_task
+UNION ALL
+SELECT id, 1 FROM inserted_task;
 
 -- Noti_004 test (ID=9)
 WITH inserted_task AS (
@@ -216,9 +220,11 @@ WITH inserted_task AS (
   RETURNING id, owner_id
 )
 INSERT INTO task_collaborators (task_id, user_id)
-SELECT id, owner_id FROM inserted_task;
-INSERT INTO task_collaborators (task_id, user_id) VALUES (9, 1);
-INSERT INTO task_collaborators (task_id, user_id) VALUES (9, 2);
+SELECT id, owner_id FROM inserted_task
+UNION ALL
+SELECT id, 2 FROM inserted_task
+UNION ALL
+SELECT id, 3 FROM inserted_task;
 
 -- Subtasks for Task 9 (ID=10)
 WITH inserted_task AS (
@@ -227,9 +233,9 @@ WITH inserted_task AS (
   RETURNING id, owner_id
 )
 INSERT INTO task_collaborators (task_id, user_id)
-SELECT id, owner_id FROM inserted_task;
-INSERT INTO task_collaborators (task_id, user_id) VALUES (10, 1);
-INSERT INTO task_collaborators (task_id, user_id) VALUES (10, 2);
+SELECT id, owner_id FROM inserted_task
+UNION ALL
+SELECT id, 2 FROM inserted_task;
 
 -- Noti_006 test (ID=11)
 INSERT INTO tasks (title, description, deadline, status, owner_id, project_id, created_at, updated_at)
