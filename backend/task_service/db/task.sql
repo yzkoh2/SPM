@@ -219,6 +219,7 @@ INSERT INTO task_collaborators (task_id, user_id)
 SELECT id, owner_id FROM inserted_task;
 INSERT INTO task_collaborators (task_id, user_id) VALUES (9, 1);
 INSERT INTO task_collaborators (task_id, user_id) VALUES (9, 2);
+INSERT INTO task_collaborators (task_id, user_id) VALUES (9, 3);
 
 -- Subtasks for Task 9 (ID=10)
 WITH inserted_task AS (
