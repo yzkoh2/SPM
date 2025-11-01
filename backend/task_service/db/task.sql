@@ -171,8 +171,11 @@ WITH inserted_task AS (
   RETURNING id, owner_id
 )
 INSERT INTO task_collaborators (task_id, user_id)
-SELECT id, owner_id FROM inserted_task;
-INSERT INTO task_collaborators (task_id, user_id) VALUES (4, 3);
+SELECT id, owner_id FROM inserted_task
+UNION ALL
+SELECT id, 1 FROM inserted_task
+UNION ALL
+SELECT id, 3 FROM inserted_task;
 
 -- Subtasks for Task 4 (ID=5, 6)
 WITH inserted_task AS (
@@ -200,14 +203,14 @@ INSERT INTO attachments (filename, url, task_id) VALUES
 
 
 -- Task 8: Frontend Development (ID=8, Project 1, Initial Status: UNASSIGNED, P5, Owner 3)
-WITH inserted_task AS (
-  INSERT INTO tasks (title, description, deadline, status, owner_id, project_id, created_at, updated_at)
-  VALUES ('Frontend Development', 'Develop the frontend using Vue.js', '2025-11-13', 'UNASSIGNED', 3, 1, '2025-10-01 08:00:00', '2025-10-01 08:00:00')
-  RETURNING id, owner_id
-)
-INSERT INTO task_collaborators (task_id, user_id)
-SELECT id, owner_id FROM inserted_task;
-INSERT INTO task_collaborators (task_id, user_id) VALUES (8, 1);
+-- WITH inserted_task AS (
+--   INSERT INTO tasks (title, description, deadline, status, owner_id, project_id, created_at, updated_at)
+--   VALUES ('Frontend Development', 'Develop the frontend using Vue.js', '2025-11-13', 'UNASSIGNED', 3, 1, '2025-10-01 08:00:00', '2025-10-01 08:00:00')
+--   RETURNING id, owner_id
+-- )
+-- INSERT INTO task_collaborators (task_id, user_id)
+-- SELECT id, owner_id FROM inserted_task;
+-- INSERT INTO task_collaborators (task_id, user_id) VALUES (8, 1);
 
 -- Noti_004 test (ID=9)
 WITH inserted_task AS (
