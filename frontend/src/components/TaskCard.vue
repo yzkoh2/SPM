@@ -44,10 +44,16 @@
 
         <div class="flex items-center space-x-1 ml-4">
           <button
-            v-if="task.owner_id == authStore.user.id"
-            @click.stop="emit('edit', task)"
-            class="text-gray-400 hover:text-indigo-600 transition-colors p-1 rounded-full hover:bg-gray-100"
-            title="Edit Task"
+            v-if="authStore.user && task.owner_id == authStore.user.id"
+            @click.stop="task.status !== 'Completed' && emit('edit', task)"
+            :disabled="task.status === 'Completed'"
+            :class="[
+              'p-1 rounded-full transition-colors',
+              task.status === 'Completed'
+                ? 'text-gray-300 cursor-not-allowed'
+                : 'text-gray-400 hover:text-indigo-600 hover:bg-gray-100 cursor-pointer'
+            ]"
+            :title="task.status === 'Completed' ? 'Cannot edit completed task' : 'Edit Task'"
           >
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path
@@ -59,7 +65,7 @@
             </svg>
           </button>
           <button
-            v-if="task.owner_id == authStore.user.id"
+            v-if="authStore.user && task.owner_id == authStore.user.id"
             @click.stop="emit('delete', task.id)"
             class="text-gray-400 hover:text-red-600 transition-colors p-1 rounded-full hover:bg-red-50"
             title="Delete Task"

@@ -132,28 +132,17 @@
               </div>
 
               <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Sort by Deadline</label>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Sort by</label>
                 <select
                   v-model="sortBy"
                   @change="applyFilters"
                   class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 >
                   <option value="default">Default Order</option>
-                  <option value="deadline-asc">Deadline (Earliest First)</option>
-                  <option value="deadline-desc">Deadline (Latest First)</option>
-                </select>
-              </div>
-
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Sort by Priority</label>
-                <select
-                  v-model="prioritySort"
-                  @change="applyFilters"
-                  class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                >
-                  <option value="default">Default Order</option>
-                  <option value="priority-high">Highest First</option>
-                  <option value="priority-low">Lowest First</option>
+                  <option value="deadline-earliest">Deadline (Earliest First)</option>
+                  <option value="deadline-latest">Deadline (Latest First)</option>
+                  <option value="priority-highest">Priority (Highest First)</option>
+                  <option value="priority-lowest">Priority (Lowest First)</option>
                 </select>
               </div>
             </div>
@@ -299,7 +288,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import TaskboardNavigation from '@/components/TaskboardNavigation.vue'
@@ -325,15 +314,26 @@ const isUpdating = ref(false)
 const taskToEdit = ref(null)
 // --- END ---
 
-// Filters
-const filters = ref({
-  teamMember: '',
-  status: '',
-  priority: '',
-})
+// Session storage keys
+const STORAGE_KEY_FILTERS = 'teamTaskboard_filters'
+const STORAGE_KEY_SORT = 'teamTaskboard_sort'
 
-const sortBy = ref('default')
-const prioritySort = ref('default') // For priority sorting
+// Load filters and sort from session storage
+const savedFilters = sessionStorage.getItem(STORAGE_KEY_FILTERS)
+const savedSort = sessionStorage.getItem(STORAGE_KEY_SORT)
+
+// Filters
+const filters = ref(
+  savedFilters
+    ? JSON.parse(savedFilters)
+    : {
+        teamMember: '',
+        status: '',
+        priority: '',
+      },
+)
+
+const sortBy = ref(savedSort || 'default')
 
 // Computed properties
 const filteredAndSortedTasks = computed(() => {
@@ -353,6 +353,7 @@ const filteredAndSortedTasks = computed(() => {
   if (filters.value.status) {
     filtered = filtered.filter((task) => task.status === filters.value.status)
   }
+
   // Filter by priority
   if (filters.value.priority) {
     filtered = filtered.filter((task) => {
@@ -371,36 +372,49 @@ const filteredAndSortedTasks = computed(() => {
     })
   }
 
-  if (sortBy.value === 'deadline-asc') {
+  // Sorting logic
+  if (sortBy.value === 'deadline-earliest') {
     filtered.sort((a, b) => {
-      if (!a.deadline) return 1
+      if (!a.deadline && !b.deadline) return 0
+      if (!a.deadline) return 1 // Tasks without deadline go to end
       if (!b.deadline) return -1
       return new Date(a.deadline) - new Date(b.deadline)
     })
-  } else if (sortBy.value === 'deadline-desc') {
+  } else if (sortBy.value === 'deadline-latest') {
     filtered.sort((a, b) => {
-      if (!a.deadline) return 1
+      if (!a.deadline && !b.deadline) return 0
+      if (!a.deadline) return 1 // Tasks without deadline go to end
       if (!b.deadline) return -1
       return new Date(b.deadline) - new Date(a.deadline)
     })
-  }
-
-  // Apply priority sorting
-  else if (prioritySort.value === 'priority-high') {
+  } else if (sortBy.value === 'priority-highest') {
     filtered.sort((a, b) => {
       const priorityA = a.priority || 5
       const priorityB = b.priority || 5
-      return priorityB - priorityA
+      return priorityB - priorityA // Highest first (10 to 1)
     })
-  } else if (prioritySort.value === 'priority-low') {
+  } else if (sortBy.value === 'priority-lowest') {
     filtered.sort((a, b) => {
       const priorityA = a.priority || 5
       const priorityB = b.priority || 5
-      return priorityA - priorityB
+      return priorityA - priorityB // Lowest first (1 to 10)
     })
   }
 
   return filtered
+})
+
+// Watch filters and sortBy to save to session storage
+watch(
+  filters,
+  (newFilters) => {
+    sessionStorage.setItem(STORAGE_KEY_FILTERS, JSON.stringify(newFilters))
+  },
+  { deep: true },
+)
+
+watch(sortBy, (newSort) => {
+  sessionStorage.setItem(STORAGE_KEY_SORT, newSort)
 })
 
 const getTaskCountByStatus = (status) => {
@@ -414,7 +428,6 @@ const clearFilters = () => {
   filters.value.status = ''
   filters.value.priority = ''
   sortBy.value = 'default'
-  prioritySort.value = 'default'
 }
 
 const viewTaskDetails = (taskId) => {
@@ -524,6 +537,10 @@ const updateTask = async (formData) => {
 const editTask = async (task) => {
   if (authStore.user.id != task.owner_id) {
     alert('You do not have permission to edit the task.')
+    return
+  }
+  if (task.status === 'Completed') {
+    alert('Cannot edit a completed task.')
     return
   }
   taskToEdit.value = { ...task }

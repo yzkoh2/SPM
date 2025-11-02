@@ -118,7 +118,10 @@ const handleLogin = async () => {
     // localStorage.setItem('authToken', data.token);
     // localStorage.setItem('userID', data.userID);
     // localStorage.setItem('user', data.name);
-    auth.login({ id: data.userID, name: data.name, role: data.role }, data.token)
+    auth.login(
+      { id: data.userID, name: data.name, role: data.role, username: data.username },
+      data.token,
+    )
 
     console.log('Login successful! Token has been saved.')
 

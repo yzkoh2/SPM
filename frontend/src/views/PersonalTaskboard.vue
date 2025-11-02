@@ -77,20 +77,6 @@
             </div>
 
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Filter by Deadline</label>
-              <select
-                v-model="filters.deadline"
-                @change="applyFilters"
-                class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              >
-                <option value="">All Deadlines</option>
-                <option value="overdue">Overdue</option>
-                <option value="today">Due Today</option>
-                <option value="week">Due This Week</option>
-                <option value="month">Due This Month</option>
-              </select>
-            </div>
-            <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">Filter by Priority</label>
               <select
                 v-model="filters.priority"
@@ -104,15 +90,17 @@
               </select>
             </div>
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Sort by Priority</label>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Sort by</label>
               <select
                 v-model="sortBy"
                 @change="applyFilters"
                 class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
               >
                 <option value="default">Default Order</option>
-                <option value="priority-high">Priority (Highest First)</option>
-                <option value="priority-low">Priority (Lowest First)</option>
+                <option value="deadline-earliest">Deadline (Earliest First)</option>
+                <option value="deadline-latest">Deadline (Latest First)</option>
+                <option value="priority-highest">Priority (Highest First)</option>
+                <option value="priority-lowest">Priority (Lowest First)</option>
               </select>
             </div>
           </div>
@@ -305,7 +293,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import TaskCard from '@/components/TaskCard.vue'
@@ -330,14 +318,25 @@ const showEditForm = ref(false)
 const isUpdating = ref(false)
 const taskToEdit = ref(null)
 
-// Filters
-const filters = ref({
-  status: '',
-  deadline: '',
-  priority: '',
-})
+// Session storage keys
+const STORAGE_KEY_FILTERS = 'personalTaskboard_filters'
+const STORAGE_KEY_SORT = 'personalTaskboard_sort'
 
-const sortBy = ref('default')
+// Load filters and sort from session storage
+const savedFilters = sessionStorage.getItem(STORAGE_KEY_FILTERS)
+const savedSort = sessionStorage.getItem(STORAGE_KEY_SORT)
+
+// Filters
+const filters = ref(
+  savedFilters
+    ? JSON.parse(savedFilters)
+    : {
+        status: '',
+        priority: '',
+      },
+)
+
+const sortBy = ref(savedSort || 'default')
 
 // API configuration
 const KONG_API_URL = 'http://localhost:8000'
@@ -346,33 +345,12 @@ const KONG_API_URL = 'http://localhost:8000'
 const filteredTasks = computed(() => {
   let filtered = [...tasks.value]
 
+  // Filter by status
   if (filters.value.status) {
     filtered = filtered.filter((task) => task.status === filters.value.status)
   }
 
-  if (filters.value.deadline && filters.value.deadline !== '') {
-    const now = new Date()
-    filtered = filtered.filter((task) => {
-      if (!task.deadline) return false
-      const deadline = new Date(task.deadline)
-
-      switch (filters.value.deadline) {
-        case 'overdue':
-          return deadline < now
-        case 'today':
-          return deadline.toDateString() === now.toDateString()
-        case 'week':
-          const weekFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000)
-          return deadline >= now && deadline <= weekFromNow
-        case 'month':
-          const monthFromNow = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000)
-          return deadline >= now && deadline <= monthFromNow
-        default:
-          return true
-      }
-    })
-  }
-  // PRIORITY FILTER
+  // Filter by priority
   if (filters.value.priority) {
     filtered = filtered.filter((task) => {
       const priority = task.priority || 5
@@ -390,14 +368,28 @@ const filteredTasks = computed(() => {
     })
   }
 
-  // ADD SORTING LOGIC HERE
-  if (sortBy.value === 'priority-high') {
+  // Sorting logic
+  if (sortBy.value === 'deadline-earliest') {
+    filtered.sort((a, b) => {
+      if (!a.deadline && !b.deadline) return 0
+      if (!a.deadline) return 1 // Tasks without deadline go to end
+      if (!b.deadline) return -1
+      return new Date(a.deadline) - new Date(b.deadline)
+    })
+  } else if (sortBy.value === 'deadline-latest') {
+    filtered.sort((a, b) => {
+      if (!a.deadline && !b.deadline) return 0
+      if (!a.deadline) return 1 // Tasks without deadline go to end
+      if (!b.deadline) return -1
+      return new Date(b.deadline) - new Date(a.deadline)
+    })
+  } else if (sortBy.value === 'priority-highest') {
     filtered.sort((a, b) => {
       const priorityA = a.priority || 5
       const priorityB = b.priority || 5
       return priorityB - priorityA // Highest first (10 to 1)
     })
-  } else if (sortBy.value === 'priority-low') {
+  } else if (sortBy.value === 'priority-lowest') {
     filtered.sort((a, b) => {
       const priorityA = a.priority || 5
       const priorityB = b.priority || 5
@@ -405,6 +397,19 @@ const filteredTasks = computed(() => {
     })
   }
   return filtered
+})
+
+// Watch filters and sortBy to save to session storage
+watch(
+  filters,
+  (newFilters) => {
+    sessionStorage.setItem(STORAGE_KEY_FILTERS, JSON.stringify(newFilters))
+  },
+  { deep: true },
+)
+
+watch(sortBy, (newSort) => {
+  sessionStorage.setItem(STORAGE_KEY_SORT, newSort)
 })
 
 // Methods
@@ -558,6 +563,10 @@ const editTask = async (task) => {
     alert('You do not have permission to edit the task.')
     return
   }
+  if (task.status === 'Completed') {
+    alert('Cannot edit a completed task.')
+    return
+  }
   taskToEdit.value = { ...task }
   await fetchCollaboratorsForTask(task.id)
   showEditForm.value = true
@@ -639,7 +648,6 @@ const fetchCollaboratorsForTask = async (taskId) => {
 
 const clearFilters = () => {
   filters.value.status = ''
-  filters.value.deadline = ''
   filters.value.priority = ''
   sortBy.value = 'default'
 }

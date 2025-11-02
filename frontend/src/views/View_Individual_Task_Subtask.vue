@@ -567,7 +567,7 @@
             <Mentionable
               :keys="['@']"
               :items="
-                collaboratorDetails.map((c) => ({
+                mentionableUsers.map((c) => ({
                   value: c.username,
                   label: c.name,
                   user_id: c.user_id,
@@ -581,7 +581,7 @@
                 v-model="newComment"
                 rows="3"
                 class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                placeholder="Write a comment... Use @ to mention collaborators"
+                placeholder="Write a comment... Use @ to mention users"
                 @keydown.meta.enter="addComment"
                 @keydown.ctrl.enter="addComment"
               ></textarea>
@@ -636,7 +636,7 @@
               :key="comment.id"
               :comment="comment"
               :current-user-id="authStore.user?.id"
-              :collaborator-details="collaboratorDetails"
+              :collaborator-details="mentionableUsers"
               @reply="addComment"
               @delete="handleDeleteComment"
             />
@@ -803,6 +803,8 @@ const KONG_API_URL = 'http://localhost:8000'
 // Computed properties
 const canEditTask = computed(() => {
   if (!task.value || !authStore.user) return false
+  // Cannot edit completed tasks
+  if (task.value.status === 'Completed') return false
   return task.value.owner_id === authStore.user.id
 })
 
@@ -826,6 +828,31 @@ const isCollaborator = computed(() => {
 
   // The user is considered a collaborator if they are the owner OR in the list
   return isOwner || isInCollaboratorsList
+})
+
+// Mentionable users - includes collaborators and owner, but NOT current user
+const mentionableUsers = computed(() => {
+  const users = [...collaboratorDetails.value]
+
+  // Add owner if not already in the list
+  if (ownerDetails.value && task.value) {
+    const ownerExists = users.some((u) => u.user_id === task.value.owner_id)
+    if (!ownerExists) {
+      users.push({
+        user_id: task.value.owner_id,
+        name: ownerDetails.value.name,
+        role: ownerDetails.value.role,
+        username: ownerDetails.value.username,
+      })
+    }
+  }
+
+  // Filter out the current user (users cannot mention themselves)
+  const filteredUsers = authStore.user
+    ? users.filter((u) => u.user_id !== authStore.user.id)
+    : users
+
+  return filteredUsers
 })
 
 // Filter to show only top-level comments (no parent)
@@ -1087,8 +1114,8 @@ const addComment = async ({ body, parentCommentId = null }) => {
     const uniqueUsernames = [...new Set(mentionedUsernames)]
     const mention_ids = uniqueUsernames
       .map((username) => {
-        const collaborator = collaboratorDetails.value.find((c) => c.username === username)
-        return collaborator ? collaborator.user_id : null
+        const user = mentionableUsers.value.find((c) => c.username === username)
+        return user ? user.user_id : null
       })
       .filter((id) => id !== null)
 
