@@ -636,7 +636,7 @@
               :key="comment.id"
               :comment="comment"
               :current-user-id="authStore.user?.id"
-              :collaborator-details="mentionableUsers"
+              :collaborator-details="allDisplayUsers"
               @reply="addComment"
               @delete="handleDeleteComment"
             />
@@ -830,8 +830,8 @@ const isCollaborator = computed(() => {
   return isOwner || isInCollaboratorsList
 })
 
-// Mentionable users - includes collaborators and owner, but NOT current user
-const mentionableUsers = computed(() => {
+// All users list - includes collaborators, owner, and current user (for displaying comments)
+const allDisplayUsers = computed(() => {
   const users = [...collaboratorDetails.value]
 
   // Add owner if not already in the list
@@ -847,12 +847,27 @@ const mentionableUsers = computed(() => {
     }
   }
 
-  // Filter out the current user (users cannot mention themselves)
-  const filteredUsers = authStore.user
-    ? users.filter((u) => u.user_id !== authStore.user.id)
-    : users
+  // Add current user if not already in the list
+  if (authStore.user) {
+    const currentUserExists = users.some((u) => u.user_id === authStore.user.id)
+    if (!currentUserExists) {
+      users.push({
+        user_id: authStore.user.id,
+        name: authStore.user.name,
+        role: authStore.user.role,
+        username: authStore.user.username,
+      })
+    }
+  }
 
-  return filteredUsers
+  return users
+})
+
+// Mentionable users - excludes current user (for @mention dropdown)
+const mentionableUsers = computed(() => {
+  return authStore.user
+    ? allDisplayUsers.value.filter((u) => u.user_id !== authStore.user.id)
+    : allDisplayUsers.value
 })
 
 // Filter to show only top-level comments (no parent)
@@ -1114,7 +1129,7 @@ const addComment = async ({ body, parentCommentId = null }) => {
     const uniqueUsernames = [...new Set(mentionedUsernames)]
     const mention_ids = uniqueUsernames
       .map((username) => {
-        const user = mentionableUsers.value.find((c) => c.username === username)
+        const user = allDisplayUsers.value.find((c) => c.username === username)
         return user ? user.user_id : null
       })
       .filter((id) => id !== null)

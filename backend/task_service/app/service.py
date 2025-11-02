@@ -3,11 +3,60 @@ from sqlalchemy import or_
 from sqlalchemy.orm import aliased
 from datetime import datetime, timedelta
 from dateutil.relativedelta import relativedelta
-from .rabbitmq_publisher import publish_status_update 
+from .rabbitmq_publisher import publish_status_update
 from werkzeug.utils import secure_filename
 from flask import current_app
 import uuid
 from datetime import datetime
+import pytz
+
+# Helper function to parse datetime with timezone awareness
+def parse_datetime_with_timezone(datetime_str, user_timezone=None):
+    """
+    Parse a datetime string and convert to UTC.
+    Handles both ISO format with timezone and datetime-local format.
+
+    Args:
+        datetime_str: String datetime in ISO format (2024-11-15T23:00:00Z or 2024-11-15T23:00:00)
+        user_timezone: User's timezone string (e.g., 'America/New_York'). If None, assumes UTC.
+
+    Returns:
+        datetime object in UTC (naive datetime for database storage)
+    """
+    if not datetime_str:
+        return None
+
+    try:
+        # Try parsing as ISO format (may include timezone)
+        if isinstance(datetime_str, str):
+            # If it ends with 'Z', it's already UTC
+            if datetime_str.endswith('Z'):
+                dt = datetime.fromisoformat(datetime_str.replace('Z', '+00:00'))
+                return dt.replace(tzinfo=None)  # Remove timezone info for naive storage
+
+            # Try parsing with timezone info
+            if '+' in datetime_str or datetime_str.count(':') > 2:
+                dt = datetime.fromisoformat(datetime_str)
+                if dt.tzinfo:
+                    # Convert to UTC and return naive
+                    return dt.astimezone(pytz.utc).replace(tzinfo=None)
+
+            # Naive datetime - treat as user's local time
+            dt = datetime.fromisoformat(datetime_str)
+            if user_timezone:
+                try:
+                    user_tz = pytz.timezone(user_timezone)
+                    # Localize to user's timezone then convert to UTC
+                    dt_with_tz = user_tz.localize(dt)
+                    return dt_with_tz.astimezone(pytz.utc).replace(tzinfo=None)
+                except:
+                    pass
+            return dt
+
+        return datetime_str
+    except Exception as e:
+        print(f"Error parsing datetime: {e}")
+        return None
 
 # Settled
 def get_all_tasks(user_id):
@@ -44,39 +93,19 @@ def create_task(task_data):
     #Create a new task
     try:
         print(f"Creating task with data: {task_data}")
-        
-        # Parse deadline if provided
+
+        # Get user timezone from task data
+        user_timezone = task_data.get('timezone')
+
+        # Parse deadline if provided (with timezone awareness)
         deadline = None
         if task_data.get('deadline'):
-            try:
-                if isinstance(task_data['deadline'], str) and task_data['deadline'].strip():
-                    # Handle datetime-local format from HTML input
-                    deadline_str = task_data['deadline']
-                    if 'T' in deadline_str:
-                        deadline = datetime.fromisoformat(deadline_str)
-                    else:
-                        deadline = datetime.strptime(deadline_str, '%Y-%m-%d %H:%M:%S')
-                elif isinstance(task_data['deadline'], datetime):
-                    deadline = task_data['deadline']
-            except ValueError as e:
-                print(f"Error parsing deadline: {e}")
-                deadline = None
+            deadline = parse_datetime_with_timezone(task_data['deadline'], user_timezone)
 
+        # Parse recurrence_end_date if provided (with timezone awareness)
         recurrence_end_date = None
         if task_data.get('recurrence_end_date'):
-            try:
-                if isinstance(task_data['recurrence_end_date'], str) and task_data['recurrence_end_date'].strip():
-                    # Handle datetime-local format from HTML input
-                    recurrence_end_date_str = task_data['recurrence_end_date']
-                    if 'T' in recurrence_end_date_str:
-                        recurrence_end_date = datetime.fromisoformat(recurrence_end_date_str)
-                    else:
-                        recurrence_end_date = datetime.strptime(recurrence_end_date_str, '%Y-%m-%d %H:%M:%S')
-                elif isinstance(task_data['recurrence_end_date'], datetime):
-                    recurrence_end_date = task_data['recurrence_end_date']
-            except ValueError as e:
-                print(f"Error parsing recurrence_end_date: {e}")
-                recurrence_end_date = None
+            recurrence_end_date = parse_datetime_with_timezone(task_data['recurrence_end_date'], user_timezone)
 
         status = TaskStatusEnum.UNASSIGNED
         if task_data.get('status'):
@@ -148,7 +177,7 @@ def update_task(task_id, user_id, task_data):
         task = Task.query.get(task_id)
         if not task:
             return None, "Task not found"
-        
+
         # Check if tasks belongs to user
         is_owner = (task.owner_id == user_id)
         is_collaborator = user_id in task.collaborator_ids()
@@ -159,37 +188,40 @@ def update_task(task_id, user_id, task_data):
             # Check if collaborator is trying to change anything *other* than status
             if any(field != 'status' for field in task_data):
                 return None, "Forbidden: Collaborators can only update the task's status."
-        
+
+        # Get user timezone from task data
+        user_timezone = task_data.get('timezone')
+
         # Track status change for RabbitMQ (your existing logic)
         old_status_for_rabbitmq = None
         status_changed_for_rabbitmq = False
 
         _update_timestamps_cascade(task)
-        
+
         current_time = db.func.now() # Your existing logic
 
         # --- MODIFIED: We iterate field by field to log changes ---
-        
-        fields_to_skip = ['id', 'owner_id', 'collaborators_to_add', 'collaborators_to_remove']
-        
+
+        fields_to_skip = ['id', 'owner_id', 'collaborators_to_add', 'collaborators_to_remove', 'timezone']
+
         for field, data in task_data.items():
             if field in fields_to_skip:
                 continue
 
             if field == 'deadline' and data:
-                new_deadline = datetime.fromisoformat(data)
-                if new_deadline != task.deadline:
+                new_deadline = parse_datetime_with_timezone(data, user_timezone)
+                if new_deadline and new_deadline != task.deadline:
                     # --- LOGGING ---
                     _log_task_activity(user_id, task.id, 'deadline', task.deadline, new_deadline)
                     # --- END LOGGING ---
                     task.deadline = new_deadline
                     _cascade_parent_deadline_to_subtasks(task, task.deadline)
                     
-            elif field == 'recurring_end_date' and data:
-                new_recur_end = datetime.fromisoformat(data)
-                if new_recur_end != task.recurrence_end_date:
+            elif field == 'recurrence_end_date' and data:
+                new_recur_end = parse_datetime_with_timezone(data, user_timezone)
+                if new_recur_end and new_recur_end != task.recurrence_end_date:
                     # --- LOGGING ---
-                    _log_task_activity(user_id, task.id, 'recurring_end_date', task.recurrence_end_date, new_recur_end)
+                    _log_task_activity(user_id, task.id, 'recurrence_end_date', task.recurrence_end_date, new_recur_end)
                     # --- END LOGGING ---
                     task.recurrence_end_date = new_recur_end
                     

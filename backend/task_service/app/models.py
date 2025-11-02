@@ -143,13 +143,22 @@ class Task(db.Model):
     def to_json(self):
         # Filter comments to only include top-level (no parent_comment_id)
         top_level_comments = [c for c in self.comments if c.parent_comment_id is None]
-        
+
+        # Format deadline as UTC ISO string (append 'Z' to indicate UTC)
+        deadline_str = None
+        if self.deadline:
+            deadline_str = self.deadline.isoformat() + 'Z'
+
+        recurrence_end_str = None
+        if self.recurrence_end_date:
+            recurrence_end_str = self.recurrence_end_date.isoformat() + 'Z'
+
         return {
             'id': self.id,
             'title': self.title,
             'description': self.description,
             'status': self.status.value,
-            'deadline': self.deadline.isoformat() if self.deadline else None,
+            'deadline': deadline_str,
             'owner_id': self.owner_id,
             'project_id': self.project_id,
             'parent_task_id': self.parent_task_id,
@@ -157,7 +166,7 @@ class Task(db.Model):
             'is_recurring': self.is_recurring,
             'recurrence_interval': self.recurrence_interval,
             'recurrence_days': self.recurrence_days,
-            'recurrence_end_date': self.recurrence_end_date.isoformat() if self.recurrence_end_date else None,
+            'recurrence_end_date': recurrence_end_str,
             'collaborator_ids': self.collaborator_ids(),
             'subtasks': [subtask.to_json() for subtask in self.subtasks],
             'subtask_count': len(self.subtasks),

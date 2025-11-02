@@ -165,11 +165,13 @@
               <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
                 <input type="date" v-model="customStartDate" required
+                  :max="maxReportDate"
                   class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500" />
               </div>
               <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">End Date</label>
                 <input type="date" v-model="customEndDate" required :min="customStartDate"
+                  :max="maxReportDate"
                   class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500" />
               </div>
             </div>
@@ -274,6 +276,9 @@ const isFormValid = computed(() => {
 
   if (timeframe.value === 'custom') {
     if (!customStartDate.value || !customEndDate.value) return false
+    // Validate that dates are not in the future
+    const today = new Date().toISOString().split('T')[0]
+    if (customStartDate.value > today || customEndDate.value > today) return false
   }
 
   if (reportType.value === 'individual') {
@@ -286,6 +291,11 @@ const isFormValid = computed(() => {
   }
 
   return false
+})
+
+const maxReportDate = computed(() => {
+  // Return today's date in YYYY-MM-DD format
+  return new Date().toISOString().split('T')[0]
 })
 
 // Methods
@@ -393,7 +403,9 @@ const calculateDateRange = () => {
   switch (timeframe.value) {
     case 'this_month':
       startDate = new Date(now.getFullYear(), now.getMonth(), 1)
-      endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0)
+      // Use the earlier of: end of month OR current date
+      const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0)
+      endDate = endOfMonth > now ? now : endOfMonth
       break
     case 'last_month':
       startDate = new Date(now.getFullYear(), now.getMonth() - 1, 1)

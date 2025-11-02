@@ -524,10 +524,24 @@ const handleSubmit = () => {
   const collaborators_to_add = [...finalIds].filter((id) => !initialIds.has(id))
   const collaborators_to_remove = [...initialIds].filter((id) => !finalIds.has(id))
 
+  // Convert datetime-local to ISO string with timezone
   const payload = {
     ...localData.value,
     collaborators_to_add,
     collaborators_to_remove,
+  }
+
+  // Convert deadline to ISO string with timezone if present
+  if (payload.deadline) {
+    const deadlineDate = new Date(payload.deadline)
+    payload.deadline = deadlineDate.toISOString()
+    payload.timezone = Intl.DateTimeFormat().resolvedOptions().timeZone
+  }
+
+  // Convert recurrence_end_date to ISO string with timezone if present
+  if (payload.recurrence_end_date) {
+    const recurrenceEndDate = new Date(payload.recurrence_end_date)
+    payload.recurrence_end_date = recurrenceEndDate.toISOString()
   }
 
   emit('submit', payload)
