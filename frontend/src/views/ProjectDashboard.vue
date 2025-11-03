@@ -294,6 +294,90 @@
           </div>
         </div>
 
+        <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+          <div
+            class="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0"
+          >
+            <div
+              class="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-4"
+            >
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Filter by Status</label>
+                <select
+                  v-model="filters.status"
+                  @change="applyFilters"
+                  class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                >
+                  <option value="">All Statuses</option>
+                  <option value="Unassigned">Unassigned</option>
+                  <option value="Ongoing">Ongoing</option>
+                  <option value="Under Review">Under Review</option>
+                  <option value="Completed">Completed</option>
+                </select>
+              </div>
+
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Filter by Priority</label>
+                <select
+                  v-model="filters.priority"
+                  @change="applyFilters"
+                  class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                >
+                  <option value="">All Priorities</option>
+                  <option value="high">High (8-10)</option>
+                  <option value="medium">Medium (4-7)</option>
+                  <option value="low">Low (1-3)</option>
+                </select>
+              </div>
+
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Filter by Role</label>
+                <select
+                  v-model="filters.role"
+                  @change="applyFilters"
+                  class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                >
+                  <option value="">All Tasks</option>
+                  <option value="owner">My Tasks (Owner)</option>
+                  <option value="collaborator">Collaborating</option>
+                </select>
+              </div>
+
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Sort by</label>
+                <select
+                  v-model="filters.sortBy"
+                  @change="applyFilters"
+                  class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                >
+                  <option value="default">Default Order</option>
+                  <option value="deadline-earliest">Deadline (Earliest First)</option>
+                  <option value="deadline-latest">Deadline (Latest First)</option>
+                  <option value="priority-highest">Priority (Highest First)</option>
+                  <option value="priority-lowest">Priority (Lowest First)</option>
+                </select>
+              </div>
+            </div>
+
+            <div
+              class="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-4"
+            >
+              <button
+                @click="clearFilters"
+                class="px-4 py-2 text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors"
+              >
+                Clear Filters
+              </button>
+              <button
+                @click="loadDashboard"
+                class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors"
+              >
+                Refresh
+              </button>
+            </div>
+          </div>
+        </div>
+
         <div class="bg-white rounded-lg shadow-md p-6">
           <div class="flex items-center justify-between mb-6">
             <h3 class="text-xl font-semibold text-gray-900">Tasks ({{ filteredTasks.length }})</h3>
@@ -303,53 +387,6 @@
             >
               View All Tasks
             </button>
-          </div>
-
-          <div class="mb-6 grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-2">Filter by Status</label>
-              <div class="flex flex-wrap gap-2">
-                <label
-                  v-for="status in availableStatuses"
-                  :key="status"
-                  class="inline-flex items-center"
-                >
-                  <input
-                    type="checkbox"
-                    :value="status"
-                    v-model="filters.statuses"
-                    class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
-                  />
-                  <span class="ml-1 text-sm text-gray-700">{{ status }}</span>
-                </label>
-              </div>
-            </div>
-
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-2">Filter by Role</label>
-              <select
-                v-model="filters.role"
-                @change="applyFilters"
-                class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-              >
-                <option value="">All Tasks</option>
-                <option value="owner">My Tasks (Owner)</option>
-                <option value="collaborator">Collaborating</option>
-              </select>
-            </div>
-
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-2">Sort By</label>
-              <select
-                v-model="filters.sortBy"
-                @change="applyFilters"
-                class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-              >
-                <option value="deadline">Deadline</option>
-                <option value="title">Title</option>
-                <option value="status">Status</option>
-              </select>
-            </div>
           </div>
 
           <div v-if="filteredTasks.length === 0" class="text-center py-12 text-gray-500">
@@ -429,7 +466,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import EditProjectModal from '@/components/EditProjectModal.vue'
@@ -451,13 +488,24 @@ const allUsers = ref([]) // *** NEW: Store all users here ***
 const showEditModal = ref(false)
 const showManageTasksModal = ref(false)
 
-const filters = ref({
-  statuses: [],
-  role: '',
-  sortBy: 'deadline',
-})
+// Session storage keys
+const STORAGE_KEY_FILTERS = 'projectDashboard_filters'
+const STORAGE_KEY_SORT = 'projectDashboard_sort'
 
-const availableStatuses = ['Unassigned', 'Ongoing', 'Under Review', 'Completed']
+// Load filters and sort from session storage
+const savedFilters = sessionStorage.getItem(STORAGE_KEY_FILTERS)
+const savedSort = sessionStorage.getItem(STORAGE_KEY_SORT)
+
+const filters = ref(
+  savedFilters
+    ? JSON.parse(savedFilters)
+    : {
+        status: '',
+        priority: '',
+        role: '',
+        sortBy: 'default',
+      },
+)
 
 // Computed properties
 const getTaskCountByStatus = (status) => {
@@ -498,33 +546,85 @@ const projectCollaboratorDetails = computed(() => {
 const filteredTasks = computed(() => {
   let filtered = [...tasks.value]
 
-  if (filters.value.statuses.length > 0) {
-    filtered = filtered.filter((task) => filters.value.statuses.includes(task.status))
+  // Filter by status
+  if (filters.value.status) {
+    filtered = filtered.filter((task) => task.status === filters.value.status)
   }
 
+  // Filter by priority
+  if (filters.value.priority) {
+    filtered = filtered.filter((task) => {
+      const priority = task.priority || 5
+
+      switch (filters.value.priority) {
+        case 'high':
+          return priority >= 8 && priority <= 10
+        case 'medium':
+          return priority >= 4 && priority <= 7
+        case 'low':
+          return priority >= 1 && priority <= 3
+        default:
+          return true
+      }
+    })
+  }
+
+  // Filter by role
   if (filters.value.role === 'owner') {
     filtered = filtered.filter((task) => task.owner_id === authStore.currentUserId)
   } else if (filters.value.role === 'collaborator') {
     filtered = filtered.filter(
       (task) => task.collaborator_ids && task.collaborator_ids.includes(authStore.currentUserId),
     )
+  } else if (filters.value.role === 'both') {
+    // Show tasks where user is either owner or collaborator
+    filtered = filtered.filter(
+      (task) =>
+        task.owner_id === authStore.currentUserId ||
+        (task.collaborator_ids && task.collaborator_ids.includes(authStore.currentUserId)),
+    )
   }
 
-  filtered.sort((a, b) => {
-    switch (filters.value.sortBy) {
-      case 'deadline':
-        return new Date(a.deadline || '9999-12-31') - new Date(b.deadline || '9999-12-31')
-      case 'title':
-        return a.title.localeCompare(b.title)
-      case 'status':
-        return a.status.localeCompare(b.status)
-      default:
-        return 0
-    }
-  })
+  // Sorting logic
+  if (filters.value.sortBy === 'deadline-earliest') {
+    filtered.sort((a, b) => {
+      if (!a.deadline && !b.deadline) return 0
+      if (!a.deadline) return 1 // Tasks without deadline go to end
+      if (!b.deadline) return -1
+      return new Date(a.deadline) - new Date(b.deadline)
+    })
+  } else if (filters.value.sortBy === 'deadline-latest') {
+    filtered.sort((a, b) => {
+      if (!a.deadline && !b.deadline) return 0
+      if (!a.deadline) return 1 // Tasks without deadline go to end
+      if (!b.deadline) return -1
+      return new Date(b.deadline) - new Date(a.deadline)
+    })
+  } else if (filters.value.sortBy === 'priority-highest') {
+    filtered.sort((a, b) => {
+      const priorityA = a.priority || 5
+      const priorityB = b.priority || 5
+      return priorityB - priorityA // Highest first (10 to 1)
+    })
+  } else if (filters.value.sortBy === 'priority-lowest') {
+    filtered.sort((a, b) => {
+      const priorityA = a.priority || 5
+      const priorityB = b.priority || 5
+      return priorityA - priorityB // Lowest first (1 to 10)
+    })
+  }
 
   return filtered
 })
+
+// Watch filters to save to session storage
+watch(
+  filters,
+  (newFilters) => {
+    sessionStorage.setItem(STORAGE_KEY_FILTERS, JSON.stringify(newFilters))
+  },
+  { deep: true },
+)
 
 // Helper functions
 const getStatusBadgeColor = (status) => {
@@ -637,6 +737,13 @@ const viewTaskDetails = (taskId) => {
 
 const applyFilters = () => {
   // Filters are reactive
+}
+
+const clearFilters = () => {
+  filters.value.status = ''
+  filters.value.priority = ''
+  filters.value.role = ''
+  filters.value.sortBy = 'default'
 }
 
 const handleProjectUpdated = () => {

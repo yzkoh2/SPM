@@ -1175,35 +1175,35 @@ def add_project_collaborator(project_id, user_id, collaborator_user_id):
         db.session.rollback()
         raise
 
-def remove_project_collaborator(project_id, user_id, collaborator_user_id):
-    """Remove a collaborator from a project (only owner can remove)"""
-    try:
-        project = Project.query.get(project_id)
+# def remove_project_collaborator(project_id, user_id, collaborator_user_id):
+#     """Remove a collaborator from a project (only owner can remove)"""
+#     try:
+#         project = Project.query.get(project_id)
         
-        if not project:
-            return None, "Project not found"
+#         if not project:
+#             return None, "Project not found"
         
-        # Check if user is the owner
-        if project.owner_id != user_id:
-            return None, "Forbidden: Only the project owner can remove collaborators"
+#         # Check if user is the owner
+#         if project.owner_id != user_id:
+#             return None, "Forbidden: Only the project owner can remove collaborators"
         
-        _touch_project(project)
+#         _touch_project(project)
 
-        # Remove collaborator
-        db.session.execute(
-            project_collaborators.delete().where(
-                project_collaborators.c.project_id == project_id,
-                project_collaborators.c.user_id == collaborator_user_id
-            )
-        )
-        db.session.commit()
+#         # Remove collaborator
+#         db.session.execute(
+#             project_collaborators.delete().where(
+#                 project_collaborators.c.project_id == project_id,
+#                 project_collaborators.c.user_id == collaborator_user_id
+#             )
+#         )
+#         db.session.commit()
         
-        return {"message": "Collaborator removed successfully"}, None
+#         return {"message": "Collaborator removed successfully"}, None
         
-    except Exception as e:
-        print(f"Error removing collaborator: {e}")
-        db.session.rollback()
-        raise
+#     except Exception as e:
+#         print(f"Error removing collaborator: {e}")
+#         db.session.rollback()
+#         raise
 
 # Add these functions to backend/task_service/app/service.py
 
@@ -1429,6 +1429,19 @@ def remove_project_collaborator(project_id, user_id, collaborator_user_id):
         # Cannot remove the owner
         if collaborator_user_id == project.owner_id:
             return None, "Cannot remove the project owner from collaborators"
+        
+        _touch_project(project)
+
+        tasks_to_unassign = Task.query.filter(
+            Task.project_id == project_id,
+            Task.owner_id == collaborator_user_id
+        ).all()
+        
+        if tasks_to_unassign:
+            print(f"Found {len(tasks_to_unassign)} tasks owned by user {collaborator_user_id}. Un-assigning them from project {project_id}.")
+            for task in tasks_to_unassign:
+                task.project_id = None  # Remove task from project
+                db.session.add(task)
         
         # Remove from project tasks first (CASCADE)
         remove_collaborator_from_project_tasks(project_id, collaborator_user_id)
