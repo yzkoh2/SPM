@@ -164,12 +164,12 @@
               class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4 p-4 bg-gray-50 rounded-md">
               <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
-                <input type="date" v-model="customStartDate" required
+                <input type="date" v-model="customStartDate" required :max="maxDate"
                   class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500" />
               </div>
               <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">End Date</label>
-                <input type="date" v-model="customEndDate" required :min="customStartDate"
+                <input type="date" v-model="customEndDate" required :min="customStartDate" :max="maxDate"
                   class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500" />
               </div>
             </div>
@@ -267,6 +267,12 @@ const canSelectOtherUsers = computed(() => {
     currentUser.value &&
     (currentUser.value.role === 'Manager' || currentUser.value.role === 'Director')
   )
+})
+
+const maxDate = computed(() => {
+  // Return today's date in YYYY-MM-DD format to prevent future date selection
+  const today = new Date()
+  return today.toISOString().split('T')[0]
 })
 
 const isFormValid = computed(() => {
@@ -393,7 +399,7 @@ const calculateDateRange = () => {
   switch (timeframe.value) {
     case 'this_month':
       startDate = new Date(now.getFullYear(), now.getMonth(), 1)
-      endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0)
+      endDate = now  // Use current datetime instead of end of month
       break
     case 'last_month':
       startDate = new Date(now.getFullYear(), now.getMonth() - 1, 1)
@@ -442,6 +448,13 @@ const generateReport = async () => {
     const dateRange = calculateDateRange()
     let endpoint, payload
 
+    // Check if end_date is today - if so, use current datetime instead of end-of-day
+    const today = new Date().toISOString().split('T')[0]
+    const isEndDateToday = dateRange.end_date === today
+
+    // Get current datetime in ISO format for timezone conversion
+    const currentDatetime = isEndDateToday ? new Date().toISOString() : null
+
     // --- Common Request Logic ---
     let response
     if (reportType.value === 'individual') {
@@ -452,6 +465,10 @@ const generateReport = async () => {
         end_date: dateRange.end_date || null,
         timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
       }
+      // Add current datetime if end date is today
+      if (currentDatetime) {
+        payload.end_datetime = currentDatetime
+      }
     } else {
       // Project Report
       if (!selectedProjectId.value) throw new Error('Please select a project.')
@@ -460,6 +477,10 @@ const generateReport = async () => {
         start_date: dateRange.start_date || null,
         end_date: dateRange.end_date || null,
         timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
+      }
+      // Add current datetime if end date is today
+      if (currentDatetime) {
+        payload.end_datetime = currentDatetime
       }
     }
 

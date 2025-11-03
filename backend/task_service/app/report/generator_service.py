@@ -136,6 +136,31 @@ def get_task_state_as_of(task, end_date_utc):
 
     return state
 
+def get_task_completion_time(task, end_date_utc):
+    """
+    Get the timestamp when a task was completed, if it was completed by end_date_utc.
+    Returns None if the task was not completed by end_date_utc.
+    """
+    utc_tz = pytz.utc
+
+    # Get all status change logs for this task up to the snapshot date
+    status_logs = models.TaskActivityLog.query.filter(
+        models.TaskActivityLog.task_id == task.id,
+        models.TaskActivityLog.field_changed == 'status',
+        models.TaskActivityLog.timestamp <= end_date_utc
+    ).order_by(models.TaskActivityLog.timestamp.desc()).all()
+
+    # Find the most recent change to COMPLETED status
+    # Note: TaskStatusEnum.COMPLETED has value 'Completed' (not 'COMPLETED')
+    for log in status_logs:
+        if log.new_value == 'Completed' or log.new_value == models.TaskStatusEnum.COMPLETED.value:
+            completion_time = log.timestamp
+            if completion_time.tzinfo is None:
+                completion_time = utc_tz.localize(completion_time)
+            return completion_time
+
+    return None
+
 def generate_project_pdf_report(project_id: int, user_id: int, start_date: datetime = None, end_date: datetime = None, timezone_str: str = "UTC"):
     """
     Generates a PDF report snapshot as of end_date, activity log for date range,
@@ -247,8 +272,22 @@ def generate_project_pdf_report(project_id: int, user_id: int, start_date: datet
 
         task_deadline_utc = task.deadline
         if task_deadline_utc and task_deadline_utc.tzinfo is None: task_deadline_utc = utc_tz.localize(task_deadline_utc)
-        is_overdue_as_of = task_deadline_utc and task_deadline_utc < as_of_date_utc and status_as_of != models.TaskStatusEnum.COMPLETED
-        
+
+        # Improved overdue logic:
+        # - If task is COMPLETED: check if it was completed AFTER the deadline (completed late)
+        # - If task is NOT COMPLETED: check if the deadline has passed (still active but overdue)
+        is_overdue_as_of = False
+        if task_deadline_utc:
+            if status_as_of == models.TaskStatusEnum.COMPLETED:
+                # Task is completed - check if it was completed after deadline
+                completion_time = get_task_completion_time(task, as_of_date_utc)
+                if completion_time and completion_time > task_deadline_utc:
+                    is_overdue_as_of = True  # Completed late
+            else:
+                # Task is not completed - check if deadline has passed
+                if task_deadline_utc < as_of_date_utc:
+                    is_overdue_as_of = True  # Still active but past deadline
+
         if is_overdue_as_of:
             if owner_id_as_of not in user_cache: user_cache[owner_id_as_of] = _fetch_user_details(owner_id_as_of)
             owner_name_as_of = user_cache[owner_id_as_of]['name']
@@ -547,7 +586,21 @@ def generate_individual_pdf_report(target_user_id: int, requesting_user_id: int,
             task_deadline_utc = task.deadline
             if task_deadline_utc and task_deadline_utc.tzinfo is None:
                 task_deadline_utc = utc_tz.localize(task_deadline_utc)
-            is_overdue_as_of = task_deadline_utc and task_deadline_utc < as_of_date_utc and status_as_of != models.TaskStatusEnum.COMPLETED
+
+            # Improved overdue logic:
+            # - If task is COMPLETED: check if it was completed AFTER the deadline (completed late)
+            # - If task is NOT COMPLETED: check if the deadline has passed (still active but overdue)
+            is_overdue_as_of = False
+            if task_deadline_utc:
+                if status_as_of == models.TaskStatusEnum.COMPLETED:
+                    # Task is completed - check if it was completed after deadline
+                    completion_time = get_task_completion_time(task, as_of_date_utc)
+                    if completion_time and completion_time > task_deadline_utc:
+                        is_overdue_as_of = True  # Completed late
+                else:
+                    # Task is not completed - check if deadline has passed
+                    if task_deadline_utc < as_of_date_utc:
+                        is_overdue_as_of = True  # Still active but past deadline
 
             if is_overdue_as_of:
                 task_type = "Subtask" if task.parent_task_id is not None else "Task"

@@ -22,7 +22,8 @@ export function convertLocalToUTC(dateTimeLocalString) {
 export function convertUTCToLocal(utcDateTimeString) {
   if (!utcDateTimeString) return ''
 
-  const date = new Date(utcDateTimeString)
+  // Use parseUTCTimestamp to properly handle naive UTC timestamps
+  const date = parseUTCTimestamp(utcDateTimeString)
   const year = date.getFullYear()
   const month = String(date.getMonth() + 1).padStart(2, '0')
   const day = String(date.getDate()).padStart(2, '0')
@@ -38,4 +39,35 @@ export function convertUTCToLocal(utcDateTimeString) {
  */
 export function getUserTimezone() {
   return Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'
+}
+
+/**
+ * Ensures a UTC timestamp string has the 'Z' suffix for proper parsing
+ * Backend returns naive UTC timestamps without 'Z', which causes JS to interpret them as local time
+ * @param {string} utcTimestamp - UTC timestamp string from backend (e.g., "2025-11-03T12:00:00")
+ * @returns {Date} Date object in local timezone
+ */
+export function parseUTCTimestamp(utcTimestamp) {
+  if (!utcTimestamp) return null
+
+  // Add 'Z' suffix if not present to indicate UTC
+  let dateStr = utcTimestamp
+  if (!dateStr.includes('Z') && !dateStr.includes('+')) {
+    dateStr = dateStr + 'Z'
+  }
+
+  return new Date(dateStr)
+}
+
+/**
+ * Formats a UTC timestamp to a localized date string
+ * @param {string} utcTimestamp - UTC timestamp string from backend
+ * @param {object} options - Intl.DateTimeFormat options
+ * @returns {string} Formatted date string in user's timezone
+ */
+export function formatUTCTimestamp(utcTimestamp, options = {}) {
+  if (!utcTimestamp) return 'Not set'
+
+  const date = parseUTCTimestamp(utcTimestamp)
+  return date.toLocaleString('en-US', options)
 }

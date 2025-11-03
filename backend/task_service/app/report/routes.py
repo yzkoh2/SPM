@@ -26,14 +26,16 @@ def get_project_report(project_id):
     # --- 2. Get Dates and Timezone from JSON Request Body ---
     start_date_str = None
     end_date_str = None
-    timezone_str = None 
-    
+    end_datetime_str = None
+    timezone_str = None
+
     data = request.get_json()
     if data:
         start_date_str = data.get('start_date')
         end_date_str = data.get('end_date')
-        timezone_str = data.get('timezone') 
-    
+        end_datetime_str = data.get('end_datetime')  # ISO format datetime if provided
+        timezone_str = data.get('timezone')
+
     # Default to UTC if no timezone is provided
     if not timezone_str:
         timezone_str = "UTC"
@@ -58,13 +60,22 @@ def get_project_report(project_id):
             # Convert to UTC
             utc_start_date = user_start_date.astimezone(pytz.utc)
 
-        if end_date_str:
-            # Create a naive datetime first
+        # Check if end_datetime is provided (current datetime for "today")
+        if end_datetime_str:
+            # Parse ISO datetime string (from JavaScript toISOString(), already in UTC)
+            # Format: 2025-11-03T08:30:45.123Z
+            end_datetime = datetime.fromisoformat(end_datetime_str.replace('Z', '+00:00'))
+            # Already in UTC, just ensure it's timezone-aware
+            utc_end_date = end_datetime.astimezone(pytz.utc)
+            print(f"DEBUG: Using current datetime - end_datetime_str: {end_datetime_str}, utc_end_date: {utc_end_date}")
+        elif end_date_str:
+            # Use end of day (23:59:59) in user's timezone
             naive_end = datetime.strptime(end_date_str, '%Y-%m-%d').replace(hour=23, minute=59, second=59)
-             # Localize it to the user's timezone
+            # Localize it to the user's timezone
             user_end_date = user_tz.localize(naive_end)
             # Convert to UTC
             utc_end_date = user_end_date.astimezone(pytz.utc)
+            print(f"DEBUG: Using end of day - end_date_str: {end_date_str}, utc_end_date: {utc_end_date}")
 
         # Basic validation
         if utc_start_date and utc_end_date and utc_start_date > utc_end_date:
@@ -132,12 +143,14 @@ def get_individual_report(user_id):
     # --- 2. Get Dates and Timezone from JSON Request Body ---
     start_date_str = None
     end_date_str = None
+    end_datetime_str = None
     timezone_str = None
 
     data = request.get_json()
     if data:
         start_date_str = data.get('start_date')
         end_date_str = data.get('end_date')
+        end_datetime_str = data.get('end_datetime')  # ISO format datetime if provided
         timezone_str = data.get('timezone')
 
     # Default to UTC if no timezone is provided
@@ -161,10 +174,20 @@ def get_individual_report(user_id):
             user_start_date = user_tz.localize(naive_start)
             utc_start_date = user_start_date.astimezone(pytz.utc)
 
-        if end_date_str:
+        # Check if end_datetime is provided (current datetime for "today")
+        if end_datetime_str:
+            # Parse ISO datetime string (from JavaScript toISOString(), already in UTC)
+            # Format: 2025-11-03T08:30:45.123Z
+            end_datetime = datetime.fromisoformat(end_datetime_str.replace('Z', '+00:00'))
+            # Already in UTC, just ensure it's timezone-aware
+            utc_end_date = end_datetime.astimezone(pytz.utc)
+            print(f"DEBUG: Using current datetime - end_datetime_str: {end_datetime_str}, utc_end_date: {utc_end_date}")
+        elif end_date_str:
+            # Use end of day (23:59:59) in user's timezone
             naive_end = datetime.strptime(end_date_str, '%Y-%m-%d').replace(hour=23, minute=59, second=59)
             user_end_date = user_tz.localize(naive_end)
             utc_end_date = user_end_date.astimezone(pytz.utc)
+            print(f"DEBUG: Using end of day - end_date_str: {end_date_str}, utc_end_date: {utc_end_date}")
 
         # Basic validation
         if utc_start_date and utc_end_date and utc_start_date > utc_end_date:

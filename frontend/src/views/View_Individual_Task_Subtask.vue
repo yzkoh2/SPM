@@ -758,6 +758,7 @@ import CommentItem from '@/components/CommentItem.vue'
 import TaskForm from '@/components/TaskForm.vue'
 import AttachmentModal from '@/components/AttachmentModal.vue'
 import RecurringIcon from '@/components/RecurringIcon.vue'
+import { parseUTCTimestamp } from '@/utils/timezone'
 
 const route = useRoute()
 const router = useRouter()
@@ -1331,7 +1332,7 @@ const getDeadlineColor = (deadline) => {
   if (!deadline) return 'text-gray-600'
 
   const now = new Date()
-  const deadlineDate = new Date(deadline)
+  const deadlineDate = parseUTCTimestamp(deadline)
 
   if (deadlineDate < now) return 'text-red-600 font-medium'
   if (deadlineDate.toDateString() === now.toDateString()) return 'text-orange-600 font-medium'
@@ -1340,12 +1341,15 @@ const getDeadlineColor = (deadline) => {
 
 const formatDeadline = (deadline) => {
   if (!deadline) return 'No deadline set'
-  const date = new Date(deadline)
-  return date.toLocaleDateString('en-US', {
+  const date = parseUTCTimestamp(deadline)
+  return date.toLocaleString('en-US', {
     weekday: 'long',
     year: 'numeric',
     month: 'long',
     day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
   })
 }
 
@@ -1367,7 +1371,7 @@ const formatRecurrenceInterval = (interval, days) => {
 const calculateNextInstanceDate = (deadline, interval, days) => {
   if (!deadline) return 'Not set'
 
-  const currentDeadline = new Date(deadline)
+  const currentDeadline = parseUTCTimestamp(deadline)
   let nextDate = new Date(currentDeadline)
 
   if (interval === 'daily') {
@@ -1380,21 +1384,27 @@ const calculateNextInstanceDate = (deadline, interval, days) => {
     nextDate.setDate(nextDate.getDate() + days)
   }
 
-  return nextDate.toLocaleDateString('en-US', {
+  return nextDate.toLocaleString('en-US', {
     weekday: 'long',
     year: 'numeric',
     month: 'long',
     day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
   })
 }
 
 const formatRecurrenceEndDate = (endDate) => {
   if (!endDate) return 'No end date'
-  const date = new Date(endDate)
-  return date.toLocaleDateString('en-US', {
+  const date = parseUTCTimestamp(endDate)
+  return date.toLocaleString('en-US', {
     year: 'numeric',
     month: 'long',
     day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
   })
 }
 

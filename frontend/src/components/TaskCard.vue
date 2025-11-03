@@ -151,6 +151,7 @@
 import { computed, onMounted } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import RecurringIcon from '@/components/RecurringIcon.vue'
+import { parseUTCTimestamp } from '@/utils/timezone'
 
 const authStore = useAuthStore()
 
@@ -186,7 +187,7 @@ const statusBadgeColor = computed(() => {
 const deadlineColor = computed(() => {
   if (!props.task.deadline) return 'text-gray-600'
   const now = new Date()
-  const deadlineDate = new Date(props.task.deadline)
+  const deadlineDate = parseUTCTimestamp(props.task.deadline)
   if (deadlineDate < now) return 'text-red-600 font-medium'
   // Reset time part for today's comparison
   now.setHours(0, 0, 0, 0)
@@ -197,7 +198,7 @@ const deadlineColor = computed(() => {
 
 const formatDeadline = (deadline) => {
   if (!deadline) return 'No deadline set'
-  const date = new Date(deadline)
+  const date = parseUTCTimestamp(deadline)
   return date.toLocaleDateString('en-US', {
     year: 'numeric',
     month: 'short',

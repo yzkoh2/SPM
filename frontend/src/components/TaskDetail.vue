@@ -37,6 +37,7 @@
 
 <script setup>
 import { computed } from 'vue'
+import { parseUTCTimestamp } from '@/utils/timezone'
 
 const props = defineProps({
   task: {
@@ -60,14 +61,15 @@ const statusBadgeColor = computed(() => {
 const deadlineColor = computed(() => {
   if (!props.task || !props.task.deadline) return 'text-gray-700'
   const now = new Date()
-  const deadlineDate = new Date(props.task.deadline)
+  const deadlineDate = parseUTCTimestamp(props.task.deadline)
   if (deadlineDate < now) return 'text-red-600 font-bold'
   return 'text-gray-900'
 })
 
 const formatDeadline = (deadline) => {
   if (!deadline) return 'Not set'
-  return new Date(deadline).toLocaleString('en-US', {
+  const date = parseUTCTimestamp(deadline)
+  return date.toLocaleString('en-US', {
     year: 'numeric',
     month: 'long',
     day: 'numeric',
