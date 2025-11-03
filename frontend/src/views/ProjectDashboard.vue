@@ -259,7 +259,7 @@
                 </svg>
               </div>
               <div class="ml-4">
-                <p class="text-sm font-medium text-gray-600">In Progress</p>
+                <p class="text-sm font-medium text-gray-600">Ongoing</p>
                 <p class="text-2xl font-bold text-gray-900">
                   {{ getTaskCountByStatus('Ongoing') }}
                 </p>
@@ -340,6 +340,7 @@
                   <option value="">All Tasks</option>
                   <option value="owner">My Tasks (Owner)</option>
                   <option value="collaborator">Collaborating</option>
+                  <option value="both">Both (Owner & Collaborator)</option>
                 </select>
               </div>
 

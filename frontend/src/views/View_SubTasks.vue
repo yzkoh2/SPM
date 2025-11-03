@@ -1,39 +1,33 @@
 <template>
   <div class="min-h-screen bg-gray-50">
-    <nav class="bg-white shadow-sm border-b border-gray-200">
+    <header class="bg-white shadow-sm border-b border-gray-200">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div class="flex justify-between items-center h-16">
-          <div class="flex items-center space-x-4">
-            <div v-if="parentTask">
-              <h1 class="text-xl font-semibold text-gray-900">Subtasks</h1>
-              <router-link :to="`/tasks/${parentTask.id}`"
-                >for "<a class="text-sm text-blue-600">{{ parentTask.title }}"</a></router-link
-              >
-            </div>
-          </div>
-
-          <div class="flex items-center space-x-4">
-            <button
-              @click="fetchSubtasks"
-              class="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-            >
-              <svg class="-ml-1 mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-                ></path>
-              </svg>
-              Refresh
-            </button>
+        <div class="flex items-center py-6">
+          <router-link
+            v-if="parentTask"
+            :to="`/tasks/${parentTask.id}`"
+            class="flex items-center text-indigo-600 hover:text-indigo-500 mr-6 text-sm font-medium"
+          >
+            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M15 19l-7-7 7-7"
+              ></path>
+            </svg>
+            Back to Task Details
+          </router-link>
+          <div class="flex-1">
+            <h1 class="text-2xl font-bold text-gray-900">Subtasks</h1>
+            <p v-if="parentTask" class="text-sm text-gray-600 mt-1">{{ parentTask.title }}</p>
           </div>
         </div>
       </div>
-    </nav>
+    </header>
 
-    <main class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-      <div class="mb-6 px-4 sm:px-0">
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div class="mb-6">
         <button
           @click="showCreateForm = !showCreateForm"
           class="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-lg font-medium transition-colors flex items-center"
@@ -49,79 +43,91 @@
           {{ showCreateForm ? 'Cancel' : 'Create New Subtask' }}
         </button>
       </div>
-      <div class="mb-6 px-4 sm:px-0">
-        <div class="bg-white rounded-lg shadow-md p-6">
+      <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+        <div
+          class="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0"
+        >
           <div
-            class="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0"
+            class="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-4"
           >
-            <div
-              class="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-4"
-            >
-              <!-- Filter by Priority -->
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1"
-                  >Filter by Priority</label
-                >
-                <select
-                  v-model="filters.priority"
-                  @change="applyFilters"
-                  class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                >
-                  <option value="">All Priorities</option>
-                  <option value="high">High (8-10)</option>
-                  <option value="medium">Medium (4-7)</option>
-                  <option value="low">Low (1-3)</option>
-                </select>
-              </div>
-
-              <!-- Sort by Priority -->
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Sort by Priority</label>
-                <select
-                  v-model="prioritySort"
-                  @change="applyFilters"
-                  class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                >
-                  <option value="default">Default Order</option>
-                  <option value="priority-high">Highest First</option>
-                  <option value="priority-low">Lowest First</option>
-                </select>
-              </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Filter by Status</label>
+              <select
+                v-model="filters.status"
+                @change="applyFilters"
+                class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              >
+                <option value="">All Statuses</option>
+                <option value="Unassigned">Unassigned</option>
+                <option value="Ongoing">Ongoing</option>
+                <option value="Under Review">Under Review</option>
+                <option value="Completed">Completed</option>
+              </select>
             </div>
 
-            <div
-              class="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-4"
-            >
-              <button
-                @click="clearFilters"
-                class="px-4 py-2 text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors"
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1"
+                >Filter by Priority</label
               >
-                Clear Filters
-              </button>
-              <button
-                @click="fetchSubtasks"
-                class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors"
+              <select
+                v-model="filters.priority"
+                @change="applyFilters"
+                class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
               >
-                Refresh
-              </button>
+                <option value="">All Priorities</option>
+                <option value="high">High (8-10)</option>
+                <option value="medium">Medium (4-7)</option>
+                <option value="low">Low (1-3)</option>
+              </select>
             </div>
+
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Sort by</label>
+              <select
+                v-model="sortBy"
+                @change="applyFilters"
+                class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              >
+                <option value="default">Default Order</option>
+                <option value="deadline-earliest">Deadline (Earliest First)</option>
+                <option value="deadline-latest">Deadline (Latest First)</option>
+                <option value="priority-highest">Priority (Highest First)</option>
+                <option value="priority-lowest">Priority (Lowest First)</option>
+              </select>
+            </div>
+          </div>
+
+          <div
+            class="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-4"
+          >
+            <button
+              @click="clearFilters"
+              class="px-4 py-2 text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors"
+            >
+              Clear Filters
+            </button>
+            <button
+              @click="fetchSubtasks"
+              class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors"
+            >
+              Refresh
+            </button>
           </div>
         </div>
       </div>
-      <div class="px-4 sm:px-0">
-        <TaskForm
-          v-if="showCreateForm"
-          title="Create New Subtask"
-          :is-subtask="true"
-          :is-submitting="isCreating"
-          :all-users="allUsers"
-          :parent-deadline="parentTask.deadline"
-          submit-button-text="Create Subtask"
-          submit-button-loading-text="Creating..."
-          @submit="createSubtask"
-          @cancel="showCreateForm = false"
-        />
-      </div>
+
+      <TaskForm
+        v-if="showCreateForm"
+        title="Create New Subtask"
+        :is-subtask="true"
+        :is-submitting="isCreating"
+        :all-users="allUsers"
+        :parent-deadline="parentTask.deadline"
+        submit-button-text="Create Subtask"
+        submit-button-loading-text="Creating..."
+        @submit="createSubtask"
+        @cancel="showCreateForm = false"
+      />
 
       <div
         v-if="showEditForm"
@@ -143,53 +149,23 @@
         </div>
       </div>
 
-      <div class="px-4 py-6 sm:px-0">
-        <div v-if="parentTask" class="bg-white overflow-hidden shadow rounded-lg mb-6">
-          <div class="px-4 py-5 sm:p-6">
-            <div class="flex items-center justify-between">
-              <div>
-                <h2 class="text-lg font-medium text-gray-900">{{ parentTask.title }}</h2>
-                <p v-if="parentTask.description" class="mt-1 text-sm text-gray-600">
-                  {{ parentTask.description }}
-                </p>
-              </div>
-              <div class="flex items-center space-x-4">
-                <span
-                  class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
-                  :class="getStatusBadgeColor(parentTask.status)"
-                >
-                  {{ parentTask.status }}
-                </span>
-                <router-link
-                  :to="`/tasks/${parentTask.id}`"
-                  class="text-indigo-600 hover:text-indigo-500 text-sm font-medium"
-                >
-                  View Full Task →
-                </router-link>
-              </div>
+      <div v-if="loading" class="text-center">
+        <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+        <p class="mt-2 text-gray-600">Loading subtasks...</p>
+      </div>
+
+      <div v-else-if="error" class="rounded-md bg-red-50 p-4">
+        <div class="flex">
+          <div class="ml-3">
+            <h3 class="text-sm font-medium text-red-800">Error loading subtasks</h3>
+            <div class="mt-2 text-sm text-red-700">
+              <p>{{ error }}</p>
             </div>
           </div>
         </div>
+      </div>
 
-        <div v-if="loading" class="text-center">
-          <div
-            class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"
-          ></div>
-          <p class="mt-2 text-gray-600">Loading subtasks...</p>
-        </div>
-
-        <div v-else-if="error" class="rounded-md bg-red-50 p-4">
-          <div class="flex">
-            <div class="ml-3">
-              <h3 class="text-sm font-medium text-red-800">Error loading subtasks</h3>
-              <div class="mt-2 text-sm text-red-700">
-                <p>{{ error }}</p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div v-else-if="subtasks.length > 0" class="space-y-3">
+      <div v-else-if="subtasks.length > 0" class="space-y-3">
           <div class="flex justify-between items-center">
             <h3 class="text-lg font-medium text-gray-900">
               Subtasks ({{ filteredSubtasks.length
@@ -236,25 +212,24 @@
               Clear filters
             </button>
           </div>
-        </div>
+      </div>
 
-        <div v-else class="text-center py-12">
-          <svg
-            class="mx-auto h-12 w-12 text-gray-400"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
-              d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"
-            ></path>
-          </svg>
-          <h3 class="mt-2 text-sm font-medium text-gray-900">No subtasks found</h3>
-          <p class="mt-1 text-sm text-gray-500">This task doesn't have any subtasks yet.</p>
-        </div>
+      <div v-else class="text-center py-12">
+        <svg
+          class="mx-auto h-12 w-12 text-gray-400"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"
+          ></path>
+        </svg>
+        <h3 class="mt-2 text-sm font-medium text-gray-900">No subtasks found</h3>
+        <p class="mt-1 text-sm text-gray-500">This task doesn't have any subtasks yet.</p>
       </div>
     </main>
   </div>
@@ -287,10 +262,11 @@ const allUsers = ref([])
 const collaboratorDetails = ref([])
 
 const filters = ref({
+  status: '',
   priority: '',
 })
 
-const prioritySort = ref('default')
+const sortBy = ref('default')
 
 const KONG_API_URL = 'http://localhost:8000'
 
@@ -306,6 +282,11 @@ const progressPercentage = computed(() => {
 
 const filteredSubtasks = computed(() => {
   let filtered = [...subtasks.value]
+
+  // Filter by status
+  if (filters.value.status) {
+    filtered = filtered.filter((subtask) => subtask.status === filters.value.status)
+  }
 
   // Filter by priority
   if (filters.value.priority) {
@@ -325,14 +306,26 @@ const filteredSubtasks = computed(() => {
     })
   }
 
-  // Apply priority sorting
-  if (prioritySort.value === 'priority-high') {
+  // Apply sorting
+  if (sortBy.value === 'deadline-earliest') {
+    filtered.sort((a, b) => {
+      if (!a.deadline) return 1
+      if (!b.deadline) return -1
+      return new Date(a.deadline) - new Date(b.deadline)
+    })
+  } else if (sortBy.value === 'deadline-latest') {
+    filtered.sort((a, b) => {
+      if (!a.deadline) return 1
+      if (!b.deadline) return -1
+      return new Date(b.deadline) - new Date(a.deadline)
+    })
+  } else if (sortBy.value === 'priority-highest') {
     filtered.sort((a, b) => {
       const priorityA = a.priority || 5
       const priorityB = b.priority || 5
       return priorityB - priorityA
     })
-  } else if (prioritySort.value === 'priority-low') {
+  } else if (sortBy.value === 'priority-lowest') {
     filtered.sort((a, b) => {
       const priorityA = a.priority || 5
       const priorityB = b.priority || 5
@@ -597,8 +590,9 @@ function getStatusBadgeColor(status) {
 const applyFilters = () => {}
 
 const clearFilters = () => {
+  filters.value.status = ''
   filters.value.priority = ''
-  prioritySort.value = 'default'
+  sortBy.value = 'default'
 }
 
 // Initialize component
