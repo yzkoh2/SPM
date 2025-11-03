@@ -527,7 +527,7 @@ async function updateSubtask(formData) {
 
 // Function to view subtask details
 function viewSubtaskDetails(subtaskId) {
-  router.push(`/tasks/${route.params.id}/subtasks/${subtaskId}`)
+  router.push(`/tasks/${route.params.id}/subtasks/${subtaskId}?from=subtasks`)
 }
 
 // Function to edit subtask

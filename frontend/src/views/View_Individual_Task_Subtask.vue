@@ -1181,8 +1181,12 @@ const getPriorityColorClass = (priority) => {
 // Add these new computed properties
 const backLink = computed(() => {
   if (isSubtask.value) {
-    //
-    return `/tasks/${parentTaskId.value}/subtasks` //
+    // If we came from the subtasks view, go back there
+    if (route.query.from === 'subtasks') {
+      return `/tasks/${parentTaskId.value}/subtasks`
+    }
+    // Otherwise, go back to the parent task details
+    return `/tasks/${parentTaskId.value}`
   }
   // Check if we came from a project
   if (route.query.fromProject) {
@@ -1194,7 +1198,12 @@ const backLink = computed(() => {
 
 const backLinkText = computed(() => {
   if (isSubtask.value) {
-    return 'Back to Subtasks' //
+    // If we came from the subtasks view, say "Back to Subtasks"
+    if (route.query.from === 'subtasks') {
+      return 'Back to Subtasks'
+    }
+    // Otherwise, say "Back to Task Details"
+    return 'Back to Task Details'
   }
   if (route.query.fromProject) {
     return 'Back to Project'
