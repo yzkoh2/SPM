@@ -185,6 +185,13 @@ def update_task(task_id, user_id, task_data):
         # --- MODIFIED: We iterate field by field to log changes ---
 
         fields_to_skip = ['id', 'owner_id', 'collaborators_to_add', 'collaborators_to_remove']
+        if task.status == TaskStatusEnum.COMPLETED:
+            # Find all fields in the update request that are NOT 'status'
+            non_status_fields = [key for key in task_data.keys() if key != 'status']
+            
+            # If there are any other fields, block the update
+            if non_status_fields:
+                return None, f"Cannot edit fields ({', '.join(non_status_fields)}) on a completed task. You can only change its status."
 
         for field, data in task_data.items():
             if field in fields_to_skip:
