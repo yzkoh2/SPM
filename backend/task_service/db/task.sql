@@ -228,8 +228,8 @@ SELECT id, 3 FROM inserted_task;
 
 -- Subtasks for Task 9 (ID=10)
 WITH inserted_task AS (
-  INSERT INTO tasks (title, status, owner_id, parent_task_id, created_at, updated_at) VALUES
-  ('Testing Subtask', 'ONGOING', 1, 9, '2025-10-01 08:00:00', '2025-10-01 08:00:00')
+  INSERT INTO tasks (title, status, owner_id, project_id, parent_task_id, created_at, updated_at) VALUES
+  ('Testing Subtask', 'ONGOING', 1, 1, 9, '2025-10-01 08:00:00', '2025-10-01 08:00:00')
   RETURNING id, owner_id
 )
 INSERT INTO task_collaborators (task_id, user_id)
@@ -277,12 +277,12 @@ INSERT INTO task_activity_log (task_id, user_id, "timestamp", field_changed, old
 VALUES
 -- SGT Date: 2025-10-26 (Sunday)
 (1, 1, '2025-10-25 16:00:00', 'priority', '5', '8'),               -- Task 1: P5 -> P8
-(8, 3, '2025-10-26 12:00:00', 'owner_id', '3', '1'),               -- Task 8: Owner 3 -> 1
 -- SGT Date: 2025-10-27 (Monday)
-(8, 1, '2025-10-27 15:59:59', 'status', 'Unassigned', 'Ongoing'),  -- Task 8: Unassigned -> Ongoing
+(8, 3, '2025-10-27 15:59:59', 'status', 'Unassigned', 'Ongoing'),  -- Task 8: Unassigned -> Ongoing
 -- SGT Date: 2025-10-28 (Tuesday)
 (1, 2, '2025-10-27 16:00:00', 'status', 'Ongoing', 'Under Review'), -- Task 1: Ongoing -> Under Review (Correctly follows initial state)
 -- SGT Date: 2025-10-29 (Wednesday)
 (1, 1, '2025-10-29 07:00:00', 'status', 'Under Review', 'Completed'),-- Task 1: Under Review -> Completed
+(8, 3, '2025-10-29 08:00:00', 'status', 'Ongoing', 'Completed'),   -- Task 8: Ongoing -> Completed
 -- SGT Date: 2025-10-30 (Thursday)
-(8, 1, '2025-10-30 08:00:00', 'priority', '5', '6');               -- Task 8: P5 -> P6
+(8, 3, '2025-10-30 08:00:00', 'priority', '5', '6');               -- Task 8: P5 -> P6
