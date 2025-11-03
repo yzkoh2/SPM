@@ -166,8 +166,8 @@ INSERT INTO attachments (filename, url, task_id) VALUES
 
 -- Task 4: Backend API Setup (ID=4, NO Project ID)
 WITH inserted_task AS (
-  INSERT INTO tasks (title, description, deadline, status, owner_id, created_at, updated_at)
-  VALUES ('Backend API Setup', 'Setup Flask API for task management', '2025-10-05', 'ONGOING', 2, '2025-10-01 08:00:00', '2025-10-01 08:00:00')
+  INSERT INTO tasks (title, description, deadline, status, owner_id, created_at, updated_at, priority)
+  VALUES ('Backend API Setup', 'Setup Flask API for task management', '2025-10-05', 'ONGOING', 2, '2025-10-01 08:00:00', '2025-10-01 08:00:00', 4)
   RETURNING id, owner_id
 )
 INSERT INTO task_collaborators (task_id, user_id)
@@ -204,8 +204,8 @@ INSERT INTO attachments (filename, url, task_id) VALUES
 
 -- Task 8: Frontend Development (ID=8, Project 1, Initial Status: UNASSIGNED, P5, Owner 3)
 WITH inserted_task AS (
-  INSERT INTO tasks (title, description, deadline, status, owner_id, project_id, created_at, updated_at)
-  VALUES ('Frontend Development', 'Develop the frontend using Vue.js', '2025-11-13', 'UNASSIGNED', 3, 1, '2025-10-01 08:00:00', '2025-10-01 08:00:00')
+  INSERT INTO tasks (title, description, deadline, status, owner_id, project_id, created_at, updated_at, priority)
+  VALUES ('Frontend Development', 'Develop the frontend using Vue.js', '2025-10-30', 'COMPLETED', 3, 1, '2025-10-01 08:00:00', '2025-10-01 08:00:00', 8)
   RETURNING id, owner_id
 )
 INSERT INTO task_collaborators (task_id, user_id)
@@ -215,8 +215,8 @@ SELECT id, 1 FROM inserted_task;
 
 -- Noti_004 test (ID=9)
 WITH inserted_task AS (
-  INSERT INTO tasks (title, description, deadline, status, owner_id, project_id, created_at, updated_at)
-  VALUES ('Test 4', 'Unassigned to Ongoing', '2026-11-11', 'UNASSIGNED', 1, 1, '2025-10-01 08:00:00', '2025-10-01 08:00:00')
+  INSERT INTO tasks (title, description, deadline, status, owner_id, project_id, created_at, updated_at, priority)
+  VALUES ('Test 4', 'Unassigned to Ongoing', '2026-11-11', 'UNASSIGNED', 1, 1, '2025-10-01 08:00:00', '2025-10-01 08:00:00', 3)
   RETURNING id, owner_id
 )
 INSERT INTO task_collaborators (task_id, user_id)
@@ -265,7 +265,8 @@ INSERT INTO comments (body, author_id, task_id) VALUES
 ('I''ve defined the initial user and task endpoints in the attached markdown file.', 2, 4);
 INSERT INTO comments (body, author_id, task_id) VALUES
 ('Should we include a route for collaborators or handle that within the main task endpoint?', 3, 5);
-
+INSERT INTO comments (body, author_id, task_id) VALUES
+('Comment?', 1, 2);
 -- The corresponding mention records for the comment ID 4
 INSERT INTO comment_mentions (comment_id, user_id) VALUES
 (4, 1),
