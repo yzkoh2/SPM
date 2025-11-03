@@ -83,9 +83,9 @@
                 </option>
               </select>
               <p class="text-xs text-gray-500 mt-1">
-                <span v-if="currentUser.role === 'Manager'">You can generate reports for your team members</span>
-                <span v-else-if="currentUser.role === 'Director'">You can generate reports for your department
-                  members</span>
+                <span v-if="currentUser.role === 'Manager'">You can generate reports for your team members.</span>
+                <span v-else-if="currentUser.role === 'Director'">You can generate reports for your department members.</span>
+                <span v-else-if="currentUser.role === 'HR' || currentUser.role === 'SM'">You can generate reports for any user in the company.</span>
               </p>
             </div>
 
@@ -233,7 +233,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useAuthStore } from '@/stores/auth'
-import PdfPreviewModal from '@/components/PdfPreviewModal.vue' // <-- Import new component
+import PdfPreviewModal from '@/components/PdfPreviewModal.vue'
 
 const authStore = useAuthStore()
 
@@ -254,23 +254,24 @@ const isGenerating = ref(false)
 const loadingProjects = ref(false)
 const loadingUser = ref(true)
 const error = ref(null)
-
-// --- New state for PDF Modal ---
 const showPdfModal = ref(false)
 const pdfPreviewUrl = ref(null)
 const pdfDownloadName = ref('')
-// ------------------------------
 
 // Computed properties
+
+// --- MODIFIED: canSelectOtherUsers ---
+// This is the property that controls the v-if in the template.
+// It MUST include all roles that can select other users.
 const canSelectOtherUsers = computed(() => {
-  return (
-    currentUser.value &&
-    (currentUser.value.role === 'Manager' || currentUser.value.role === 'Director')
-  )
-})
+  if (!currentUser.value) return false;
+  const role = currentUser.value.role;
+  // NOTE: Adjust 'HR' and 'SM' if your role names are different
+  return ['Manager', 'Director', 'HR', 'SM'].includes(role);
+});
+
 
 const maxDate = computed(() => {
-  // Return today's date in YYYY-MM-DD format to prevent future date selection
   const today = new Date()
   return today.toISOString().split('T')[0]
 })
@@ -295,35 +296,70 @@ const isFormValid = computed(() => {
 })
 
 // Methods
+
+// --- NEW FUNCTION: fetchAllUsers ---
+const fetchAllUsers = async () => {
+  try {
+    const response = await fetch(`${KONG_API_URL}/user`); 
+    if (!response.ok) throw new Error('Failed to fetch all users');
+    availableUsers.value = await response.json();
+    console.log('Fetched all users:', availableUsers.value)
+  } catch (err) {
+    console.error('Error fetching all users:', err);
+    error.value = 'Failed to load company user list';
+  }
+};
+
+// --- MODIFIED: fetchCurrentUser ---
+// This function now correctly checks roles from MOST specific to LEAST specific
 const fetchCurrentUser = async () => {
   try {
-    loadingUser.value = true
-    const response = await fetch(`${KONG_API_URL}/user/${authStore.user.id}`)
-    if (!response.ok) throw new Error('Failed to fetch user details')
-    currentUser.value = await response.json()
-    selectedUserId.value = currentUser.value.id
-    console.log('Current user details:', currentUser.value)
+    loadingUser.value = true;
+    const response = await fetch(`${KONG_API_URL}/user/${authStore.user.id}`);
+    if (!response.ok) throw new Error('Failed to fetch user details');
+    currentUser.value = await response.json();
+    
+    // Default selected user is always the current user
+    selectedUserId.value = currentUser.value.id; 
+    console.log('Current user details:', currentUser.value);
 
-    // Fetch appropriate users based on role
-    if (currentUser.value.role === 'Manager') {
-      await fetchTeamMembers()
-    } else if (currentUser.value.role === 'Director') {
-      await fetchDepartmentMembers()
+    // --- HIERARCHICAL ROLE LOGIC ---
+    // Check from highest privilege to lowest privilege
+    const role = currentUser.value.role;
+
+    // NOTE: Adjust 'HR' and 'SM' if your role names are different
+    if (role === 'HR' || role === 'SM') {
+      console.log("Role: HR/SM. Fetching all users.");
+      await fetchAllUsers();
+    } else if (role === 'Director') {
+      console.log("Role: Director. Fetching department members.");
+      await fetchDepartmentMembers();
+    } else if (role === 'Manager') {
+      console.log("Role: Manager. Fetching team members.");
+      await fetchTeamMembers();
+    } else {
+      // This is a 'Staff' user
+      console.log("Role: Staff. Restricting to self.");
+      availableUsers.value = [currentUser.value]; // Only they can see themselves
     }
+    // --- END ROLE-BASED LOGIC ---
+
   } catch (err) {
-    console.error('Error fetching current user:', err)
-    error.value = 'Failed to load user information'
+    console.error('Error fetching current user:', err);
+    error.value = 'Failed to load user information';
   } finally {
-    loadingUser.value = false
+    loadingUser.value = false;
   }
-}
+};
+
 
 const fetchTeamMembers = async () => {
   try {
     const response = await fetch(`${KONG_API_URL}/user/team/${currentUser.value.team_id}`)
     if (!response.ok) throw new Error('Failed to fetch team members')
     availableUsers.value = await response.json()
-  } catch (err) {
+    console.log('Fetched team members:', availableUsers.value)
+  } catch (err){
     console.error('Error fetching team members:', err)
     error.value = 'Failed to load team members'
   }
@@ -399,7 +435,7 @@ const calculateDateRange = () => {
   switch (timeframe.value) {
     case 'this_month':
       startDate = new Date(now.getFullYear(), now.getMonth(), 1)
-      endDate = now  // Use current datetime instead of end of month
+      endDate = now
       break
     case 'last_month':
       startDate = new Date(now.getFullYear(), now.getMonth() - 1, 1)
@@ -419,7 +455,6 @@ const calculateDateRange = () => {
   }
 }
 
-// --- Helper function to parse filename from headers ---
 const getFilenameFromHeaders = (response) => {
   const disposition = response.headers.get('content-disposition')
   if (disposition && disposition.indexOf('attachment') !== -1) {
@@ -429,16 +464,13 @@ const getFilenameFromHeaders = (response) => {
       return matches[1].replace(/['"]/g, '')
     }
   }
-  // Fallback
   return `${reportType.value}_report_${new Date().toISOString().split('T')[0]}.pdf`
 }
 
-// --- *** MODIFIED generateReport function *** ---
 const generateReport = async () => {
   error.value = null
   isGenerating.value = true
 
-  // Clear previous PDF URL if any
   if (pdfPreviewUrl.value) {
     window.URL.revokeObjectURL(pdfPreviewUrl.value)
     pdfPreviewUrl.value = null
@@ -448,29 +480,25 @@ const generateReport = async () => {
     const dateRange = calculateDateRange()
     let endpoint, payload
 
-    // Check if end_date is today - if so, use current datetime instead of end-of-day
     const today = new Date().toISOString().split('T')[0]
     const isEndDateToday = dateRange.end_date === today
-
-    // Get current datetime in ISO format for timezone conversion
     const currentDatetime = isEndDateToday ? new Date().toISOString() : null
 
-    // --- Common Request Logic ---
     let response
     if (reportType.value === 'individual') {
-      const targetUserId = selectedUserId.value || currentUser.value.id
+      const targetUserId = selectedUserId.value 
+      if (!targetUserId) throw new Error('Please select a user.'); 
+      
       endpoint = `${KONG_API_URL}/reports/individual/${targetUserId}?requesting_user_id=${authStore.user.id}`
       payload = {
         start_date: dateRange.start_date || null,
         end_date: dateRange.end_date || null,
         timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
       }
-      // Add current datetime if end date is today
       if (currentDatetime) {
         payload.end_datetime = currentDatetime
       }
     } else {
-      // Project Report
       if (!selectedProjectId.value) throw new Error('Please select a project.')
       endpoint = `${KONG_API_URL}/reports/project/${selectedProjectId.value}?user_id=${authStore.user.id}`
       payload = {
@@ -478,13 +506,11 @@ const generateReport = async () => {
         end_date: dateRange.end_date || null,
         timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
       }
-      // Add current datetime if end date is today
       if (currentDatetime) {
         payload.end_datetime = currentDatetime
       }
     }
 
-    // --- Make API Call ---
     response = await fetch(endpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -496,18 +522,14 @@ const generateReport = async () => {
       throw new Error(errorData.error || `Failed to generate ${reportType.value} report`)
     }
 
-    // --- Handle Successful Response ---
     const filename = getFilenameFromHeaders(response)
     const blob = await response.blob()
     const url = window.URL.createObjectURL(blob)
 
-    // --- Show the Modal ---
     pdfPreviewUrl.value = url
     pdfDownloadName.value = filename
     showPdfModal.value = true
 
-    // Note: We no longer show alert() or resetForm() here.
-    // This will be handled when the user closes the modal.
   } catch (err) {
     console.error('Error generating report:', err)
     error.value = err.message || 'Failed to generate report. Please try again.'
@@ -516,7 +538,6 @@ const generateReport = async () => {
   }
 }
 
-// --- New function to close the modal ---
 const closePdfModal = () => {
   showPdfModal.value = false
   if (pdfPreviewUrl.value) {
@@ -524,12 +545,12 @@ const closePdfModal = () => {
   }
   pdfPreviewUrl.value = null
   pdfDownloadName.value = ''
-  resetForm() // Reset the form after closing the modal
+  resetForm()
 }
 
 const resetForm = () => {
   if (canSelectOtherUsers.value) {
-    selectedUserId.value = ''
+    selectedUserId.value = '' 
   } else {
     selectedUserId.value = currentUser.value?.id || ''
   }
