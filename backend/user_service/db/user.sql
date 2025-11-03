@@ -26,7 +26,7 @@ CREATE TABLE users (
 INSERT INTO departments (id, name) VALUES 
 (1, 'Finance Department'),
 (2, 'Tech Department'),
-(3, 'HR');
+(3, 'HR'),
 (4, 'Senior Management');
 
 
@@ -37,7 +37,7 @@ INSERT INTO teams (id, name, department_id) VALUES
 (4, 'Tech Team 1', 2),
 (5, 'Tech Team 2', 2),
 (6, 'Tech Leadership Team', 2),
-(7, 'HR Team', 3);
+(7, 'HR Team', 3),
 (8, 'Senior Management Team', 4);
 
 -- Insert a user with the 'staff' role
@@ -58,16 +58,16 @@ INSERT INTO users (username, name, password_hash, email, role, team_id) VALUES
 ('bob_staff', 'Bob', 'scrypt:32768:8:1$dCPdgoTqcJd1S7lY$5cc719af753d37f8c64580c227d4ce985fe2e1aaf7f8a204293d48d0e45e41479f819d62652d24a477fa65b4f34bb1667641b80bdc697b837e90d2c283bb2b74', 'spmg8t3+bob@gmail.com', 'STAFF',4),
 ('carol_manager', 'Carol', 'scrypt:32768:8:1$dCPdgoTqcJd1S7lY$5cc719af753d37f8c64580c227d4ce985fe2e1aaf7f8a204293d48d0e45e41479f819d62652d24a477fa65b4f34bb1667641b80bdc697b837e90d2c283bb2b74', 'spmg8t3+carol@gmail.com', 'MANAGER',4),
 -- tech team 2
-('dave_staff', 'Dave', 'scrypt:32768:8:1$dCPdgoTqcJd1S7lY$5cc719af753d37f8c64580c227d4ce985fe2e1aaf7f8a204293d48d0e45e41479f819d62652d24a477fa65b4f34bb1667641b80bdc697b837e90d2c283bb2b74', 'spmg8t3+bob@gmail.com', 'STAFF',5),
+('dave_staff', 'Dave', 'scrypt:32768:8:1$dCPdgoTqcJd1S7lY$5cc719af753d37f8c64580c227d4ce985fe2e1aaf7f8a204293d48d0e45e41479f819d62652d24a477fa65b4f34bb1667641b80bdc697b837e90d2c283bb2b74', 'spmg8t3+dave@gmail.com', 'STAFF',5),
 ('eva_staff', 'Eva', 'scrypt:32768:8:1$dCPdgoTqcJd1S7lY$5cc719af753d37f8c64580c227d4ce985fe2e1aaf7f8a204293d48d0e45e41479f819d62652d24a477fa65b4f34bb1667641b80bdc697b837e90d2c283bb2b74', 'spmg8t3+eva@gmail.com', 'STAFF',5),
 ('frank_manager', 'Frank', 'scrypt:32768:8:1$dCPdgoTqcJd1S7lY$5cc719af753d37f8c64580c227d4ce985fe2e1aaf7f8a204293d48d0e45e41479f819d62652d24a477fa65b4f34bb1667641b80bdc697b837e90d2c283bb2b74', 'spmg8t3+frank@gmail.com', 'MANAGER',5),
 -- tech leadership team
 ('grace_director', 'Grace', 'scrypt:32768:8:1$dCPdgoTqcJd1S7lY$5cc719af753d37f8c64580c227d4ce985fe2e1aaf7f8a204293d48d0e45e41479f819d62652d24a477fa65b4f34bb1667641b80bdc697b837e90d2c283bb2b74', 'spmg8t3+grace@gmail.com', 'DIRECTOR', 6),
 
 -- hr team
-('harry_hr', 'Harry', 'scrypt:32768:8:1$dCPdgoTqcJd1S7lY$5cc719af753d37f8c64580c227d4ce985fe2e1aaf7f8a204293d48d0e45e41479f819d62652d24a477fa65b4f34bb1667641b80bdc697b837e90d2c283bb2b74', 'spmg8t3+harry@gmail.com', 'HR', 1),
+('harry_hr', 'Harry', 'scrypt:32768:8:1$dCPdgoTqcJd1S7lY$5cc719af753d37f8c64580c227d4ce985fe2e1aaf7f8a204293d48d0e45e41479f819d62652d24a477fa65b4f34bb1667641b80bdc697b837e90d2c283bb2b74', 'spmg8t3+harry@gmail.com', 'HR', 7),
 -- senior management team
-('tom_sm', 'Tom', 'scrypt:32768:8:1$dCPdgoTqcJd1S7lY$5cc719af753d37f8c64580c227d4ce985fe2e1aaf7f8a204293d48d0e45e41479f819d62652d24a477fa65b4f34bb1667641b80bdc697b837e90d2c283bb2b74', 'spmg8t3+tom@gmail.com', 'SM', 1),
+('tom_sm', 'Tom', 'scrypt:32768:8:1$dCPdgoTqcJd1S7lY$5cc719af753d37f8c64580c227d4ce985fe2e1aaf7f8a204293d48d0e45e41479f819d62652d24a477fa65b4f34bb1667641b80bdc697b837e90d2c283bb2b74', 'spmg8t3+tom@gmail.com', 'SM', 8);
 
 
 -- password is "a"

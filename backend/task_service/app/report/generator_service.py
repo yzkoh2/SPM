@@ -227,178 +227,283 @@ def generate_project_pdf_report(project_id: int, user_id: int, start_date: datet
         'collaborator_names': ", ".join(unique_collaborator_names) or "None",
     }
 
-    # --- 3. Fetch ALL Tasks for the Project (Needed for "As Of" calculations) ---
+    # --- 3. Fetch ALL Tasks for the Project (including subtasks) ---
     try:
+        # Get all tasks with this project_id (includes both main tasks and subtasks)
         all_project_tasks = models.Task.query.filter(models.Task.project_id == project_id).all()
-        print(f"Fetched {len(all_project_tasks)} total tasks for project {project_id}.")
+        print(f"Fetched {len(all_project_tasks)} tasks for project {project_id}")
     except Exception as e:
         print(f"Error fetching all tasks for project {project_id}: {e}")
         return None, f"Could not fetch tasks: {e}"
 
-    # --- 4. Calculate "As Of" Metrics (Section 1) & Prepare Section 3 Data ---
-    status_distribution_as_of = {status.value: 0 for status in models.TaskStatusEnum}
-    priority_distribution_as_of = {p: 0 for p in range(1, 11)} 
-    overdue_tasks_as_of_list = []
-    section3_tasks = [] 
+    # Get project creation date for overall metrics
+    project_created_at = project.created_at
+    if project_created_at and project_created_at.tzinfo is None:
+        project_created_at = utc_tz.localize(project_created_at)
 
-    collaborator_stats_as_of = defaultdict(lambda: {
-        'total_tasks': 0, 'main_tasks': 0, 'sub_tasks': 0,
-        'in_progress': 0, 'under_review': 0, 'completed': 0
-    })
-    for collab_id in project_collaborator_ids: _ = collaborator_stats_as_of[collab_id] 
+    print(f"Project created at: {project_created_at}")
+    print(f"Report period: {start_date} to {end_date}")
 
-    print(f"DEBUG: generator - Received start_date (UTC): {start_date}")
-    print(f"DEBUG: generator - Received end_date (UTC): {end_date}") # <-- Check this value carefully!
-    print(f"DEBUG: generator - Received timezone_str: {timezone_str}")
-    print(f"DEBUG: generator - Calculated as_of_date_utc: {as_of_date_utc}")
+    # --- Helper function to calculate complete section data for a date range ---
+    def calculate_section_data_for_period(period_start, period_end, period_name):
+        """Calculate all data for tasks active/updated within the given period"""
+        print(f"Calculating {period_name} data for period: {period_start} to {period_end}")
 
-    for task in all_project_tasks:
-        # 1. Get the task state as of the report snapshot date
-        state_as_of = get_task_state_as_of(task, as_of_date_utc)
-        
-        # 2. CRITICAL FIX: Check if the task existed as of the report date
-        if state_as_of is None:
-            # If the task didn't exist at the snapshot time, skip it and continue to the next task
-            continue 
-            
-        # 3. Only proceed with processing if state_as_of is a valid dictionary
-        status_as_of = state_as_of['status']
-        priority_as_of = state_as_of['priority']
-        owner_id_as_of = state_as_of['owner_id']
-        
-        status_distribution_as_of[status_as_of.value] += 1
-        if priority_as_of and 1 <= priority_as_of <= 10:
-            priority_distribution_as_of[priority_as_of] += 1
-
-        task_deadline_utc = task.deadline
-        if task_deadline_utc and task_deadline_utc.tzinfo is None: task_deadline_utc = utc_tz.localize(task_deadline_utc)
-
-        # Improved overdue logic:
-        # - If task is COMPLETED: check if it was completed AFTER the deadline (completed late)
-        # - If task is NOT COMPLETED: check if the deadline has passed (still active but overdue)
-        is_overdue_as_of = False
-        if task_deadline_utc:
-            if status_as_of == models.TaskStatusEnum.COMPLETED:
-                # Task is completed - check if it was completed after deadline
-                completion_time = get_task_completion_time(task, as_of_date_utc)
-                if completion_time and completion_time > task_deadline_utc:
-                    is_overdue_as_of = True  # Completed late
-            else:
-                # Task is not completed - check if deadline has passed
-                if task_deadline_utc < as_of_date_utc:
-                    is_overdue_as_of = True  # Still active but past deadline
-
-        if is_overdue_as_of:
-            if owner_id_as_of not in user_cache: user_cache[owner_id_as_of] = _fetch_user_details(owner_id_as_of)
-            owner_name_as_of = user_cache[owner_id_as_of]['name']
-            task_type = "Subtask" if task.parent_task_id is not None else "Task"
-            overdue_tasks_as_of_list.append({
-                'title': task.title, 'deadline': convert_to_user_tz(task.deadline),
-                'owner_name': owner_name_as_of, 'status': status_as_of.value, 'task_type': task_type
-            })
-
-        if owner_id_as_of in collaborator_stats_as_of:
-            stats = collaborator_stats_as_of[owner_id_as_of]
-            stats['total_tasks'] += 1
-            if task.parent_task_id is None: stats['main_tasks'] += 1
-            else: stats['sub_tasks'] += 1
-            if status_as_of == models.TaskStatusEnum.ONGOING: stats['in_progress'] += 1
-            elif status_as_of == models.TaskStatusEnum.UNDER_REVIEW: stats['under_review'] += 1
-            elif status_as_of == models.TaskStatusEnum.COMPLETED: stats['completed'] += 1
-            
-        if status_as_of != models.TaskStatusEnum.COMPLETED:
-            if owner_id_as_of not in user_cache: user_cache[owner_id_as_of] = _fetch_user_details(owner_id_as_of)
-            owner_name_as_of = user_cache[owner_id_as_of]['name']
-            task_type = "Subtask" if task.parent_task_id is not None else "Task"
-            section3_tasks.append({
-                 'title': task.title, 'task_type': task_type, 'owner_name': owner_name_as_of,
-                 'deadline': convert_to_user_tz(task.deadline), 'status': status_as_of.value,
-                 'priority': priority_as_of or '-', 'is_overdue_as_of': is_overdue_as_of
-            })
-
-# Convert to proper types before sorting
-    section3_for_sort = []
-    for task in section3_tasks:
+        # Find tasks with activity during this period (any activity)
+        tasks_with_activity = set()
         try:
-            deadline_sort = datetime.fromisoformat(task['deadline'].strip()) if task['deadline'] != 'N/A' else datetime.max
-        except:
-            deadline_sort = datetime.max
-        
-        priority_sort = int(task['priority']) if task['priority'] != '-' else 0
-        
-        section3_for_sort.append((deadline_sort, priority_sort, task))
-    sorted_list = sorted(section3_for_sort, key=lambda item: (item[0], item[1]))
-    section3_tasks = [item[2] for item in sorted_list]
-
-
-    # --- 5. Format Metrics and Generate Charts ---
-    section1_metrics = {
-        'status_distribution': status_distribution_as_of,
-        'priority_distribution': dict(sorted(priority_distribution_as_of.items())),
-        'overdue_tasks': overdue_tasks_as_of_list,
-        'overdue_count': len(overdue_tasks_as_of_list),
-        'total_relevant_tasks': len(all_project_tasks) 
-    }
-
-    charts = {
-        'status_chart': _generate_pie_chart_base64(status_distribution_as_of, f"Task Status (As of {as_of_date_utc.strftime('%Y-%m-%d')})"),
-        'priority_chart': _generate_hbar_chart_base64(priority_distribution_as_of, f"Task Priority (As of {as_of_date_utc.strftime('%Y-%m-%d')})")
-    }
-    
-    collaborator_stats_formatted = []
-    total_project_tasks_as_of = 0
-    total_project_completed_as_of = 0
-    for collab_id, stats in collaborator_stats_as_of.items():
-        total = stats['total_tasks']; completed = stats['completed']
-        rate = (completed / total * 100) if total > 0 else 0
-        total_project_tasks_as_of += total; total_project_completed_as_of += completed
-        collaborator_stats_formatted.append({
-            'name': user_cache.get(collab_id, {}).get('name', f"User {collab_id}"),
-            'total_tasks': total, 'main_tasks': stats['main_tasks'], 'sub_tasks': stats['sub_tasks'],
-            'in_progress': stats['in_progress'], 'under_review': stats['under_review'],
-            'completed': completed, 'completion_rate': round(rate, 1)
-        })
-    collaborator_stats_formatted.sort(key=lambda x: x['name'])
-    average_completion_rate_as_of = (total_project_completed_as_of / total_project_tasks_as_of * 100) if total_project_tasks_as_of > 0 else 0
-
-    # --- 6. Fetch Section 2 Activity Details (Uses original start_date/end_date for range) ---
-    section2_details = []
-    if start_date and end_date: 
-        try:
-            activity_query = models.TaskActivityLog.query.join(models.Task).filter(
+            activity_logs_all = models.TaskActivityLog.query.join(models.Task).filter(
                 models.Task.project_id == project_id,
-                models.TaskActivityLog.timestamp >= start_date, 
-                models.TaskActivityLog.timestamp <= end_date    
-            )
-            activity_logs = activity_query.order_by(models.TaskActivityLog.task_id, models.TaskActivityLog.timestamp.asc()).all()
-            print(f"Found {len(activity_logs)} activity log entries in the date range {start_date} to {end_date}.")
+                and_(
+                    models.TaskActivityLog.timestamp >= period_start,
+                    models.TaskActivityLog.timestamp <= period_end
+                )
+            ).all()
+            tasks_with_activity = {log.task_id for log in activity_logs_all}
+            print(f"Found {len(tasks_with_activity)} tasks with activity in {period_name}.")
+        except Exception as e:
+            print(f"Error fetching activity logs for {period_name}: {e}")
 
-            task_titles_cache = {} 
-            for log in activity_logs:
+        # Fetch activity logs (STATUS CHANGES ONLY - like individual report)
+        activity_details = []
+        try:
+            status_change_logs = models.TaskActivityLog.query.join(models.Task).filter(
+                models.Task.project_id == project_id,
+                models.TaskActivityLog.timestamp >= period_start,
+                models.TaskActivityLog.timestamp <= period_end,
+                models.TaskActivityLog.field_changed == 'status'  # Only status changes
+            ).order_by(models.TaskActivityLog.task_id, models.TaskActivityLog.timestamp.asc()).all()
+
+            print(f"Found {len(status_change_logs)} status change log entries in {period_name}.")
+
+            task_titles_cache = {}
+            for log in status_change_logs:
                 task_id = log.task_id
                 if task_id not in task_titles_cache:
-                    task = models.Task.query.get(task_id); task_titles_cache[task_id] = task.title if task else f"Task {task_id}"
+                    task = models.Task.query.get(task_id)
+                    task_titles_cache[task_id] = task.title if task else f"Task {task_id}"
                 task_title = task_titles_cache[task_id]
+
                 user_id_changed = log.user_id
-                if user_id_changed not in user_cache: user_cache[user_id_changed] = _fetch_user_details(user_id_changed)
+                if user_id_changed not in user_cache:
+                    user_cache[user_id_changed] = _fetch_user_details(user_id_changed)
                 user_name_changed = user_cache[user_id_changed]['name']
-                section2_details.append({
-                    'task_id': task_id, 'task_title': task_title,
-                    'timestamp': convert_to_user_tz(log.timestamp), 
-                    'user_name': user_name_changed, 'field_changed': log.field_changed.replace('_', ' ').title(),
+
+                activity_details.append({
+                    'task_id': task_id,
+                    'task_title': task_title,
+                    'timestamp': convert_to_user_tz(log.timestamp),
+                    'user_name': user_name_changed,
+                    'field_changed': log.field_changed.replace('_', ' ').title(),
                     'old_value': log.old_value if log.old_value != "None" else "-",
                     'new_value': log.new_value if log.new_value != "None" else "-",
                 })
-        except Exception as e: print(f"Error fetching activity logs for project {project_id}: {e}"); return None, f"Could not fetch activity logs: {e}"
-    else:
-        print("No date range provided, skipping Section 2 Activity Log.")
+        except Exception as e:
+            print(f"Error fetching status change logs for {period_name}: {e}")
+
+        # Calculate metrics and prepare task list
+        status_distribution = {status.value: 0 for status in models.TaskStatusEnum}
+        priority_distribution = {p: 0 for p in range(1, 11)}
+        completion_times = []
+        overdue_count = 0
+        tasks_count = 0
+        overdue_tasks_list = []
+        task_list = []
+
+        # Collaborator stats for this period
+        period_collaborator_stats = defaultdict(lambda: {
+            'total_tasks': 0, 'main_tasks': 0, 'sub_tasks': 0,
+            'in_progress': 0, 'under_review': 0, 'completed': 0
+        })
+        for collab_id in project_collaborator_ids:
+            _ = period_collaborator_stats[collab_id]
+
+        for task in all_project_tasks:
+            state_as_of = get_task_state_as_of(task, period_end)
+
+            if state_as_of is None:
+                continue  # Task didn't exist at this time
+
+            status_as_of = state_as_of['status']
+            priority_as_of = state_as_of['priority']
+            owner_id_as_of = state_as_of['owner_id']
+
+            # Include task if it had activity during period OR is currently incomplete
+            should_include = False
+            if task.id in tasks_with_activity or status_as_of != models.TaskStatusEnum.COMPLETED:
+                should_include = True
+
+            if should_include:
+                tasks_count += 1
+                status_distribution[status_as_of.value] += 1
+                if priority_as_of and 1 <= priority_as_of <= 10:
+                    priority_distribution[priority_as_of] += 1
+
+                # Update collaborator stats
+                if owner_id_as_of in period_collaborator_stats:
+                    stats = period_collaborator_stats[owner_id_as_of]
+                    stats['total_tasks'] += 1
+                    if task.parent_task_id is None:
+                        stats['main_tasks'] += 1
+                    else:
+                        stats['sub_tasks'] += 1
+                    if status_as_of == models.TaskStatusEnum.ONGOING:
+                        stats['in_progress'] += 1
+                    elif status_as_of == models.TaskStatusEnum.UNDER_REVIEW:
+                        stats['under_review'] += 1
+                    elif status_as_of == models.TaskStatusEnum.COMPLETED:
+                        stats['completed'] += 1
+
+                # Calculate completion time for completed tasks
+                if status_as_of == models.TaskStatusEnum.COMPLETED and task.created_at:
+                    completion_log = models.TaskActivityLog.query.filter(
+                        and_(
+                            models.TaskActivityLog.task_id == task.id,
+                            models.TaskActivityLog.field_changed == 'status',
+                            models.TaskActivityLog.new_value == 'Completed'
+                        )
+                    ).order_by(models.TaskActivityLog.timestamp.desc()).first()
+
+                    if completion_log:
+                        created_at_utc = task.created_at if task.created_at.tzinfo else utc_tz.localize(task.created_at)
+                        completed_at_utc = completion_log.timestamp if completion_log.timestamp.tzinfo else utc_tz.localize(completion_log.timestamp)
+                        completion_time_days = (completed_at_utc - created_at_utc).total_seconds() / 86400
+                        completion_times.append(completion_time_days)
+
+                # Check for overdue
+                task_deadline_utc = task.deadline
+                if task_deadline_utc and task_deadline_utc.tzinfo is None:
+                    task_deadline_utc = utc_tz.localize(task_deadline_utc)
+
+                is_overdue = False
+                if task_deadline_utc:
+                    if status_as_of == models.TaskStatusEnum.COMPLETED:
+                        completion_time = get_task_completion_time(task, period_end)
+                        if completion_time and completion_time > task_deadline_utc:
+                            is_overdue = True
+                    else:
+                        if task_deadline_utc < period_end:
+                            is_overdue = True
+
+                if is_overdue:
+                    overdue_count += 1
+                    if owner_id_as_of not in user_cache:
+                        user_cache[owner_id_as_of] = _fetch_user_details(owner_id_as_of)
+                    owner_name = user_cache[owner_id_as_of]['name']
+                    task_type = "Subtask" if task.parent_task_id is not None else "Task"
+                    overdue_tasks_list.append({
+                        'title': task.title,
+                        'deadline': convert_to_user_tz(task.deadline),
+                        'owner_name': owner_name,
+                        'status': status_as_of.value,
+                        'task_type': task_type
+                    })
+
+                # Add to task list
+                if owner_id_as_of not in user_cache:
+                    user_cache[owner_id_as_of] = _fetch_user_details(owner_id_as_of)
+                owner_name = user_cache[owner_id_as_of]['name']
+                task_type = "Subtask" if task.parent_task_id is not None else "Task"
+
+                task_list.append({
+                    'title': task.title,
+                    'task_type': task_type,
+                    'owner_name': owner_name,
+                    'deadline': convert_to_user_tz(task.deadline),
+                    'status': status_as_of.value,
+                    'priority': priority_as_of or '-',
+                    'is_overdue': is_overdue
+                })
+
+        # Sort task list by deadline and priority
+        task_list_for_sort = []
+        for task in task_list:
+            try:
+                deadline_sort = datetime.fromisoformat(task['deadline'].strip()) if task['deadline'] != 'N/A' else datetime.max
+            except:
+                deadline_sort = datetime.max
+            priority_sort = int(task['priority']) if task['priority'] != '-' else 0
+            task_list_for_sort.append((deadline_sort, priority_sort, task))
+
+        sorted_list = sorted(task_list_for_sort, key=lambda item: (item[0], item[1]))
+        task_list = [item[2] for item in sorted_list]
+
+        # Format collaborator stats
+        collab_stats_formatted = []
+        total_period_tasks = 0
+        total_period_completed = 0
+        for collab_id, stats in period_collaborator_stats.items():
+            total = stats['total_tasks']
+            completed = stats['completed']
+            rate = (completed / total * 100) if total > 0 else 0
+            total_period_tasks += total
+            total_period_completed += completed
+            collab_stats_formatted.append({
+                'name': user_cache.get(collab_id, {}).get('name', f"User {collab_id}"),
+                'total_tasks': total,
+                'main_tasks': stats['main_tasks'],
+                'sub_tasks': stats['sub_tasks'],
+                'in_progress': stats['in_progress'],
+                'under_review': stats['under_review'],
+                'completed': completed,
+                'completion_rate': round(rate, 1)
+            })
+        collab_stats_formatted.sort(key=lambda x: x['name'])
+        avg_completion_rate = (total_period_completed / total_period_tasks * 100) if total_period_tasks > 0 else 0
+
+        # Calculate summary metrics
+        completed_tasks = status_distribution.get('Completed', 0)
+        completion_rate = (completed_tasks / tasks_count * 100) if tasks_count > 0 else 0
+        avg_completion_time = sum(completion_times) / len(completion_times) if completion_times else 0
+
+        return {
+            'total_tasks': tasks_count,
+            'completed_tasks': completed_tasks,
+            'velocity': completed_tasks,
+            'completion_rate': round(completion_rate, 1),
+            'average_completion_time': round(avg_completion_time, 1),
+            'overdue_count': overdue_count,
+            'status_distribution': status_distribution,
+            'priority_distribution': dict(sorted(priority_distribution.items())),
+            'overdue_tasks': overdue_tasks_list,
+            'activity_log': activity_details,
+            'task_list': task_list,
+            'collaborator_stats': collab_stats_formatted,
+            'average_completion_rate': round(avg_completion_rate, 1)
+        }
+
+    # --- 4. Calculate Overall Project Data (from project start to end_date) ---
+    overall_section = calculate_section_data_for_period(project_created_at, as_of_date_utc, "Overall Project")
+
+    # --- 5. Calculate Timeframe-Specific Data (from start_date to end_date) ---
+    timeframe_section = None
+    if start_date and end_date:
+        timeframe_section = calculate_section_data_for_period(start_date, as_of_date_utc, "Timeframe-Specific")
+
+        # Generate charts for timeframe section
+        if timeframe_section:
+            timeframe_section['status_chart'] = _generate_pie_chart_base64(
+                timeframe_section['status_distribution'],
+                f"Task Status (Timeframe)"
+            )
+            timeframe_section['priority_chart'] = _generate_hbar_chart_base64(
+                timeframe_section['priority_distribution'],
+                f"Task Priority (Timeframe)"
+            )
+
+    # --- 6. Generate Charts (Overall Section) ---
+    charts = {
+        'status_chart': _generate_pie_chart_base64(overall_section['status_distribution'], f"Task Status (Overall Project)"),
+        'priority_chart': _generate_hbar_chart_base64(overall_section['priority_distribution'], f"Task Priority (Overall Project)")
+    }
 
 
     # --- 7. Prepare Template Context ---
     report_period_str = f"{convert_to_user_tz(as_of_date_utc)}"
-    activity_period_str = "N/A"
+    overall_period_str = f"{project_created_at.astimezone(user_tz).strftime('%Y-%m-%d')} to {as_of_date_utc.astimezone(user_tz).strftime('%Y-%m-%d')}"
+    timeframe_period_str = "N/A"
     if start_date and end_date:
-        activity_period_str = f"{start_date.astimezone(user_tz).strftime('%Y-%m-%d')} to {end_date.astimezone(user_tz).strftime('%Y-%m-%d')}"
+        timeframe_period_str = f"{start_date.astimezone(user_tz).strftime('%Y-%m-%d')} to {end_date.astimezone(user_tz).strftime('%Y-%m-%d')}"
 
     generation_date_user_tz = datetime.now(user_tz).strftime('%Y-%m-%d %H:%M:%S %Z')
 
@@ -410,14 +515,12 @@ def generate_project_pdf_report(project_id: int, user_id: int, start_date: datet
         "report_title": f"Project Report: {project_title}",
         "report_filename": filename_to_save,
         "project_details": project_details,
-        "report_period": report_period_str, 
-        "activity_period": activity_period_str, 
+        "report_period": report_period_str,
+        "overall_period": overall_period_str,
+        "timeframe_period": timeframe_period_str,
         "generation_date": generation_date_user_tz,
-        "section1": section1_metrics,
-        "collaborator_stats": collaborator_stats_formatted, 
-        "average_completion_rate": round(average_completion_rate_as_of, 1),
-        "section2": section2_details,
-        "section3_tasks": section3_tasks, 
+        "overall_section": overall_section,
+        "timeframe_section": timeframe_section,
         "charts": charts,
     }
 

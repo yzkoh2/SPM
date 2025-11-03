@@ -1,23 +1,27 @@
 <template>
   <div class="min-h-screen bg-gray-50">
-    <!-- Main Content -->
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <!-- Header with Create Button -->
-      <div class="flex justify-between items-center mb-8">
-        <h2 class="text-3xl font-bold text-gray-900">My Projects</h2>
+      <!-- Header -->
+      <div class="mb-8">
+        <h1 class="text-3xl font-bold text-gray-900">My Projects</h1>
+        <p class="text-sm text-gray-600 mt-1">Manage your projects and collaborate with your team</p>
+      </div>
+
+      <!-- Create Button -->
+      <div class="mb-6">
         <button
           @click="showCreateForm = !showCreateForm"
-          class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+          class="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-lg font-medium transition-colors flex items-center"
         >
           <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path
               stroke-linecap="round"
               stroke-linejoin="round"
               stroke-width="2"
-              d="M12 4v16m8-8H4"
+              d="M12 6v6m0 0v6m0-6h6m-6 0H6"
             ></path>
           </svg>
-          New Project
+          {{ showCreateForm ? 'Cancel' : 'Create New Project' }}
         </button>
       </div>
 
@@ -168,6 +172,62 @@
         </form>
       </div>
 
+      <!-- Filter and Sort Bar -->
+      <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+        <div
+          class="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0"
+        >
+          <div
+            class="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-4"
+          >
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Filter by Role</label>
+              <select
+                v-model="filters.role"
+                @change="applyFilters"
+                class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              >
+                <option value="">All Projects</option>
+                <option value="owner">My Projects</option>
+                <option value="collaborator">Collaborating</option>
+              </select>
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Sort by</label>
+              <select
+                v-model="sortBy"
+                @change="applyFilters"
+                class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              >
+                <option value="default">Default Order</option>
+                <option value="deadline-earliest">Deadline (Earliest First)</option>
+                <option value="deadline-latest">Deadline (Latest First)</option>
+                <option value="title-asc">Title (A-Z)</option>
+                <option value="title-desc">Title (Z-A)</option>
+              </select>
+            </div>
+          </div>
+
+          <div
+            class="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-4"
+          >
+            <button
+              @click="clearFilters"
+              class="px-4 py-2 text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors"
+            >
+              Clear Filters
+            </button>
+            <button
+              @click="fetchProjects"
+              class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors"
+            >
+              Refresh
+            </button>
+          </div>
+        </div>
+      </div>
+
       <!-- Project Statistics -->
       <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
         <div class="bg-white rounded-lg shadow-md p-6">
@@ -302,72 +362,34 @@
       </div>
 
       <!-- Projects Grid -->
-      <div
-        v-else-if="projects.length > 0"
-        class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
-      >
-        <div
-          v-for="project in projects"
-          :key="project.id"
-          class="bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300 overflow-hidden cursor-pointer"
-          @click="viewProjectDetails(project.id)"
-        >
-          <div class="p-6">
-            <div class="flex justify-between items-start mb-3">
-              <h3 class="text-lg font-semibold text-gray-900 line-clamp-1">{{ project.title }}</h3>
-              <span
-                :class="[
-                  'px-2 py-1 text-xs font-medium rounded-full',
-                  getUserRoleBadgeColor(project.user_role),
-                ]"
-              >
-                {{ project.user_role === 'owner' ? 'Owner' : 'Collaborator' }}
-              </span>
-            </div>
-
-            <p class="text-sm text-gray-600 mb-4 line-clamp-2">
-              {{ project.description || 'No description' }}
-            </p>
-
-            <div class="space-y-2 text-xs text-gray-600">
-              <div class="flex items-center" :class="getDeadlineColor(project.deadline)">
-                <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    stroke-width="2"
-                    d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
-                  ></path>
-                </svg>
-                {{ formatDeadline(project.deadline) }}
-              </div>
-              <div class="flex items-center justify-between">
-                <div class="flex items-center">
-                  <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2"
-                      d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
-                    ></path>
-                  </svg>
-                  {{ project.task_count || 0 }} tasks
-                </div>
-                <div class="flex items-center">
-                  <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2"
-                      d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
-                    ></path>
-                  </svg>
-                  {{ project.collaborator_ids?.length || 0 }} members
-                </div>
-              </div>
-            </div>
-          </div>
+      <div v-else-if="filteredProjects.length > 0">
+        <div class="flex justify-between items-center mb-4">
+          <h3 class="text-lg font-medium text-gray-900">
+            Projects ({{ filteredProjects.length
+            }}{{ filteredProjects.length !== projects.length ? ` of ${projects.length}` : '' }})
+          </h3>
         </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <ProjectCard
+            v-for="project in filteredProjects"
+            :key="project.id"
+            :project="project"
+            @view="viewProjectDetails"
+            @edit="editProject"
+            @delete="deleteProject"
+          />
+        </div>
+      </div>
+
+      <!-- Empty/Filtered State -->
+      <div v-else-if="projects.length > 0" class="text-center py-8 bg-gray-50 rounded-lg">
+        <p class="text-sm text-gray-600">No projects match the current filters.</p>
+        <button
+          @click="clearFilters"
+          class="mt-2 text-sm text-indigo-600 hover:text-indigo-500"
+        >
+          Clear filters
+        </button>
       </div>
 
       <!-- Empty State -->
@@ -387,22 +409,6 @@
         </svg>
         <h3 class="mt-2 text-sm font-medium text-gray-900">No projects</h3>
         <p class="mt-1 text-sm text-gray-500">Get started by creating a new project.</p>
-        <div class="mt-6">
-          <button
-            @click="showCreateForm = true"
-            class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700"
-          >
-            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M12 4v16m8-8H4"
-              ></path>
-            </svg>
-            New Project
-          </button>
-        </div>
       </div>
     </div>
   </div>
@@ -412,6 +418,7 @@
 import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import ProjectCard from '@/components/ProjectCard.vue'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -439,6 +446,12 @@ const collaboratorRoleFilter = ref('')
 
 // Mock User Data (Replace with real API fetch if available)
 const allUsers = ref([])
+
+// Filters and sorting
+const filters = ref({
+  role: '',
+})
+const sortBy = ref('default')
 
 // --- Computed properties ---
 const myProjectsCount = computed(() => {
@@ -476,6 +489,37 @@ const availableCollaborators = computed(() => {
     .filter((user) => !collaboratorRoleFilter.value || user.role === collaboratorRoleFilter.value)
 })
 
+// Filtered and sorted projects
+const filteredProjects = computed(() => {
+  let filtered = [...projects.value]
+
+  // Filter by role
+  if (filters.value.role) {
+    filtered = filtered.filter((project) => project.user_role === filters.value.role)
+  }
+
+  // Apply sorting
+  if (sortBy.value === 'deadline-earliest') {
+    filtered.sort((a, b) => {
+      if (!a.deadline) return 1
+      if (!b.deadline) return -1
+      return new Date(a.deadline) - new Date(b.deadline)
+    })
+  } else if (sortBy.value === 'deadline-latest') {
+    filtered.sort((a, b) => {
+      if (!a.deadline) return 1
+      if (!b.deadline) return -1
+      return new Date(b.deadline) - new Date(a.deadline)
+    })
+  } else if (sortBy.value === 'title-asc') {
+    filtered.sort((a, b) => a.title.localeCompare(b.title))
+  } else if (sortBy.value === 'title-desc') {
+    filtered.sort((a, b) => b.title.localeCompare(a.title))
+  }
+
+  return filtered
+})
+
 // Date and Time helpers
 const formatDateForInput = (dateString) => {
   if (!dateString) return ''
@@ -492,32 +536,6 @@ const minDeadline = computed(() => {
   // Always set minimum deadline to the current time for new project creation
   return formatDateForInput(new Date())
 })
-
-// --- Helper functions ---
-const getUserRoleBadgeColor = (role) => {
-  return role === 'owner' ? 'bg-indigo-100 text-indigo-800' : 'bg-green-100 text-green-800'
-}
-
-const getDeadlineColor = (deadline) => {
-  if (!deadline) return 'text-gray-600'
-
-  const now = new Date()
-  const deadlineDate = new Date(deadline)
-
-  if (deadlineDate < now) return 'text-red-600 font-medium'
-  if (deadlineDate.toDateString() === now.toDateString()) return 'text-orange-600 font-medium'
-  return 'text-gray-900'
-}
-
-const formatDeadline = (deadline) => {
-  if (!deadline) return 'No deadline set'
-  const date = new Date(deadline)
-  return date.toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-  })
-}
 
 // --- Collaborator Methods (NEW) ---
 const addCollaborator = () => {
@@ -642,25 +660,49 @@ const fetchAllUsers = async () => {
   }
 }
 
+// Filter and sort functions
+const applyFilters = () => {
+  // Filters are applied reactively via computed property
+}
+
+const clearFilters = () => {
+  filters.value.role = ''
+  sortBy.value = 'default'
+}
+
+// Edit project function
+const editProject = (project) => {
+  router.push(`/projects/${project.id}`)
+}
+
+// Delete project function
+const deleteProject = async (projectId) => {
+  if (!confirm('Are you sure you want to delete this project?')) return
+
+  try {
+    const response = await fetch(`${KONG_API_URL}/projects/${projectId}`, {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    })
+
+    if (response.ok) {
+      alert('Project deleted successfully')
+      await fetchProjects()
+    } else {
+      const errorData = await response.json()
+      throw new Error(errorData.error || 'Failed to delete project')
+    }
+  } catch (err) {
+    console.error('Error deleting project:', err)
+    alert('Failed to delete project: ' + err.message)
+  }
+}
+
 // Lifecycle
 onMounted(() => {
   fetchProjects()
   fetchAllUsers()
 })
 </script>
-
-<style scoped>
-.line-clamp-1 {
-  display: -webkit-box;
-  -webkit-line-clamp: 1;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-.line-clamp-2 {
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-</style>
