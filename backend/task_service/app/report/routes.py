@@ -65,7 +65,7 @@ def get_project_report(project_id):
             user_end_date = user_tz.localize(naive_end)
             # Convert to UTC
             utc_end_date = user_end_date.astimezone(pytz.utc)
-            
+
         # Basic validation
         if utc_start_date and utc_end_date and utc_start_date > utc_end_date:
              return jsonify({"error": "start_date cannot be after end_date"}), 400

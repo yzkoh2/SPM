@@ -40,7 +40,7 @@ def create_app(config_name=None):
             print("✅ Database tables created/verified")
     
     #Enable CORS
-    CORS(app, origins=["http://localhost:5173", "http://localhost:8000"])
+    CORS(app, origins=["http://localhost:5173", "http://localhost:5174", "http://localhost:8000"])
     
     if not app.config.get('TESTING'):
         print("✅ Notification Service initialized")

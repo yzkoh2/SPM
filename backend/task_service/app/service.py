@@ -1,13 +1,44 @@
 from .models import db, Project, Task, Attachment, TaskStatusEnum, project_collaborators, task_collaborators, Comment, comment_mentions, TaskActivityLog
 from sqlalchemy import or_
 from sqlalchemy.orm import aliased
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from dateutil.relativedelta import relativedelta
 from .rabbitmq_publisher import publish_status_update
 from werkzeug.utils import secure_filename
 from flask import current_app
 import uuid
-from datetime import datetime
+
+# Helper function to parse datetime strings from frontend
+def parse_datetime_from_frontend(datetime_str):
+    """
+    Parse datetime string from frontend, handling timezone-aware ISO format.
+    Converts to naive UTC datetime for storage.
+
+    Args:
+        datetime_str: ISO format datetime string (e.g., "2025-11-03T08:00:00.000Z")
+
+    Returns:
+        Naive datetime object in UTC, or None if parsing fails
+    """
+    if not datetime_str or not isinstance(datetime_str, str):
+        return None
+
+    try:
+        # Replace 'Z' with '+00:00' for compatibility with older Python versions
+        if datetime_str.endswith('Z'):
+            datetime_str = datetime_str[:-1] + '+00:00'
+
+        # Parse the datetime string
+        dt = datetime.fromisoformat(datetime_str)
+
+        # If timezone-aware, convert to UTC and make naive
+        if dt.tzinfo is not None:
+            dt = dt.astimezone(timezone.utc).replace(tzinfo=None)
+
+        return dt
+    except (ValueError, AttributeError) as e:
+        print(f"Error parsing datetime '{datetime_str}': {e}")
+        return None
 
 # Settled
 def get_all_tasks(user_id):
@@ -45,38 +76,21 @@ def create_task(task_data):
     try:
         print(f"Creating task with data: {task_data}")
 
-        # Parse deadline if provided
+        # Parse deadline if provided (now expects UTC ISO format from frontend)
         deadline = None
         if task_data.get('deadline'):
-            try:
-                if isinstance(task_data['deadline'], str) and task_data['deadline'].strip():
-                    # Handle datetime-local format from HTML input
-                    deadline_str = task_data['deadline']
-                    if 'T' in deadline_str:
-                        deadline = datetime.fromisoformat(deadline_str)
-                    else:
-                        deadline = datetime.strptime(deadline_str, '%Y-%m-%d %H:%M:%S')
-                elif isinstance(task_data['deadline'], datetime):
-                    deadline = task_data['deadline']
-            except ValueError as e:
-                print(f"Error parsing deadline: {e}")
-                deadline = None
+            if isinstance(task_data['deadline'], str):
+                deadline = parse_datetime_from_frontend(task_data['deadline'])
+            elif isinstance(task_data['deadline'], datetime):
+                deadline = task_data['deadline']
 
+        # Parse recurrence end date if provided (now expects UTC ISO format from frontend)
         recurrence_end_date = None
         if task_data.get('recurrence_end_date'):
-            try:
-                if isinstance(task_data['recurrence_end_date'], str) and task_data['recurrence_end_date'].strip():
-                    # Handle datetime-local format from HTML input
-                    recurrence_end_date_str = task_data['recurrence_end_date']
-                    if 'T' in recurrence_end_date_str:
-                        recurrence_end_date = datetime.fromisoformat(recurrence_end_date_str)
-                    else:
-                        recurrence_end_date = datetime.strptime(recurrence_end_date_str, '%Y-%m-%d %H:%M:%S')
-                elif isinstance(task_data['recurrence_end_date'], datetime):
-                    recurrence_end_date = task_data['recurrence_end_date']
-            except ValueError as e:
-                print(f"Error parsing recurrence_end_date: {e}")
-                recurrence_end_date = None
+            if isinstance(task_data['recurrence_end_date'], str):
+                recurrence_end_date = parse_datetime_from_frontend(task_data['recurrence_end_date'])
+            elif isinstance(task_data['recurrence_end_date'], datetime):
+                recurrence_end_date = task_data['recurrence_end_date']
 
         status = TaskStatusEnum.UNASSIGNED
         if task_data.get('status'):
@@ -177,8 +191,8 @@ def update_task(task_id, user_id, task_data):
                 continue
 
             if field == 'deadline' and data:
-                new_deadline = datetime.fromisoformat(data)
-                if new_deadline != task.deadline:
+                new_deadline = parse_datetime_from_frontend(data) if isinstance(data, str) else data
+                if new_deadline and new_deadline != task.deadline:
                     # --- LOGGING ---
                     _log_task_activity(user_id, task.id, 'deadline', task.deadline, new_deadline)
                     # --- END LOGGING ---
@@ -186,8 +200,8 @@ def update_task(task_id, user_id, task_data):
                     _cascade_parent_deadline_to_subtasks(task, task.deadline)
 
             elif field == 'recurring_end_date' and data:
-                new_recur_end = datetime.fromisoformat(data)
-                if new_recur_end != task.recurrence_end_date:
+                new_recur_end = parse_datetime_from_frontend(data) if isinstance(data, str) else data
+                if new_recur_end and new_recur_end != task.recurrence_end_date:
                     # --- LOGGING ---
                     _log_task_activity(user_id, task.id, 'recurring_end_date', task.recurrence_end_date, new_recur_end)
                     # --- END LOGGING ---
@@ -734,18 +748,10 @@ def create_project(project_data):
         # Parse deadline if provided
         deadline = None
         if project_data.get('deadline'):
-            try:
-                if isinstance(project_data['deadline'], str) and project_data['deadline'].strip():
-                    deadline_str = project_data['deadline']
-                    if 'T' in deadline_str:
-                        deadline = datetime.fromisoformat(deadline_str)
-                    else:
-                        deadline = datetime.strptime(deadline_str, '%Y-%m-%d %H:%M:%S')
-                elif isinstance(project_data['deadline'], datetime):
-                    deadline = project_data['deadline']
-            except ValueError as e:
-                print(f"Error parsing deadline: {e}")
-                deadline = None
+            if isinstance(project_data['deadline'], str):
+                deadline = parse_datetime_from_frontend(project_data['deadline'])
+            elif isinstance(project_data['deadline'], datetime):
+                deadline = project_data['deadline']
         
         # Create project
         new_project = Project(
@@ -1007,21 +1013,11 @@ def update_project(project_id, user_id, project_data):
             if field == 'deadline':
                 deadline = None
                 if data:  # 'data' is the value of project_data['deadline']
-                    try:
-                        if isinstance(data, str):
-                            deadline_str = data
-                            if 'T' in deadline_str:
-                                deadline = datetime.fromisoformat(deadline_str)
-                            else:
-                                try:
-                                    deadline = datetime.strptime(deadline_str, '%Y-%m-%d %H:%M:%S')
-                                except ValueError:
-                                     deadline = datetime.strptime(deadline_str, '%Y-%m-%d')
-                        elif isinstance(data, datetime):
-                            deadline = data
-                    except ValueError as e:
-                        print(f"Error parsing deadline: {e}")
-                
+                    if isinstance(data, str):
+                        deadline = parse_datetime_from_frontend(data)
+                    elif isinstance(data, datetime):
+                        deadline = data
+
                 project.deadline = deadline
                 _cascade_project_deadline_to_tasks(project.id, deadline)
             

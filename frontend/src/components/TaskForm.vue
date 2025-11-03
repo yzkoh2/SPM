@@ -263,6 +263,7 @@
 <script setup>
 import { ref, watch, computed, watchEffect } from 'vue'
 import { useAuthStore } from '@/stores/auth'
+import { convertLocalToUTC, convertUTCToLocal } from '@/utils/timezone'
 
 const authStore = useAuthStore()
 
@@ -428,13 +429,8 @@ const filteredUsers = computed(() => {
 
 const formatDateForInput = (dateString) => {
   if (!dateString) return ''
-  const date = new Date(dateString)
-  const year = date.getFullYear()
-  const month = String(date.getMonth() + 1).padStart(2, '0')
-  const day = String(date.getDate()).padStart(2, '0')
-  const hours = String(date.getHours()).padStart(2, '0')
-  const minutes = String(date.getMinutes()).padStart(2, '0')
-  return `${year}-${month}-${day}T${hours}:${minutes}`
+  // Convert UTC datetime from backend to local datetime for the datetime-local input
+  return convertUTCToLocal(dateString)
 }
 
 const isOverdue = computed(() => {
@@ -455,16 +451,19 @@ const minDeadline = computed(() => {
     // Allow the user to keep the existing (past) deadline.
     return localData.value.deadline
   }
-  return formatDateForInput(new Date())
+  // For current time, we need to convert it to the datetime-local format
+  const now = new Date()
+  return convertUTCToLocal(now.toISOString())
 })
 
 const minRecurrenceEndDate = computed(() => {
   const baseDate = localData.value.deadline || minDeadline.value
 
+  // baseDate is in datetime-local format, convert to Date, add 1 day, then convert back
   const date = new Date(baseDate)
   date.setDate(date.getDate() + 1)
 
-  return formatDateForInput(date)
+  return convertUTCToLocal(date.toISOString())
 })
 
 const maxDeadline = computed(() => {
@@ -528,6 +527,14 @@ const handleSubmit = () => {
     ...localData.value,
     collaborators_to_add,
     collaborators_to_remove,
+  }
+
+  // Convert deadline and recurrence_end_date from local timezone to UTC
+  if (payload.deadline) {
+    payload.deadline = convertLocalToUTC(payload.deadline)
+  }
+  if (payload.recurrence_end_date) {
+    payload.recurrence_end_date = convertLocalToUTC(payload.recurrence_end_date)
   }
 
   emit('submit', payload)

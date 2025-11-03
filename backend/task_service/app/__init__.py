@@ -23,7 +23,7 @@ def create_app(config_name="development"):
         app.s3_client = None
     
     # Enable CORS for frontend communication
-    CORS(app, origins=["http://localhost:5173", "http://localhost:8000"])
+    CORS(app, origins=["http://localhost:5173", "http://localhost:5174", "http://localhost:8000"])
     
     # Initialize database
     db.init_app(app)

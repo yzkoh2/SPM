@@ -509,6 +509,7 @@
 import { ref, onMounted, computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { convertLocalToUTC, convertUTCToLocal } from '@/utils/timezone'
 
 const route = useRoute()
 const router = useRouter()
@@ -667,13 +668,8 @@ const fetchAvailableUsers = async () => {
 // Format date for datetime-local input
 const formatDateForInput = (dateString) => {
   if (!dateString) return ''
-  const date = new Date(dateString)
-  const year = date.getFullYear()
-  const month = String(date.getMonth() + 1).padStart(2, '0')
-  const day = String(date.getDate()).padStart(2, '0')
-  const hours = String(date.getHours()).padStart(2, '0')
-  const minutes = String(date.getMinutes()).padStart(2, '0')
-  return `${year}-${month}-${day}T${hours}:${minutes}`
+  // Convert UTC datetime from backend to local datetime for the datetime-local input
+  return convertUTCToLocal(dateString)
 }
 
 // Confirm update
@@ -691,7 +687,7 @@ const saveItem = async () => {
       user_id: userId.value,
       title: editedItem.value.title,
       description: editedItem.value.description,
-      deadline: editedItem.value.deadline || null,
+      deadline: editedItem.value.deadline ? convertLocalToUTC(editedItem.value.deadline) : null,
     }
 
     console.log('Sending update request:', updateData)
