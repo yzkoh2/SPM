@@ -1349,6 +1349,7 @@ def create_task_in_project(task_data, project_id, user_id):
     """
     Create a new task directly within a project
     User must be project owner or collaborator
+    ** New Logic: Collaborators (not owners) cannot add users who are not already in the project.
     """
     try:
         # Check if user has access to the project
@@ -1356,21 +1357,49 @@ def create_task_in_project(task_data, project_id, user_id):
         if not project:
             return None, "Project not found"
         
-        collaborator_ids = project.collaborator_ids()
-        if user_id != project.owner_id and user_id not in collaborator_ids:
+        # --- FIX 1: Get ALL project members, including the owner ---
+        project_member_ids = set(project.collaborator_ids())
+        project_member_ids.add(project.owner_id) 
+
+        is_project_owner = (user_id == project.owner_id)
+        is_project_member = (user_id in project_member_ids) # Check membership *after* adding owner
+
+        if not is_project_owner and not is_project_member:
             return None, "Forbidden: You must be a project owner or collaborator to create tasks"
         
+        # --- NEW LOGIC START ---
+        collaborators_to_add_to_task = set(task_data.get('collaborators_to_add', []))
+        
+        # Find which users (if any) are not already in the project
+        collaborators_not_in_project = collaborators_to_add_to_task - project_member_ids
+
+        # --- FIX 2: Correct the boolean logic ---
+        # Block if:
+        # 1. There are new users to add, AND
+        # 2. The task creator is NOT the project owner
+        if collaborators_not_in_project and not is_project_owner:
+            return None, f"Forbidden: You cannot add users who are not in this project. (User IDs not in project: {list(collaborators_not_in_project)})"
+        # --- NEW LOGIC END ---
+
         # Add project_id to task data
         task_data['project_id'] = project_id
         
         # Create the task using existing function
         new_task = create_task(task_data)
 
-        for collab_id in task_data.get('collaborators_to_add', []):
-            try:
-                add_project_collaborator(project_id, project.owner_id, collab_id)
-            except Exception as add_err:
-                print(f"Warning: Failed to add collaborator {collab_id} to task {new_task.id}: {add_err}")
+        # --- FIX 3: Correct the final loop ---
+        # Only run this if:
+        # 1. There are new users, AND
+        # 2. The task creator IS the project owner
+        if collaborators_not_in_project and is_project_owner:
+            print(f"Project owner adding new users ({collaborators_not_in_project}) to project {project_id}.")
+            # Only loop over the NEW collaborators
+            for collab_id in collaborators_not_in_project:
+                try:
+                    add_project_collaborator(project_id, project.owner_id, collab_id)
+                except Exception as add_err:
+                    # This is fine, e.g., "User is already a collaborator" if logic raced
+                    print(f"Warning: Failed to add collaborator {collab_id} to project {project_id}: {add_err}")
         
         _touch_project(project)
 
