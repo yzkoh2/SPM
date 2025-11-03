@@ -940,12 +940,45 @@ def save_report(report_content: bytes, filename: str, requesting_user_id: int, r
     
 def get_all_reports_for_user(user_id):
     """
-    Fetches all report history entries for a given user.
+    Fetches all report history entries for a given user,
+    and enriches them with project or target user names.
     """
     try:
         reports = models.ReportHistory.query.filter(models.ReportHistory.user_id == user_id).order_by(models.ReportHistory.created_at.desc()).all()
+        
+        # We will build a new list of JSON objects, not model objects
+        reports_json_with_names = []
+        
+        # Caches to avoid fetching the same name multiple times
+        user_details_cache = {} 
+        project_details_cache = {} 
 
-        return reports, None
+        for report in reports:
+            # First, convert the base report model to JSON
+            report_data = report.to_json() 
+
+            # Now, add the 'target_name' based on the report type
+            if report.report_type == 'project' and report.project_id:
+                if report.project_id not in project_details_cache:
+                    # Fetch project details if not in cache
+                    project = models.Project.query.get(report.project_id)
+                    project_details_cache[report.project_id] = project.title if project else "Unknown Project"
+                report_data['target_name'] = project_details_cache[report.project_id]
+
+            elif report.report_type == 'individual' and report.target_user_id:
+                if report.target_user_id not in user_details_cache:
+                    # Fetch user details if not in cache
+                    user_details = _fetch_user_details(report.target_user_id) 
+                    user_details_cache[report.target_user_id] = user_details['name'] if user_details else "Unknown User"
+                report_data['target_name'] = user_details_cache[report.target_user_id]
+            else:
+                report_data['target_name'] = "N/A" # Fallback
+
+            reports_json_with_names.append(report_data)
+
+        # Return the new list of enriched dictionaries
+        return reports_json_with_names, None
+        
     except Exception as e:
         print(f"Error fetching reports for user {user_id}: {e}")
         return None, f"Could not fetch reports: {e}"

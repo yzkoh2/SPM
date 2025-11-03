@@ -247,14 +247,14 @@ def retrieve_all_reports(user_id):
     Retrieves all report metadata for a specific user.
     """
     try:
-        reports_list, error = generator.get_all_reports_for_user(user_id)
+        # This list is NOW a list of JSON-ready dicts, enriched with names
+        reports_json_list, error = generator.get_all_reports_for_user(user_id)
         
         if error:
             return jsonify({"error": error}), 500
         
-        # Now, 'reports_list' is a list, and this will work
-        reports_json = [report.to_json() for report in reports_list]
-        return jsonify(reports_json), 200
+        # We don't need to call .to_json() anymore, just return the list
+        return jsonify(reports_json_list), 200
         
     except Exception as e:
         print(f"Unhandled error in retrieve_all_reports: {e}")

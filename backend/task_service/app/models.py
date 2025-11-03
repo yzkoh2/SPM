@@ -249,6 +249,7 @@ class ReportHistory(db.Model):
             'url': self.url,
             'user_id': self.user_id,
             'target_user_id': self.target_user_id,
+            'project_id': self.project_id,
             'report_type': self.report_type,
             'created_at': self.created_at.isoformat(),
         }
