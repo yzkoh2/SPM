@@ -156,7 +156,7 @@ def _log_task_activity(user_id, task_id, field, old_val, new_val):
     )
     db.session.add(log_entry)
 
-def update_task(task_id, user_id, task_data):
+def update_task(task_id, user_id, task_data, comment):
     #Update an existing task
     try:
         task = Task.query.get(task_id)
@@ -244,6 +244,18 @@ def update_task(task_id, user_id, task_data):
                     _log_task_activity(user_id, task.id, field, old_val, data)
                     setattr(task, field, data)
                 # --- END LOGGING ---
+        if comment and isinstance(comment, str) and comment.strip():
+            comment_data = {
+                'body': comment.strip(),
+                'author_id': user_id,
+                'mention_ids': []  # Add mentions if needed
+            }
+            try:
+                add_comment(task_id, comment_data)
+                print(f"✓ Comment added for task {task_id}")
+            except Exception as comment_err:
+                print(f"⚠️ Failed to add comment: {comment_err}")
+        db.session.commit()
 
         # --- MODIFIED: Handle Owner/Collaborator changes with logging ---
         if is_owner:

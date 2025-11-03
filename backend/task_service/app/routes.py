@@ -107,8 +107,8 @@ def update_task(task_id):
         print(f"Updating task {task_id} with data: {data}")
 
         user_id = data.pop('user_id', None)
-        
-        updated_task, message = service.update_task(task_id, user_id, data)
+        comment = data.pop('comment', None)
+        updated_task, message = service.update_task(task_id, user_id, data, comment)
         if updated_task is None:
             if "not found" in message:
                 return jsonify({"error": message}), 404
