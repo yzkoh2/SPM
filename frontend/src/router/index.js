@@ -95,6 +95,12 @@ const router = createRouter({
       meta: { requiresAuth: true },
     },
     {
+      path: '/projects/:id/tasks',
+      name: 'project-all-tasks',
+      component: () => import('@/views/ViewAllProjectTasks.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
       path: '/tasks/:id',
       name: 'task-details',
       component: () => import('@/views/View_Individual_Task_Subtask.vue'),
