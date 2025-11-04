@@ -43,29 +43,36 @@ INSERT INTO teams (id, name, department_id) VALUES
 -- Insert a user with the 'staff' role
 INSERT INTO users (username, name, password_hash, email, role, team_id) VALUES
 -- finance team 1
+-- user id 1 to 4
 ('john_staff', 'John', 'scrypt:32768:8:1$dCPdgoTqcJd1S7lY$5cc719af753d37f8c64580c227d4ce985fe2e1aaf7f8a204293d48d0e45e41479f819d62652d24a477fa65b4f34bb1667641b80bdc697b837e90d2c283bb2b74', 'spmg8t3+john@gmail.com', 'STAFF',1),
 ('jane_manager', 'Jane', 'scrypt:32768:8:1$dCPdgoTqcJd1S7lY$5cc719af753d37f8c64580c227d4ce985fe2e1aaf7f8a204293d48d0e45e41479f819d62652d24a477fa65b4f34bb1667641b80bdc697b837e90d2c283bb2b74', 'spmg8t3+jane@gmail.com', 'MANAGER',1),
 ('susan_director', 'Susan', 'scrypt:32768:8:1$dCPdgoTqcJd1S7lY$5cc719af753d37f8c64580c227d4ce985fe2e1aaf7f8a204293d48d0e45e41479f819d62652d24a477fa65b4f34bb1667641b80bdc697b837e90d2c283bb2b74', 'spmg8t3+susan@gmail.com', 'DIRECTOR', 3),
 ('toby_staff', 'Toby', 'scrypt:32768:8:1$dCPdgoTqcJd1S7lY$5cc719af753d37f8c64580c227d4ce985fe2e1aaf7f8a204293d48d0e45e41479f819d62652d24a477fa65b4f34bb1667641b80bdc697b837e90d2c283bb2b74', 'spmg8t3+toby@gmail.com', 'STAFF',1),
 
 -- finance team 2
+-- user id 4 to 6
 ('paul_staff', 'Paul', 'scrypt:32768:8:1$dCPdgoTqcJd1S7lY$5cc719af753d37f8c64580c227d4ce985fe2e1aaf7f8a204293d48d0e45e41479f819d62652d24a477fa65b4f34bb1667641b80bdc697b837e90d2c283bb2b74', 'spmg8t3+paul@gmail.com', 'STAFF',2),
 ('lily_staff', 'Lily', 'scrypt:32768:8:1$dCPdgoTqcJd1S7lY$5cc719af753d37f8c64580c227d4ce985fe2e1aaf7f8a204293d48d0e45e41479f819d62652d24a477fa65b4f34bb1667641b80bdc697b837e90d2c283bb2b74', 'spmg8t3+lily@gmail.com', 'STAFF',2),
 ('sam_manager', 'Sam', 'scrypt:32768:8:1$dCPdgoTqcJd1S7lY$5cc719af753d37f8c64580c227d4ce985fe2e1aaf7f8a204293d48d0e45e41479f819d62652d24a477fa65b4f34bb1667641b80bdc697b837e90d2c283bb2b74', 'spmg8t3+sam@gmail.com', 'MANAGER',2),
 -- finance leadership team
 
 -- tech team 1
+-- user id 7 to 9
 ('alice_staff', 'Alice', 'scrypt:32768:8:1$dCPdgoTqcJd1S7lY$5cc719af753d37f8c64580c227d4ce985fe2e1aaf7f8a204293d48d0e45e41479f819d62652d24a477fa65b4f34bb1667641b80bdc697b837e90d2c283bb2b74', 'spmg8t3+alice@gmail.com', 'STAFF',4),
 ('bob_staff', 'Bob', 'scrypt:32768:8:1$dCPdgoTqcJd1S7lY$5cc719af753d37f8c64580c227d4ce985fe2e1aaf7f8a204293d48d0e45e41479f819d62652d24a477fa65b4f34bb1667641b80bdc697b837e90d2c283bb2b74', 'spmg8t3+bob@gmail.com', 'STAFF',4),
 ('carol_manager', 'Carol', 'scrypt:32768:8:1$dCPdgoTqcJd1S7lY$5cc719af753d37f8c64580c227d4ce985fe2e1aaf7f8a204293d48d0e45e41479f819d62652d24a477fa65b4f34bb1667641b80bdc697b837e90d2c283bb2b74', 'spmg8t3+carol@gmail.com', 'MANAGER',4),
+
 -- tech team 2
+-- user id 10 to 12
 ('dave_staff', 'Dave', 'scrypt:32768:8:1$dCPdgoTqcJd1S7lY$5cc719af753d37f8c64580c227d4ce985fe2e1aaf7f8a204293d48d0e45e41479f819d62652d24a477fa65b4f34bb1667641b80bdc697b837e90d2c283bb2b74', 'spmg8t3+dave@gmail.com', 'STAFF',5),
 ('eva_staff', 'Eva', 'scrypt:32768:8:1$dCPdgoTqcJd1S7lY$5cc719af753d37f8c64580c227d4ce985fe2e1aaf7f8a204293d48d0e45e41479f819d62652d24a477fa65b4f34bb1667641b80bdc697b837e90d2c283bb2b74', 'spmg8t3+eva@gmail.com', 'STAFF',5),
 ('frank_manager', 'Frank', 'scrypt:32768:8:1$dCPdgoTqcJd1S7lY$5cc719af753d37f8c64580c227d4ce985fe2e1aaf7f8a204293d48d0e45e41479f819d62652d24a477fa65b4f34bb1667641b80bdc697b837e90d2c283bb2b74', 'spmg8t3+frank@gmail.com', 'MANAGER',5),
 -- tech leadership team
+-- user id 13
 ('grace_director', 'Grace', 'scrypt:32768:8:1$dCPdgoTqcJd1S7lY$5cc719af753d37f8c64580c227d4ce985fe2e1aaf7f8a204293d48d0e45e41479f819d62652d24a477fa65b4f34bb1667641b80bdc697b837e90d2c283bb2b74', 'spmg8t3+grace@gmail.com', 'DIRECTOR', 6),
 
 -- hr team
+-- user id 14 to 15
 ('harry_hr', 'Harry', 'scrypt:32768:8:1$dCPdgoTqcJd1S7lY$5cc719af753d37f8c64580c227d4ce985fe2e1aaf7f8a204293d48d0e45e41479f819d62652d24a477fa65b4f34bb1667641b80bdc697b837e90d2c283bb2b74', 'spmg8t3+harry@gmail.com', 'HR', 7),
 -- senior management team
 ('tom_sm', 'Tom', 'scrypt:32768:8:1$dCPdgoTqcJd1S7lY$5cc719af753d37f8c64580c227d4ce985fe2e1aaf7f8a204293d48d0e45e41479f819d62652d24a477fa65b4f34bb1667641b80bdc697b837e90d2c283bb2b74', 'spmg8t3+tom@gmail.com', 'SM', 8);
