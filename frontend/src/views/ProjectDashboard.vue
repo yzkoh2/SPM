@@ -16,12 +16,6 @@
       @taskAdded="handleTaskAdded"
     />
 
-    <ViewAllProjectTasksModal
-      :show="showViewAllTasksModal"
-      :project-id="parseInt(route.params.id)"
-      @close="showViewAllTasksModal = false"
-    />
-
     <div class="bg-white shadow-sm border-b border-gray-200">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         <div class="flex items-center">
@@ -389,7 +383,7 @@
           <div class="flex items-center justify-between mb-6">
             <h3 class="text-xl font-semibold text-gray-900">Tasks ({{ filteredTasks.length }})</h3>
             <button
-              @click="showViewAllTasksModal = true"
+              @click="router.push(`/projects/${route.params.id}/tasks`)"
               class="px-4 py-2 bg-indigo-600 text-white text-sm rounded-md hover:bg-indigo-700"
             >
               View All Tasks
@@ -478,7 +472,6 @@ import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import EditProjectModal from '@/components/EditProjectModal.vue'
 import ManageProjectTasksModal from '@/components/ManageProjectTasksModal.vue'
-import ViewAllProjectTasksModal from '@/components/ViewAllProjectTasksModal.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -495,7 +488,6 @@ const ownerDetails = ref(null)
 const allUsers = ref([]) // *** NEW: Store all users here ***
 const showEditModal = ref(false)
 const showManageTasksModal = ref(false)
-const showViewAllTasksModal = ref(false)
 
 // Session storage keys
 const STORAGE_KEY_FILTERS = 'projectDashboard_filters'

@@ -331,7 +331,7 @@
             <h3 class="text-xl font-semibold text-gray-900">
               Subtasks ({{ task.subtasks?.length || 0 }})
             </h3>
-            <router-link :to="`/tasks/${task.id}/subtasks`"
+            <router-link :to="getSubtaskListUrl"
               class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-md text-sm font-medium">
               View All Subtasks
             </router-link>
@@ -340,7 +340,7 @@
           <div v-if="task.subtasks && task.subtasks.length > 0" class="space-y-3">
             <div v-for="subtask in task.subtasks.slice(0, 5)" :key="subtask.id"
               class="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer"
-              @click="$router.push(`/tasks/${task.id}/subtasks/${subtask.id}`)">
+              @click="$router.push(getSubtaskDetailUrl(subtask.id))">
               <div class="flex items-center space-x-3">
                 <div class="w-2 h-2 rounded-full" :class="getSubtaskStatusColor(subtask.status)"></div>
                 <span class="text-gray-900">{{ subtask.title }}</span>
@@ -361,7 +361,7 @@
               </div>
             </div>
             <div v-if="task.subtasks.length > 5" class="text-center pt-4">
-              <router-link :to="`/tasks/${task.id}/subtasks`"
+              <router-link :to="getSubtaskListUrl"
                 class="text-indigo-600 hover:text-indigo-500 text-sm font-medium">
                 View {{ task.subtasks.length - 5 }} more subtasks →
               </router-link>
@@ -1181,14 +1181,29 @@ const getPriorityColorClass = (priority) => {
 // Add these new computed properties
 const backLink = computed(() => {
   if (isSubtask.value) {
+    // Build params to preserve project context
+    const params = new URLSearchParams()
+    if (route.query.fromProjectTasks) {
+      params.append('fromProjectTasks', route.query.fromProjectTasks)
+    } else if (route.query.fromProject) {
+      params.append('fromProject', route.query.fromProject)
+    }
+    const queryString = params.toString()
+
     // If we came from the subtasks view, go back there
     if (route.query.from === 'subtasks') {
-      return `/tasks/${parentTaskId.value}/subtasks`
+      const url = `/tasks/${parentTaskId.value}/subtasks`
+      return queryString ? `${url}?${queryString}` : url
     }
     // Otherwise, go back to the parent task details
-    return `/tasks/${parentTaskId.value}`
+    const url = `/tasks/${parentTaskId.value}`
+    return queryString ? `${url}?${queryString}` : url
   }
-  // Check if we came from a project
+  // Check if we came from project tasks view (View All Tasks page)
+  if (route.query.fromProjectTasks) {
+    return `/projects/${route.query.fromProjectTasks}/tasks`
+  }
+  // Check if we came from a project dashboard
   if (route.query.fromProject) {
     return `/projects/${route.query.fromProject}`
   }
@@ -1198,18 +1213,50 @@ const backLink = computed(() => {
 
 const backLinkText = computed(() => {
   if (isSubtask.value) {
-    // If we came from the subtasks view, say "Back to Subtasks"
+    // If we came from the subtasks view, say "Back to All Subtasks"
     if (route.query.from === 'subtasks') {
-      return 'Back to Subtasks'
+      return 'Back to All Subtasks'
     }
     // Otherwise, say "Back to Task Details"
     return 'Back to Task Details'
+  }
+  if (route.query.fromProjectTasks) {
+    return 'Back to All Tasks'
   }
   if (route.query.fromProject) {
     return 'Back to Project'
   }
   return 'Back to Tasks' //
 })
+
+// Helper to build subtask URLs preserving query params
+const getSubtaskListUrl = computed(() => {
+  let url = `/tasks/${task.value?.id}/subtasks`
+  const params = new URLSearchParams()
+
+  if (route.query.fromProjectTasks) {
+    params.append('fromProjectTasks', route.query.fromProjectTasks)
+  } else if (route.query.fromProject) {
+    params.append('fromProject', route.query.fromProject)
+  }
+
+  const queryString = params.toString()
+  return queryString ? `${url}?${queryString}` : url
+})
+
+const getSubtaskDetailUrl = (subtaskId) => {
+  let url = `/tasks/${task.value?.id}/subtasks/${subtaskId}`
+  const params = new URLSearchParams()
+
+  if (route.query.fromProjectTasks) {
+    params.append('fromProjectTasks', route.query.fromProjectTasks)
+  } else if (route.query.fromProject) {
+    params.append('fromProject', route.query.fromProject)
+  }
+
+  const queryString = params.toString()
+  return queryString ? `${url}?${queryString}` : url
+}
 
 watch(
   () => [route.params.id, route.params.subtaskId],

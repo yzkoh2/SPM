@@ -5,7 +5,7 @@
         <div class="flex items-center py-6">
           <router-link
             v-if="parentTask"
-            :to="`/tasks/${parentTask.id}`"
+            :to="backToTaskUrl"
             class="flex items-center text-indigo-600 hover:text-indigo-500 mr-6 text-sm font-medium"
           >
             <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -527,7 +527,17 @@ async function updateSubtask(formData) {
 
 // Function to view subtask details
 function viewSubtaskDetails(subtaskId) {
-  router.push(`/tasks/${route.params.id}/subtasks/${subtaskId}?from=subtasks`)
+  const params = new URLSearchParams()
+  params.append('from', 'subtasks')
+
+  // Preserve project context if it exists
+  if (route.query.fromProjectTasks) {
+    params.append('fromProjectTasks', route.query.fromProjectTasks)
+  } else if (route.query.fromProject) {
+    params.append('fromProject', route.query.fromProject)
+  }
+
+  router.push(`/tasks/${route.params.id}/subtasks/${subtaskId}?${params.toString()}`)
 }
 
 // Function to edit subtask
@@ -586,6 +596,21 @@ function getStatusBadgeColor(status) {
   }
   return colors[status] || 'bg-gray-100 text-gray-800'
 }
+
+// Helper to build back URL preserving query params
+const backToTaskUrl = computed(() => {
+  let url = `/tasks/${parentTask.value?.id}`
+  const params = new URLSearchParams()
+
+  if (route.query.fromProjectTasks) {
+    params.append('fromProjectTasks', route.query.fromProjectTasks)
+  } else if (route.query.fromProject) {
+    params.append('fromProject', route.query.fromProject)
+  }
+
+  const queryString = params.toString()
+  return queryString ? `${url}?${queryString}` : url
+})
 
 const applyFilters = () => {}
 
