@@ -1,20 +1,36 @@
 <template>
   <div>
     <div class="bg-white shadow rounded-lg p-4 mb-6">
-      <div class="flex flex-col sm:flex-row gap-4">
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        
         <div class="flex-1">
-          <label class="block text-sm font-medium text-gray-700 mb-2">Report Type</label>
+          <label class="block text-sm font-medium text-gray-700 mb-2">Report Category</label>
           <select
-            v-model="filterType"
-            @change="loadReports"
+            v-model="filterCategory"
             class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
           >
-            <option value="">All Types</option>
+            <option value="">All Categories</option>
             <option value="project">Project Reports</option>
             <option value="individual">Individual Reports</option>
           </select>
         </div>
 
+        <div class="flex-1">
+          <label class="block text-sm font-medium text-gray-700 mb-2">
+            {{ dynamicFilterLabel }}
+          </label>
+          <select
+            v-model="filterTargetId"
+            :disabled="!filterCategory"
+            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:bg-gray-100"
+          >
+            <option value="">{{ dynamicFilterAllText }}</option>
+            <option v-for="option in dynamicFilterOptions" :key="option.id" :value="option.id">
+              {{ option.name }}
+            </option>
+          </select>
+        </div>
+        
         <div class="flex-1">
           <label class="block text-sm font-medium text-gray-700 mb-2">Sort By</label>
           <select
@@ -27,17 +43,8 @@
           </select>
         </div>
 
-        <div class="flex items-end">
-          <button
-            @click="loadReports"
-            class="w-full sm:w-auto px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-          >
-            Refresh
-          </button>
-        </div>
       </div>
     </div>
-
     <div v-if="loading" class="text-center py-12">
       <div
         class="inline-block animate-spin rounded-full h-10 w-10 border-b-2 border-indigo-600"
@@ -67,15 +74,9 @@
         ></path>
       </svg>
       <h3 class="mt-2 text-sm font-medium text-gray-900">No reports found</h3>
-      <p class="mt-1 text-sm text-gray-500">Generate your first report to see it here</p>
-      <div class="mt-6">
-        <router-link
-          to="/reports"
-          class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700"
-        >
-          Generate Report
-        </router-link>
-      </div>
+      <p class="mt-1 text-sm text-gray-500">
+        {{ filterCategory ? 'No reports match your filter.' : 'Generate your first report to see it here.' }}
+      </p>
     </div>
 
     <div v-else class="bg-white shadow rounded-lg overflow-hidden">
@@ -97,7 +98,11 @@
                   </span>
                 </div>
 
-                <h3 class="text-sm font-medium text-gray-900 truncate">{{ report.filename }}</h3>
+                <h3 class="text-lg font-semibold text-indigo-700 truncate">
+                  {{ report.target_name || 'General Report' }}
+                </h3>
+
+                <p class="text-sm font-medium text-gray-700 truncate">{{ report.filename }}</p>
 
                 <div class="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-gray-500">
                   <span class="flex items-center">
@@ -133,23 +138,6 @@
                     </svg>
                     {{ formatFileSize(report.file_size) }}
                   </span>
-
-                  <span v-if="report.start_date && report.end_date" class="flex items-center">
-                    <svg
-                      class="mr-1.5 h-4 w-4 text-gray-400"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        stroke-width="2"
-                        d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"
-                      ></path>
-                    </svg>
-                    {{ report.start_date }} to {{ report.end_date }}
-                  </span>
                 </div>
               </div>
 
@@ -183,7 +171,7 @@
                     v-else
                     class="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-700 mr-1"
                   ></div>
-                  View and Download
+                  View
                 </button>
 
                 <button
@@ -206,7 +194,8 @@
       </ul>
     </div>
 
-    <div v-if="showDeleteModal" class="fixed z-50 inset-0 overflow-y-auto"> <div
+    <div v-if="showDeleteModal" class="fixed z-50 inset-0 overflow-y-auto">
+      <div
         class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0"
       >
         <div
@@ -214,11 +203,9 @@
           @click="showDeleteModal = false"
           aria-hidden="true"
         ></div>
-
         <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true"
           >&#8203;</span
         >
-
         <div
           class="relative inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full"
         >
@@ -248,7 +235,7 @@
                     Are you sure you want to delete this report? This action cannot be undone.
                   </p>
                   <p class="mt-2 text-sm font-medium text-gray-700">
-                    {{ reportToDelete?.file_name }}
+                    {{ reportToDelete?.filename }}
                   </p>
                 </div>
               </div>
@@ -279,33 +266,103 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 
 const authStore = useAuthStore()
 const KONG_API_URL = 'http://localhost:8000'
 
 // State
-const reports = ref([])
+const reports = ref([]) // This holds ALL reports fetched from the API
 const loading = ref(true)
 const error = ref(null)
-const filterType = ref('')
-const sortOrder = ref('desc')
+const sortOrder = ref('desc') // For sorting
 const downloading = ref(null)
 const showDeleteModal = ref(false)
 const reportToDelete = ref(null)
 const deleting = ref(false)
 
-// Computed
-const filteredReports = computed(() => {
-  let filtered = [...reports.value]
-  if (filterType.value) {
-    filtered = filtered.filter((r) => r.report_type === filterType.value)
-  }
-  return filtered
+// --- Revamped Filter State ---
+const filterCategory = ref('') // Holds: '', 'project', 'individual'
+const filterTargetId = ref('') // Holds: '', project_id, target_user_id
+
+// --- Watcher ---
+// This resets the second filter (filterTargetId) whenever the first filter (filterCategory) changes.
+watch(filterCategory, () => {
+  filterTargetId.value = ''
 })
 
-// Methods
+// --- Computed Properties for Filters ---
+
+// Populates the second dropdown based on the first dropdown's selection
+const dynamicFilterOptions = computed(() => {
+  const options = new Map()
+
+  if (filterCategory.value === 'project') {
+    reports.value.forEach(r => {
+      // Use project_id as the key to de-duplicate
+      if (r.report_type === 'project' && r.project_id && r.target_name) {
+        options.set(r.project_id, r.target_name)
+      }
+    })
+  } else if (filterCategory.value === 'individual') {
+    reports.value.forEach(r => {
+      // Use target_user_id as the key to de-duplicate
+      if (r.report_type === 'individual' && r.target_user_id && r.target_name) {
+        options.set(r.target_user_id, r.target_name)
+      }
+    })
+  }
+  
+  // Convert the Map(id, name) into an array [{id, name}] and sort it by name
+  return Array.from(options, ([id, name]) => ({ id, name }))
+    .sort((a, b) => a.name.localeCompare(b.name))
+})
+
+// Computes the label for the second dropdown
+const dynamicFilterLabel = computed(() => {
+  if (filterCategory.value === 'project') return 'Project'
+  if (filterCategory.value === 'individual') return 'User'
+  return 'Specific Target'
+})
+
+// Computes the "All" text for the second dropdown
+const dynamicFilterAllText = computed(() => {
+  if (filterCategory.value === 'project') return 'All Projects'
+  if (filterCategory.value === 'individual') return 'All Users'
+  return 'All'
+})
+
+// The main computed property that performs all filtering
+const filteredReports = computed(() => {
+  // Start with the full list of reports
+  let baseReports = reports.value
+
+  // 1. Filter by Category
+  const categoryFiltered = !filterCategory.value
+    ? baseReports // No category selected, show all
+    : baseReports.filter(r => r.report_type === filterCategory.value)
+
+  // 2. Filter by Specific Target
+  // This only runs if filterTargetId has a value (i.e., not 'All Projects' or 'All Users')
+  if (!filterTargetId.value) {
+    return categoryFiltered // No specific target, return the category-filtered list
+  }
+
+  // We already know the category from filterCategory, so we check the corresponding ID
+  if (filterCategory.value === 'project') {
+    return categoryFiltered.filter(r => r.project_id === filterTargetId.value)
+  }
+
+  if (filterCategory.value === 'individual') {
+    return categoryFiltered.filter(r => r.target_user_id === filterTargetId.value)
+  }
+
+  return categoryFiltered // Fallback
+})
+
+// --- Methods ---
+
 const loadReports = async () => {
   loading.value = true
   error.value = null
@@ -321,7 +378,7 @@ const loadReports = async () => {
 
     const data = await response.json()
     reports.value = data
-    sortReports()
+    sortReports() // Apply initial sort
   } catch (err) {
     console.error('Error loading reports:', err)
     error.value = err.message || 'Failed to load reports'
@@ -330,6 +387,7 @@ const loadReports = async () => {
   }
 }
 
+// Sorts the *base* reports array. filteredReports will auto-update.
 const sortReports = () => {
   reports.value.sort((a, b) => {
     const dateA = new Date(a.created_at)
@@ -340,20 +398,16 @@ const sortReports = () => {
 
 const previewReport = async (reportId) => {
   downloading.value = reportId
-
   try {
     const response = await fetch(
       `${KONG_API_URL}/reports/retrieve/${reportId}?user_id=${authStore.user.id}`,
     )
-
     if (!response.ok) {
       throw new Error('Failed to download report')
     }
-
     const data = await response.json()
     const presignedUrl = data.url
     window.open(presignedUrl, '_blank')
-
   } catch (err) {
     console.error('Error downloading report:', err)
     alert('Failed to download report. Please try again.')
@@ -369,7 +423,6 @@ const confirmDelete = (report) => {
 
 const deleteReport = async () => {
   deleting.value = true
-
   try {
     const response = await fetch(
       `${KONG_API_URL}/reports/delete/${reportToDelete.value.id}?user_id=${authStore.user.id}`,
@@ -377,11 +430,9 @@ const deleteReport = async () => {
         method: 'DELETE',
       },
     )
-
     if (!response.ok) {
       throw new Error('Failed to delete report')
     }
-
     reports.value = reports.value.filter((r) => r.id !== reportToDelete.value.id)
     showDeleteModal.value = false
     reportToDelete.value = null
