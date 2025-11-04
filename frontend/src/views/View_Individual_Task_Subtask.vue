@@ -326,10 +326,86 @@
           </div>
         </div>
 
+        <!-- Filter and Sort Bar -->
+        <div v-if="!isSubtask && task.subtasks && task.subtasks.length > 0" class="bg-white rounded-lg shadow-md p-6 mb-6">
+          <div
+            class="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0"
+          >
+            <div
+              class="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-4"
+            >
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Filter by Status</label>
+                <select
+                  v-model="subtaskFilters.status"
+                  class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                >
+                  <option value="">All Statuses</option>
+                  <option value="Unassigned">Unassigned</option>
+                  <option value="Ongoing">Ongoing</option>
+                  <option value="Under Review">Under Review</option>
+                  <option value="Completed">Completed</option>
+                </select>
+              </div>
+
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Filter by Priority</label>
+                <select
+                  v-model="subtaskFilters.priority"
+                  class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                >
+                  <option value="">All Priorities</option>
+                  <option value="high">High (8-10)</option>
+                  <option value="medium">Medium (4-7)</option>
+                  <option value="low">Low (1-3)</option>
+                </select>
+              </div>
+
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Filter by Role</label>
+                <select
+                  v-model="subtaskFilters.role"
+                  class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                >
+                  <option value="">All Subtasks</option>
+                  <option value="owner">My Subtasks (Owner)</option>
+                  <option value="collaborator">Collaborating</option>
+                  <option value="both">Both (Owner & Collaborator)</option>
+                </select>
+              </div>
+
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Sort by</label>
+                <select
+                  v-model="subtaskFilters.sortBy"
+                  class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                >
+                  <option value="default">Default Order</option>
+                  <option value="deadline-earliest">Deadline (Earliest First)</option>
+                  <option value="deadline-latest">Deadline (Latest First)</option>
+                  <option value="priority-highest">Priority (Highest First)</option>
+                  <option value="priority-lowest">Priority (Lowest First)</option>
+                </select>
+              </div>
+            </div>
+
+            <div
+              class="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-4"
+            >
+              <button
+                @click="clearSubtaskFilters"
+                class="px-4 py-2 text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors"
+              >
+                Clear Filters
+              </button>
+            </div>
+          </div>
+        </div>
+
         <div v-if="!isSubtask" class="bg-white rounded-lg shadow-md p-6">
           <div class="flex justify-between items-center mb-6">
             <h3 class="text-xl font-semibold text-gray-900">
-              Subtasks ({{ task.subtasks?.length || 0 }})
+              Subtasks ({{ filteredSubtasks.length }})
             </h3>
             <router-link :to="`/tasks/${task.id}/subtasks`"
               class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-md text-sm font-medium">
@@ -337,34 +413,48 @@
             </router-link>
           </div>
 
-          <div v-if="task.subtasks && task.subtasks.length > 0" class="space-y-3">
-            <div v-for="subtask in task.subtasks.slice(0, 5)" :key="subtask.id"
-              class="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer"
-              @click="$router.push(`/tasks/${task.id}/subtasks/${subtask.id}`)">
-              <div class="flex items-center space-x-3">
-                <div class="w-2 h-2 rounded-full" :class="getSubtaskStatusColor(subtask.status)"></div>
-                <span class="text-gray-900">{{ subtask.title }}</span>
-              </div>
-              <div class="flex items-center space-x-2">
-                <!-- Priority Badge for Subtask -->
-                <div class="inline-flex items-center px-2 py-0.5 rounded-md font-bold text-xs"
-                  :class="getPriorityColorClass(subtask.priority)">
-                  Priority: {{ subtask.priority || 'N/A' }}
-                </div>
-
-                <RecurringIcon :is-recurring="subtask.is_recurring" :recurrence-interval="subtask.recurrence_interval"
-                  :recurrence-days="subtask.recurrence_days" />
-                <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium"
-                  :class="getStatusBadgeColor(subtask.status)">
-                  {{ subtask.status }}
-                </span>
-              </div>
+          <div v-if="task.subtasks && task.subtasks.length > 0">
+            <div v-if="filteredSubtasks.length === 0" class="text-center py-8 text-gray-500">
+              <svg class="mx-auto h-12 w-12 text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2">
+                </path>
+              </svg>
+              <p>No subtasks match the selected filters</p>
+              <button @click="clearSubtaskFilters" class="mt-2 text-indigo-600 hover:text-indigo-500 text-sm font-medium">
+                Clear Filters
+              </button>
             </div>
-            <div v-if="task.subtasks.length > 5" class="text-center pt-4">
-              <router-link :to="`/tasks/${task.id}/subtasks`"
-                class="text-indigo-600 hover:text-indigo-500 text-sm font-medium">
-                View {{ task.subtasks.length - 5 }} more subtasks →
-              </router-link>
+
+            <div v-else class="space-y-3">
+              <div v-for="subtask in filteredSubtasks.slice(0, 5)" :key="subtask.id"
+                class="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer"
+                @click="$router.push(`/tasks/${task.id}/subtasks/${subtask.id}`)">
+                <div class="flex items-center space-x-3">
+                  <div class="w-2 h-2 rounded-full" :class="getSubtaskStatusColor(subtask.status)"></div>
+                  <span class="text-gray-900">{{ subtask.title }}</span>
+                </div>
+                <div class="flex items-center space-x-2">
+                  <!-- Priority Badge for Subtask -->
+                  <div class="inline-flex items-center px-2 py-0.5 rounded-md font-bold text-xs"
+                    :class="getPriorityColorClass(subtask.priority)">
+                    Priority: {{ subtask.priority || 'N/A' }}
+                  </div>
+
+                  <RecurringIcon :is-recurring="subtask.is_recurring" :recurrence-interval="subtask.recurrence_interval"
+                    :recurrence-days="subtask.recurrence_days" />
+                  <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium"
+                    :class="getStatusBadgeColor(subtask.status)">
+                    {{ subtask.status }}
+                  </span>
+                </div>
+              </div>
+              <div v-if="filteredSubtasks.length > 5" class="text-center pt-4">
+                <router-link :to="`/tasks/${task.id}/subtasks`"
+                  class="text-indigo-600 hover:text-indigo-500 text-sm font-medium">
+                  View {{ filteredSubtasks.length - 5 }} more subtasks →
+                </router-link>
+              </div>
             </div>
           </div>
 
@@ -548,6 +638,14 @@ const showEditForm = ref(false)
 const isUpdating = ref(false)
 const taskToEdit = ref(null)
 
+// Subtask filter states
+const subtaskFilters = ref({
+  status: '',
+  priority: '',
+  role: '',
+  sortBy: 'default',
+})
+
 // API configuration
 const KONG_API_URL = 'http://localhost:8000'
 
@@ -634,6 +732,81 @@ const totalCommentCount = computed(() => {
     }, 0)
   }
   return countComments(comments.value)
+})
+
+// Filtered and sorted subtasks
+const filteredSubtasks = computed(() => {
+  if (!task.value?.subtasks) return []
+
+  let filtered = [...task.value.subtasks]
+
+  // Filter by status
+  if (subtaskFilters.value.status) {
+    filtered = filtered.filter((subtask) => subtask.status === subtaskFilters.value.status)
+  }
+
+  // Filter by priority
+  if (subtaskFilters.value.priority) {
+    filtered = filtered.filter((subtask) => {
+      const priority = subtask.priority || 5
+
+      switch (subtaskFilters.value.priority) {
+        case 'high':
+          return priority >= 8 && priority <= 10
+        case 'medium':
+          return priority >= 4 && priority <= 7
+        case 'low':
+          return priority >= 1 && priority <= 3
+        default:
+          return true
+      }
+    })
+  }
+
+  // Filter by role
+  if (subtaskFilters.value.role === 'owner') {
+    filtered = filtered.filter((subtask) => subtask.owner_id === authStore.currentUserId)
+  } else if (subtaskFilters.value.role === 'collaborator') {
+    filtered = filtered.filter(
+      (subtask) => subtask.collaborator_ids && subtask.collaborator_ids.includes(authStore.currentUserId),
+    )
+  } else if (subtaskFilters.value.role === 'both') {
+    // Show subtasks where user is either owner or collaborator
+    filtered = filtered.filter(
+      (subtask) =>
+        subtask.owner_id === authStore.currentUserId ||
+        (subtask.collaborator_ids && subtask.collaborator_ids.includes(authStore.currentUserId)),
+    )
+  }
+
+  // Apply sorting
+  if (subtaskFilters.value.sortBy === 'deadline-earliest') {
+    filtered.sort((a, b) => {
+      if (!a.deadline) return 1
+      if (!b.deadline) return -1
+      return new Date(a.deadline) - new Date(b.deadline)
+    })
+  } else if (subtaskFilters.value.sortBy === 'deadline-latest') {
+    filtered.sort((a, b) => {
+      if (!a.deadline) return 1
+      if (!b.deadline) return -1
+      return new Date(b.deadline) - new Date(a.deadline)
+    })
+  } else if (subtaskFilters.value.sortBy === 'priority-highest') {
+    filtered.sort((a, b) => {
+      const priorityA = a.priority || 5
+      const priorityB = b.priority || 5
+      return priorityB - priorityA
+    })
+  } else if (subtaskFilters.value.sortBy === 'priority-lowest') {
+    filtered.sort((a, b) => {
+      const priorityA = a.priority || 5
+      const priorityB = b.priority || 5
+      return priorityA - priorityB
+    })
+  }
+
+  return filtered
 })
 
 // Fetch task details from API
@@ -1223,6 +1396,14 @@ watch(
     fetchTaskDetails()
   },
 )
+
+// Clear subtask filters
+const clearSubtaskFilters = () => {
+  subtaskFilters.value.status = ''
+  subtaskFilters.value.priority = ''
+  subtaskFilters.value.role = ''
+  subtaskFilters.value.sortBy = 'default'
+}
 
 // Load task details when component mounts
 onMounted(() => {
