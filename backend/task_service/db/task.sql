@@ -259,9 +259,14 @@ WITH inserted_task AS (
   INSERT INTO tasks (title, description, deadline, status, owner_id, created_at, updated_at, priority)
   VALUES ('Susan Owns', 'Transfer Own', '2026-11-11', 'UNASSIGNED', 3, '2025-10-01 08:00:00', '2025-10-01 08:00:00', 1)
   RETURNING id, owner_id
+),
+insert_collab AS (
+  INSERT INTO task_collaborators (task_id, user_id)
+  SELECT id, owner_id FROM inserted_task
+  RETURNING task_id
 )
-INSERT INTO task_collaborators (task_id, user_id)
-SELECT id, owner_id FROM inserted_task;
+INSERT INTO tasks (title, description, deadline, status, owner_id, created_at, updated_at, priority, parent_task_id)
+SELECT 'Susan subtask','Transfer Own','2026-11-11','UNASSIGNED',3,'2025-10-01 08:00:00','2025-10-01 08:00:00',4,it.id FROM inserted_task it;
 
 -- Comments (IDs 1-6 assumed sequentially)
 INSERT INTO comments (body, author_id, task_id) VALUES
