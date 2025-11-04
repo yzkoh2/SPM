@@ -4,7 +4,7 @@
       <div class="flex justify-between items-center h-16">
         <div class="flex items-center space-x-8">
           <div class="flex-shrink-0">
-            <h1 class="text-xl font-bold text-gray-900">TaskBoard</h1>
+            <h1 class="text-xl font-bold text-gray-900">Task Management System</h1>
           </div>
 
           <div class="hidden md:block">

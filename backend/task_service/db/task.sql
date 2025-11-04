@@ -177,7 +177,7 @@ SELECT id, 1 FROM inserted_task
 UNION ALL
 SELECT id, 3 FROM inserted_task;
 
--- Subtasks for Task 4 (ID=5, 6)
+-- Subtasks for Task 4 (ID=5, 6, 7)
 WITH inserted_task AS (
   INSERT INTO tasks (title, status, owner_id, parent_task_id, created_at, updated_at) VALUES
   ('Define API endpoints', 'ONGOING', 2, 4, '2025-10-01 08:00:00', '2025-10-01 08:00:00'),
@@ -187,14 +187,12 @@ WITH inserted_task AS (
 )
 INSERT INTO task_collaborators (task_id, user_id)
 SELECT id, owner_id FROM inserted_task;
+
 INSERT INTO task_collaborators (task_id, user_id) VALUES (5, 1);
-INSERT INTO task_collaborators (task_id, user_id) VALUES (5, 2);
 INSERT INTO task_collaborators (task_id, user_id) VALUES (5, 3);
 INSERT INTO task_collaborators (task_id, user_id) VALUES (6, 1);
-INSERT INTO task_collaborators (task_id, user_id) VALUES (6, 2);
 INSERT INTO task_collaborators (task_id, user_id) VALUES (6, 3);
 INSERT INTO task_collaborators (task_id, user_id) VALUES (7, 1);
-INSERT INTO task_collaborators (task_id, user_id) VALUES (7, 2);
 INSERT INTO task_collaborators (task_id, user_id) VALUES (7, 3);
 
 -- Attachment for Task 4
