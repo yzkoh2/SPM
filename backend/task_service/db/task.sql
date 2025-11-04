@@ -238,8 +238,13 @@ UNION ALL
 SELECT id, 2 FROM inserted_task;
 
 -- Noti_006 test (ID=11)
-INSERT INTO tasks (title, description, deadline, status, owner_id, project_id, created_at, updated_at)
-VALUES ('Test 6', 'Under Review to Completed', '2026-11-11', 'UNDER_REVIEW', 1, 1, '2025-10-01 08:00:00', '2025-10-01 08:00:00');
+WITH inserted_task AS (
+  INSERT INTO tasks (title, description, deadline, status, owner_id, project_id, created_at, updated_at)
+  VALUES ('Test 6', 'Under Review to Completed', '2026-11-11', 'UNDER_REVIEW', 1, 1, '2025-10-01 08:00:00', '2025-10-01 08:00:00')
+  RETURNING id, owner_id
+)
+INSERT INTO task_collaborators (task_id, user_id)
+SELECT id, owner_id FROM inserted_task;
 
 -- Project 2 (ID=2)
 WITH inserted_project AS (
@@ -252,8 +257,13 @@ SELECT id, owner_id FROM inserted_project
 UNION
 SELECT id, 2 FROM inserted_project;
 
-INSERT INTO tasks (title, description, deadline, status, owner_id, created_at, updated_at, priority)
-VALUES ('Susan Owns', 'Transfer Own', '2026-11-11', 'UNASSIGNED', 3, '2025-10-01 08:00:00', '2025-10-01 08:00:00', 1);
+WITH inserted_task AS (
+  INSERT INTO tasks (title, description, deadline, status, owner_id, created_at, updated_at, priority)
+  VALUES ('Susan Owns', 'Transfer Own', '2026-11-11', 'UNASSIGNED', 3, '2025-10-01 08:00:00', '2025-10-01 08:00:00', 1)
+  RETURNING id, owner_id
+)
+INSERT INTO task_collaborators (task_id, user_id)
+SELECT id, owner_id FROM inserted_task;
 
 -- Comments (IDs 1-6 assumed sequentially)
 INSERT INTO comments (body, author_id, task_id) VALUES
