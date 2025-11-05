@@ -226,8 +226,8 @@ SELECT id, 3 FROM inserted_task;
 
 -- Subtasks for Task 9 (ID=10)
 WITH inserted_task AS (
-  INSERT INTO tasks (title, status, owner_id, project_id, parent_task_id, created_at, updated_at, is_recurring, recurrence_interval, description) VALUES
-  ('Testing Subtask', 'ONGOING', 1, 1, 9, '2025-10-01 08:00:00', '2025-10-01 08:00:00', TRUE, 'daily', 'Test')
+  INSERT INTO tasks (title, status, owner_id, project_id, parent_task_id, created_at, updated_at, is_recurring, recurrence_interval, description, deadline) VALUES
+  ('Testing Subtask', 'ONGOING', 1, 1, 9, '2025-10-01 08:00:00', '2025-10-01 08:00:00', TRUE, 'daily', 'Test', '2026-11-11')
   RETURNING id, owner_id
 )
 INSERT INTO task_collaborators (task_id, user_id)
