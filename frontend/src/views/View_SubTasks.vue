@@ -82,6 +82,20 @@
             </div>
 
             <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Filter by Role</label>
+              <select
+                v-model="filters.role"
+                @change="applyFilters"
+                class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              >
+                <option value="">All Subtasks</option>
+                <option value="owner">My Subtasks (Owner)</option>
+                <option value="collaborator">Collaborating</option>
+                <option value="both">Both (Owner & Collaborator)</option>
+              </select>
+            </div>
+
+            <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">Sort by</label>
               <select
                 v-model="sortBy"
@@ -264,6 +278,7 @@ const collaboratorDetails = ref([])
 const filters = ref({
   status: '',
   priority: '',
+  role: '',
 })
 
 const sortBy = ref('default')
@@ -300,6 +315,24 @@ const filteredSubtasks = computed(() => {
           return priority >= 4 && priority <= 7
         case 'low':
           return priority >= 1 && priority <= 3
+        default:
+          return true
+      }
+    })
+  }
+
+  if (filters.value.role) {
+    filtered = filtered.filter((subtask) => {
+      const isOwner = subtask.owner_id === authStore.user.id
+      const isCollaborator = subtask.collaborator_ids?.includes(authStore.user.id)
+
+      switch (filters.value.role) {
+        case 'owner':
+          return isOwner
+        case 'collaborator':
+          return isCollaborator && !isOwner
+        case 'both':
+          return isOwner && isCollaborator
         default:
           return true
       }
