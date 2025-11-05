@@ -45,10 +45,10 @@
       </div>
       <div class="bg-white rounded-lg shadow-md p-6 mb-6">
         <div
-          class="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0"
+          class="flex flex-wrap lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0 gap-4"
         >
           <div
-            class="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-4"
+            class="flex flex-wrap sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-4"
           >
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">Filter by Status</label>
