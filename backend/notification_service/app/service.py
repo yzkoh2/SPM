@@ -143,13 +143,21 @@ def parse_deadline(deadline_str):
 
 
 def format_deadline_for_email(deadline_str):
-    #Format deadline string for display in email
+    #Format deadline string for display in email (converted to Singapore time)
     if not deadline_str or deadline_str == 'No deadline set':
         return 'No deadline set'
     
     try:
+        singapore_tz = ZoneInfo('Asia/Singapore')
+        
+        #Parse the UTC datetime
         deadline_dt = datetime.fromisoformat(deadline_str.replace('Z', '+00:00'))
-        return deadline_dt.strftime('%B %d, %Y at %I:%M %p')
+        
+        #Convert to Singapore time
+        deadline_sgt = deadline_dt.astimezone(singapore_tz)
+        
+        #Format for display
+        return deadline_sgt.strftime('%B %d, %Y at %I:%M %p SGT')
     except:
         return 'No deadline set'
 
