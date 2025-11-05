@@ -316,6 +316,9 @@ def update_task(task_id, user_id, task_data, comment):
 def _create_next_recurring_task(completed_task):
     #Creates the next instance of a recurring task.
     if completed_task.recurrence_end_date and datetime.utcnow() >= completed_task.recurrence_end_date:
+        print(f"Recurrence for task {completed_task.id} ended. Current time is past recurrence end date.")
+        # Mark the old task as no longer the active recurring one
+        completed_task.is_recurring = False
         return
 
     next_deadline = _calculate_next_due_date(
@@ -323,6 +326,11 @@ def _create_next_recurring_task(completed_task):
         completed_task.recurrence_interval, 
         completed_task.recurrence_days
     )
+    if completed_task.recurrence_end_date and next_deadline and next_deadline >= completed_task.recurrence_end_date:
+        print(f"Recurrence for task {completed_task.id} stopping. Next deadline {next_deadline} is past recurrence end date {completed_task.recurrence_end_date}.")
+        # Mark the old task as no longer the active recurring one
+        completed_task.is_recurring = False
+        return # Do not create the new task
 
     new_task = Task(
         title=completed_task.title,
@@ -1125,6 +1133,9 @@ def delete_project(project_id, user_id):
         if project.owner_id != user_id:
             return False, "Forbidden: Only the project owner can delete the project"
         
+        if project.tasks:
+            return False, "Cannot delete project with existing tasks. Please delete all tasks first."
+        
         db.session.delete(project)
         db.session.commit()
         return True, None
@@ -1174,38 +1185,6 @@ def add_project_collaborator(project_id, user_id, collaborator_user_id):
         print(f"Error adding collaborator: {e}")
         db.session.rollback()
         raise
-
-# def remove_project_collaborator(project_id, user_id, collaborator_user_id):
-#     """Remove a collaborator from a project (only owner can remove)"""
-#     try:
-#         project = Project.query.get(project_id)
-        
-#         if not project:
-#             return None, "Project not found"
-        
-#         # Check if user is the owner
-#         if project.owner_id != user_id:
-#             return None, "Forbidden: Only the project owner can remove collaborators"
-        
-#         _touch_project(project)
-
-#         # Remove collaborator
-#         db.session.execute(
-#             project_collaborators.delete().where(
-#                 project_collaborators.c.project_id == project_id,
-#                 project_collaborators.c.user_id == collaborator_user_id
-#             )
-#         )
-#         db.session.commit()
-        
-#         return {"message": "Collaborator removed successfully"}, None
-        
-#     except Exception as e:
-#         print(f"Error removing collaborator: {e}")
-#         db.session.rollback()
-#         raise
-
-# Add these functions to backend/task_service/app/service.py
 
 # ==================== EDIT PROJECT & GET/ MANAGE TASKS FUNCTIONS ====================
 def get_project_tasks(project_id):

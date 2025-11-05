@@ -222,11 +222,9 @@
                     </svg>
                     <p class="text-sm font-semibold text-gray-900">
                       {{
-                        calculateNextInstanceDate(
-                          task.deadline,
-                          task.recurrence_interval,
-                          task.recurrence_days,
-                        )
+                        task.next_recurring_instance
+                          ? formatDeadline(task.next_recurring_instance)
+                          : 'No further instances scheduled.'
                       }}
                     </p>
                   </div>

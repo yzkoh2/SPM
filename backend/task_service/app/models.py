@@ -1,8 +1,23 @@
 from flask_sqlalchemy import SQLAlchemy
 import enum
-from datetime import datetime
+from datetime import datetime, timedelta
+from dateutil.relativedelta import relativedelta
 
 db = SQLAlchemy()
+
+def _calculate_next_due_date(current_deadline, interval, custom_days):
+    #Calculates the next due date based on the recurrence interval.
+    if not current_deadline:
+        return None # Cannot calculate next date without a starting point
+
+    if interval == 'daily':
+        return current_deadline + timedelta(days=1)
+    elif interval == 'weekly':
+        return current_deadline + timedelta(weeks=1)
+    elif interval == 'monthly':
+        return current_deadline + relativedelta(months=1)
+    elif interval == 'custom' and custom_days:
+        return current_deadline + timedelta(days=custom_days)
 
 # --- ENUMS ---
 
@@ -141,6 +156,25 @@ class Task(db.Model):
         return [row.user_id for row in result]
 
     def to_json(self):
+        next_instance_date = None
+        if self.is_recurring:
+            # Check 1: Stop if the recurrence period has already ended
+            if self.recurrence_end_date and datetime.utcnow() >= self.recurrence_end_date:
+                pass # next_instance_date remains None
+            else:
+                # Calculate the next potential deadline
+                next_deadline = _calculate_next_due_date(
+                    self.deadline, 
+                    self.recurrence_interval, 
+                    self.recurrence_days
+                )
+                
+                if next_deadline:
+                    # Check 2: Stop if the *next* deadline is past or at the end date
+                    if self.recurrence_end_date and next_deadline >= self.recurrence_end_date:
+                        pass # next_instance_date remains None
+                    else:
+                        next_instance_date = next_deadline.isoformat()
         # Filter comments to only include top-level (no parent_comment_id)
         top_level_comments = [c for c in self.comments if c.parent_comment_id is None]
 
@@ -158,6 +192,7 @@ class Task(db.Model):
             'recurrence_interval': self.recurrence_interval,
             'recurrence_days': self.recurrence_days,
             'recurrence_end_date': self.recurrence_end_date.isoformat() if self.recurrence_end_date else None,
+            'next_recurring_instance': next_instance_date,
             'collaborator_ids': self.collaborator_ids(),
             'subtasks': [subtask.to_json() for subtask in self.subtasks],
             'subtask_count': len(self.subtasks),
