@@ -1,17 +1,21 @@
 # Task Management System
 
-A comprehensive microservices-based task management system built with Flask (backend), Vue.js (frontend), and deployed using Docker. The system includes user management, task tracking, project collaboration, file attachments, real-time notifications, and PDF report generation.
+A comprehensive microservices-based task management system built with Flask (backend), Vue.js (frontend), and deployed using Docker.
 
 ## 🚀 Quick Start Guide
 
+This guide will get you up and running in a few minutes.
+
 ### Step 1: Prerequisites
-- Install Docker Desktop (includes Docker & Docker Compose)
-- Download link: https://www.docker.com/products/docker-desktop
+
+- **Docker Desktop**: Make sure Docker is installed and running on your system.
+  - [Download Docker Desktop](https://www.docker.com/products/docker-desktop)
 
 ### Step 2: Setup Environment Variables
-Create a `.env` file in the project root directory:
 
-```env
+Create a `.env` file in the root of the project directory by copying the example below.
+
+```sh
 # Database Configurations
 DATABASE_URL=postgresql://user:user@user_db:5432/user_db
 TASK_DATABASE_URL=postgresql://user:user@task_db:5432/task_db
@@ -35,16 +39,14 @@ SMTP_FROM_EMAIL=noreply@yourdomain.com
 
 # RabbitMQ Configuration
 RABBITMQ_URL=amqp://admin:admin123@rabbitmq:5672/
+EOL
 ```
 
 ### Step 3: Start the Application
 
 ```bash
-# Navigate to project directory
-cd <project-directory>
-
-# Start all services
-docker-compose up -d
+# Start all services in detached mode
+docker-compose up --build -d
 
 # Wait for services to initialize (about 30-60 seconds)
 # Check if all services are running
@@ -53,29 +55,21 @@ docker-compose ps
 
 ### Step 4: Access the Application
 
-Open your browser and navigate to:
-- **Frontend Application**: http://localhost:5173
-- **API Documentation (Swagger)**: http://localhost:6008/api-docs/documentation
-- **API Gateway**: http://localhost:8000
+- **Frontend Application**: [http://localhost:5173](http://localhost:5173)
+- **API Documentation**: [http://localhost:6008/api-docs/documentation](http://localhost:6008/api-docs/documentation)
+- **API Gateway**: `http://localhost:8000`
 
-### Step 5: Login to the System
+### Step 5: Login Credentials
 
-Use one of the pre-configured test accounts:
+Use one of the pre-configured test accounts to log in. The password for all accounts is `a`.
 
-| Role | Email | Password | Department |
-|------|-------|----------|------------|
-| **Staff** | spmg8t3+john@gmail.com | a | Finance Department |
-| **Manager** | spmg8t3+jane@gmail.com | a | Finance Department |
-| **Director** | spmg8t3+susan@gmail.com | a | Finance Department |
-| **HR** | spmg8t3+harry@gmail.com | a | HR |
-| **Senior Manager** | spmg8t3+tom@gmail.com | a | Senior Management |
-
-**How to Login:**
-1. Go to http://localhost:5173
-2. Click on "Login" or you'll be redirected to the login page
-3. Enter the email and password from the table above
-4. Click "Login"
-5. You'll be redirected to the dashboard
+| Role | Email | Department |
+| :--- | :--- | :--- |
+| **Staff** | `spmg8t3+john@gmail.com` | Finance Department |
+| **Manager** | `spmg8t3+jane@gmail.com` | Finance Department |
+| **Director** | `spmg8t3+susan@gmail.com` | Finance Department |
+| **HR** | `spmg8t3+harry@gmail.com` | HR |
+| **Senior Manager** | `spmg8t3+tom@gmail.com` | Senior Management |
 
 ### Step 6: Reset Database (If Needed)
 
@@ -90,9 +84,7 @@ chmod +x reset-db.sh
 reset-db.bat
 ```
 
-After resetting, all test users and sample data will be restored.
-
-### Stop the Application
+### Step 7: Stop the Application
 
 ```bash
 # Stop all services
@@ -104,7 +96,8 @@ docker-compose down -v
 
 ---
 
-## ✅ First-Time Setup Checklist
+<details>
+<summary>✅ First-Time Setup Checklist</summary>
 
 - [ ] **Docker is installed and running**
   ```bash
@@ -135,10 +128,10 @@ docker-compose down -v
   ```bash
   ./reset-db.sh  # Should complete without errors
   ```
+</details>
 
----
-
-## ✨ Features
+<details>
+<summary>✨ Features</summary>
 
 ### User Management
 - User authentication with JWT tokens
@@ -186,10 +179,10 @@ docker-compose down -v
   - Deadline reminders
   - Task status changes
 - Beautiful HTML email templates
+</details>
 
----
-
-## 🏗 System Architecture
+<details>
+<summary>🏗 System Architecture</summary>
 
 The system consists of the following microservices:
 
@@ -222,164 +215,39 @@ The system consists of the following microservices:
 6. **Swagger Documentation** (Port 6008)
    - Interactive API documentation
    - API testing interface
+</details>
 
----
-
-## 📦 Prerequisites
-
-Before you begin, ensure you have the following installed:
-
-- **Docker** (v20.10 or higher)
-- **Docker Compose** (v2.0 or higher)
-- **Git**
-
-Optional (for local development without Docker):
-- Python 3.11+
-- Node.js 20+
-- PostgreSQL 15+
-
----
-
-## 📚 API Documentation
-
-### Access Swagger Documentation
-
-Once the system is running, access the interactive API documentation at:
-
-**http://localhost:6008/api-docs/documentation**
-
-### API Gateway Endpoints
-
-All API requests should go through the Kong gateway at `http://localhost:8000`:
-
-**User Service:**
-- `POST /user/create` - Create a new user
-- `POST /user/login` - User login
-- `GET /user/verifyJWT` - Verify JWT token
-- `GET /user/{user_id}` - Get user by ID
-- `GET /user` - Get all users
-- `GET /user/teams` - Get all teams
-- `GET /user/team/{team_id}` - Get users in a team
-- `GET /user/departments` - Get all departments
-- `GET /user/department/{dept_id}` - Get users in a department
-
-**Task Service:**
-- `GET /tasks` - Get all tasks
-- `POST /tasks` - Create a new task
-- `GET /tasks/{task_id}` - Get task by ID
-- `PUT /tasks/{task_id}` - Update a task
-- `DELETE /tasks/{task_id}` - Delete a task
-- `GET /tasks/{task_id}/subtasks` - Get subtasks
-- `GET /tasks/{task_id}/collaborators` - Get task collaborators
-- `GET /tasks/{task_id}/comments` - Get task comments
-- `POST /tasks/{task_id}/comments` - Add a comment
-- `DELETE /tasks/deletecomment/{comment_id}` - Delete a comment
-- `GET /tasks/{task_id}/attachments` - Get task attachments
-- `POST /tasks/{task_id}/attachments` - Upload an attachment
-- `GET /tasks/{task_id}/attachments/{attachment_id}` - Get attachment
-- `DELETE /tasks/{task_id}/attachments/{attachment_id}` - Delete attachment
-
-**Project Service:**
-- `GET /projects` - Get all projects
-- `POST /projects` - Create a new project
-- `GET /projects/{project_id}` - Get project by ID
-- `PUT /projects/{project_id}` - Update a project
-- `DELETE /projects/{project_id}` - Delete a project
-- `GET /projects/user/{user_id}` - Get user's projects
-- `POST /projects/{project_id}/collaborators` - Add project collaborator
-- `DELETE /projects/{project_id}/collaborators/{collaborator_id}` - Remove collaborator
-
-**Report Service:**
-- `GET /reports/project/{project_id}?user_id={user_id}` - Generate project report
-- `GET /reports/individual?user_id={user_id}&target_user_id={target_user_id}` - Generate user report
-- `GET /reports/history/{user_id}` - Get report history
-- `GET /reports/retrieve/{report_id}?user_id={user_id}` - Retrieve a report
-- `DELETE /reports/delete/{report_id}?user_id={user_id}` - Delete a report
-
----
-
-## 📁 Project Structure
+<details>
+<summary>📁 Project Structure</summary>
 
 ```
 .
 ├── backend/
-│   ├── user_service/          # User management microservice
-│   │   ├── app/
-│   │   │   ├── models.py      # Database models
-│   │   │   ├── routes.py      # API endpoints
-│   │   │   ├── service.py     # Business logic
-│   │   │   └── __init__.py
-│   │   ├── db/
-│   │   │   └── user.sql       # Database initialization
-│   │   ├── test/
-│   │   │   └── test.py        # Unit tests
-│   │   ├── config.py
-│   │   ├── requirements.txt
-│   │   ├── wsgi.py
-│   │   └── Dockerfile
-│   │
-│   ├── task_service/          # Task management microservice
-│   │   ├── app/
-│   │   │   ├── models.py
-│   │   │   ├── routes.py
-│   │   │   ├── service.py
-│   │   │   ├── report/        # Report generation
-│   │   │   │   ├── generator_service.py
-│   │   │   │   ├── routes.py
-│   │   │   │   └── templates/
-│   │   │   └── __init__.py
-│   │   ├── db/
-│   │   │   └── task.sql
-│   │   ├── test/
-│   │   ├── config.py
-│   │   ├── requirements.txt
-│   │   └── Dockerfile
-│   │
-│   └── notification_service/  # Email notification microservice
-│       ├── app/
-│       │   ├── models.py
-│       │   ├── email_service.py
-│       │   ├── email_templates.py
-│       │   ├── rabbitmq_consumer.py
-│       │   └── __init__.py
-│       ├── db/
-│       │   └── notification.sql
-│       ├── config.py
-│       ├── requirements.txt
-│       ├── run.py
-│       └── Dockerfile
-│
-├── frontend/                  # Vue.js frontend
-│   ├── src/
-│   │   ├── assets/
-│   │   ├── components/
-│   │   ├── router/
-│   │   ├── stores/
-│   │   ├── views/
-│   │   ├── App.vue
-│   │   └── main.js
-│   ├── public/
-│   ├── package.json
-│   └── Dockerfile
-│
-├── documentation/             # Swagger API documentation
-│   ├── swaggerJson/
-│   │   └── documentation.json
-│   ├── swagger.js
-│   ├── package.json
-│   └── Dockerfile
-│
-├── kong.yml                   # Kong API Gateway configuration
-├── docker-compose.yml         # Docker orchestration
-├── reset-db.sh               # Database reset script (Linux/Mac)
-├── reset-db.bat              # Database reset script (Windows)
-├── .env                      # Environment variables (create this)
-└── README.md                 # This file
+│   ├── user_service/
+│   ├── task_service/
+│   └── notification_service/
+├── frontend/
+├── documentation/
+├── kong.yml
+├── docker-compose.yml
+├── reset-db.sh
+├── reset-db.bat
+└── README.md
 ```
+</details>
 
----
 
-## 🗄 Database Management
+<details>
+<summary>📚 API Documentation</summary>
+
+Access the interactive API documentation at:
+**[http://localhost:6008/api-docs/documentation](http://localhost:6008/api-docs/documentation)**
+
+All API requests are routed through the Kong gateway at `http://localhost:8000`.
+</details>
+
+<details>
+<summary>🗄 Database Management</summary>
 
 ### Quick Database Reset
 
@@ -394,81 +262,10 @@ chmod +x reset-db.sh
 reset-db.bat
 ```
 
-
-
-**After reset, you can login with:**
-- spmg8t3+john@gmail.com / a
-- spmg8t3+jane@gmail.com / a
-- spmg8t3+susan@gmail.com / a
-- spmg8t3+harry@gmail.com / a
-- spmg8t3+tom@gmail.com / a
-
 ### Access PgAdmin
 
 1. Open http://localhost:5434
 2. Login with:
-   - Email: admin@admin.com
-   - Password: admin
-
-### Database Schema
-
-**User Database (user_db):**
-- `users` - User accounts and authentication
-- `teams` - Team organization
-- `departments` - Department structure
-
-**Task Database (task_db):**
-- `tasks` - Tasks and subtasks
-- `projects` - Project management
-- `task_collaborators` - Task-user relationships
-- `project_collaborators` - Project-user relationships
-- `comments` - Task comments
-- `comment_mentions` - @mention tracking
-- `attachments` - File attachments
-- `task_activity_log` - Task change history
-- `reports` - Generated report metadata
-
-**Notification Database (notification_db):**
-- `notification_log` - Email notification history
-- `notification_preferences` - User notification settings
-
----
-
-## 🔐 User Roles and Permissions
-
-### Testing Different Roles
-
-**1. Staff (spmg8t3+john@gmail.com / a)**
-- Create personal tasks
-- View only assigned tasks
-- Cannot access Department Schedule
-
-**2. Manager (spmg8t3+jane@gmail.com / a)**
-- Access Team Schedule
-- Create projects
-- Assign tasks to team members
-
-**3. Director (spmg8t3+susan@gmail.com / a)**
-- Access Department Schedule
-- View multiple teams
-- Generate department reports
-
-**4. HR (spmg8t3+harry@gmail.com / a)**
-- Access Company Schedule
-- View all users
-- Generate employee reports
-
-**5. Senior Manager (spmg8t3+tom@gmail.com / a)**
-- Full system access
-- Executive dashboard
-- All reports and analytics
-
-### Login Process
-
-**Web Interface:**
-1. Go to http://localhost:5173
-2. Enter email and password
-3. Click "Login"
-
-
-
+   - **Email**: `admin@admin.com`
+   - **Password**: `admin`
+</details>
