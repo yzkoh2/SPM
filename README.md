@@ -107,7 +107,7 @@ docker-compose down -v
 
 - [ ] **All Docker containers are running**
   ```bash
-  docker-compose up -d
+  docker-compose up --build -d
   docker-compose ps  # All services should show "Up"
   ```
 
