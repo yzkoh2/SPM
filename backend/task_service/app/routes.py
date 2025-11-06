@@ -12,7 +12,7 @@ def health_check():
 
 @task_bp.route("/tasks", methods=["GET"])
 def get_all_tasks():
-    """Get all tasks, optionally filtered by owner_id"""
+    """Get all tasks, filtered by owner_id"""
     try:
         owner_id = request.args.get('owner_id', type=int)
         status = request.args.get('status')
