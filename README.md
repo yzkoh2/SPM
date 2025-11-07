@@ -269,3 +269,5 @@ reset-db.bat
    - **Email**: `admin@admin.com`
    - **Password**: `admin`
 </details>
+
+# Testing CI Pipeline - This should pass all checks
