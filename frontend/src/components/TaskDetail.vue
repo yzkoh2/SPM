@@ -14,7 +14,9 @@
     <div class="p-6">
       <div>
         <h3 class="text-lg font-semibold text-gray-800">Description</h3>
-        <p class="mt-2 text-gray-700 whitespace-pre-wrap">{{ task.description || 'No description provided.' }}</p>
+        <p class="mt-2 text-gray-700 whitespace-pre-wrap">
+          {{ task.description || 'No description provided.' }}
+        </p>
       </div>
 
       <div class="mt-6">
@@ -24,7 +26,7 @@
             <span class="font-medium text-gray-600">Deadline</span>
             <span :class="deadlineColor">{{ formatDeadline(task.deadline) }}</span>
           </div>
-          </div>
+        </div>
       </div>
 
       <slot name="subtasks"></slot>
@@ -34,39 +36,45 @@
 </template>
 
 <script setup>
-import { computed } from 'vue';
+import { computed } from 'vue'
+import { parseUTCTimestamp } from '@/utils/timezone'
 
 const props = defineProps({
   task: {
     type: Object,
-    default: () => null
-  }
-});
+    default: () => null,
+  },
+})
 
 // (Reusing computed properties from TaskCard for consistency)
 const statusBadgeColor = computed(() => {
-  if (!props.task) return '';
+  if (!props.task) return ''
   const colors = {
-    'Unassigned': 'bg-gray-100 text-gray-800',
-    'Ongoing': 'bg-yellow-100 text-yellow-800',
+    Unassigned: 'bg-gray-100 text-gray-800',
+    Ongoing: 'bg-yellow-100 text-yellow-800',
     'Under Review': 'bg-orange-100 text-orange-800',
-    'Completed': 'bg-green-100 text-green-800'
-  };
-  return colors[props.task.status] || 'bg-gray-100 text-gray-800';
-});
+    Completed: 'bg-green-100 text-green-800',
+  }
+  return colors[props.task.status] || 'bg-gray-100 text-gray-800'
+})
 
 const deadlineColor = computed(() => {
-  if (!props.task || !props.task.deadline) return 'text-gray-700';
-  const now = new Date();
-  const deadlineDate = new Date(props.task.deadline);
-  if (deadlineDate < now) return 'text-red-600 font-bold';
-  return 'text-gray-900';
-});
+  if (!props.task || !props.task.deadline) return 'text-gray-700'
+  const now = new Date()
+  const deadlineDate = parseUTCTimestamp(props.task.deadline)
+  if (deadlineDate < now) return 'text-red-600 font-bold'
+  return 'text-gray-900'
+})
 
 const formatDeadline = (deadline) => {
-  if (!deadline) return 'Not set';
-  return new Date(deadline).toLocaleString('en-US', {
-    year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit'
-  });
-};
+  if (!deadline) return 'Not set'
+  const date = parseUTCTimestamp(deadline)
+  return date.toLocaleString('en-US', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
+}
 </script>

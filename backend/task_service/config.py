@@ -5,9 +5,8 @@ from dotenv import load_dotenv
 load_dotenv()
 
 class Config:
-    """Configuration class for Task Management Service"""
-    
-    # Database Configuration
+    #Configuration class for Task Management Service
+    #Database Configuration
     SQLALCHEMY_DATABASE_URI = os.getenv('TASK_DATABASE_URL')
     
     # Disable SQLAlchemy event system (not needed for this app)
@@ -16,6 +15,14 @@ class Config:
     
     # Secret key for session management (if needed)
     SECRET_KEY = os.getenv('SECRET_KEY')
+
+    S3_BUCKET_NAME = os.getenv('S3_BUCKET_NAME')
+    S3_ACCESS_KEY = os.getenv('S3_ACCESS_KEY')
+    S3_SECRET_KEY = os.getenv('S3_SECRET_KEY')
+    S3_REGION = os.getenv('S3_REGION')
+    
+    # RabbitMQ 
+    RABBITMQ_URL = os.getenv('RABBITMQ_URL', 'amqp://admin:admin123@rabbitmq:5672/')
     
     # Debug mode (set to False in production)
     # DEBUG = os.getenv('DEBUG', 'False').lower() in ['true', '1', 'yes']
@@ -26,3 +33,18 @@ class Config:
     #     "http://localhost:8000",  # Kong gateway
     #     "http://frontend:5173"    # Docker frontend service
     # ]
+
+class TestingConfig(Config):
+    """Configurations for Testing."""
+    TESTING = True
+    SQLALCHEMY_DATABASE_URI = 'sqlite:///:memory:'
+    SQLALCHEMY_TRACK_MODIFICATIONS = False
+    S3_BUCKET_NAME = 'test-bucket'
+    SECRET_KEY = 'test-secret-key'
+
+# A dictionary to access the different configuration classes.
+app_config = {
+    'development': Config,
+    'testing': TestingConfig,
+    'production': Config,
+}

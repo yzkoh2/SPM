@@ -9,7 +9,10 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy application code
 COPY . .
 
-EXPOSE 6002
+EXPOSE 6003
 
-CMD ["gunicorn", "--bind", "0.0.0.0:6002", "main:app"]
+# Set environment variable for unbuffered output
+ENV PYTHONUNBUFFERED=1
 
+# Use Python directly for better logging
+CMD ["python", "-u", "main.py"]

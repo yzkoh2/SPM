@@ -1,0 +1,211 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  # ========================================
+  # TEST JOBS - Run tests for all services
+  # ========================================
+  
+  test-user-service:
+    name: Test User Service
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Python 3.13
+      uses: actions/setup-python@v4
+      with:
+        python-version: "3.13"
+    
+    - name: Install dependencies
+      working-directory: backend/user_service
+      run: |
+        python -m pip install --upgrade pip
+        pip install flake8 pytest pytest-cov
+        pip install -r requirements.txt
+    
+    - name: Lint with flake8
+      working-directory: backend/user_service
+      run: |
+        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+        flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+    
+    - name: Test with pytest
+      working-directory: backend/user_service
+      run: |
+        pytest test/ -v
+
+  test-task-service:
+    name: Test Task Service
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Python 3.13
+      uses: actions/setup-python@v4
+      with:
+        python-version: "3.13"
+    
+    - name: Install dependencies
+      working-directory: backend/task_service
+      run: |
+        python -m pip install --upgrade pip
+        pip install flake8 pytest pytest-cov
+        pip install -r requirements.txt
+    
+    - name: Lint with flake8
+      working-directory: backend/task_service
+      run: |
+        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+        flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+    
+    - name: Test with pytest
+      working-directory: backend/task_service
+      run: |
+        pytest test/ -v
+
+  test-notification-service:
+    name: Test Notification Service
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Python 3.13
+      uses: actions/setup-python@v4
+      with:
+        python-version: "3.13"
+    
+    - name: Install dependencies
+      working-directory: backend/notification_service
+      run: |
+        python -m pip install --upgrade pip
+        pip install flake8 pytest pytest-cov
+        pip install -r requirements.txt
+    
+    - name: Lint with flake8
+      working-directory: backend/notification_service
+      run: |
+        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+        flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+    
+    - name: Test with pytest
+      working-directory: backend/notification_service
+      run: |
+        pytest test/ -v
+
+  test-frontend:
+    name: Test Frontend
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+        cache-dependency-path: frontend/package-lock.json
+    
+    - name: Install dependencies
+      working-directory: frontend
+      run: npm ci
+    
+    - name: Lint
+      working-directory: frontend
+      run: npm run lint
+      continue-on-error: true
+    
+    - name: Build
+      working-directory: frontend
+      run: npm run build
+
+  # ========================================
+  # BUILD JOB - Build and push Docker images
+  # Only runs on push to main, after all tests pass
+  # ========================================
+  
+  build-and-push-images:
+    name: Build and Push Docker Images
+    needs: [test-user-service, test-task-service, test-notification-service, test-frontend]
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+    
+    - name: Log in to GitHub Container Registry
+      uses: docker/login-action@v3
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    
+    - name: Convert repository name to lowercase
+      id: repo
+      run: echo "repository=$(echo ${{ github.repository }} | tr '[:upper:]' '[:lower:]')" >> $GITHUB_OUTPUT
+    
+    - name: Build and push user_service
+      uses: docker/build-push-action@v5
+      with:
+        context: ./backend/user_service
+        push: true
+        tags: ghcr.io/${{ steps.repo.outputs.repository }}/user-service:latest
+        labels: |
+          org.opencontainers.image.source=https://github.com/${{ github.repository }}
+    
+    - name: Build and push task_service
+      uses: docker/build-push-action@v5
+      with:
+        context: ./backend/task_service
+        push: true
+        tags: ghcr.io/${{ steps.repo.outputs.repository }}/task-service:latest
+        labels: |
+          org.opencontainers.image.source=https://github.com/${{ github.repository }}
+    
+    - name: Build and push notification_service
+      uses: docker/build-push-action@v5
+      with:
+        context: ./backend/notification_service
+        push: true
+        tags: ghcr.io/${{ steps.repo.outputs.repository }}/notification-service:latest
+        labels: |
+          org.opencontainers.image.source=https://github.com/${{ github.repository }}
+    
+    - name: Build and push frontend
+      uses: docker/build-push-action@v5
+      with:
+        context: ./frontend
+        push: true
+        tags: ghcr.io/${{ steps.repo.outputs.repository }}/frontend:latest
+        labels: |
+          org.opencontainers.image.source=https://github.com/${{ github.repository }}
+    
+    - name: Build and push swagger documentation
+      uses: docker/build-push-action@v5
+      with:
+        context: ./documentation
+        push: true
+        tags: ghcr.io/${{ steps.repo.outputs.repository }}/swagger:latest
+        labels: |
+          org.opencontainers.image.source=https://github.com/${{ github.repository }}

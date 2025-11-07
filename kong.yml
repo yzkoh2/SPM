@@ -48,22 +48,8 @@ services:
       - name: task-service-route
         paths:
           - /tasks
-        strip_path: false
-        methods:
-          - GET
-          - POST
-          - PUT
-          - DELETE
-          - OPTIONS
-          - PATCH
-  
-  # PROJECT SERVICE
-  - name: project-service
-    url: http://spm_project_service:6002
-    routes:
-      - name: project-service-route
-        paths:
-          - /projects
+          - /projects 
+          - /reports
         strip_path: false
         methods:
           - GET

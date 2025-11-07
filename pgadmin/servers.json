@@ -15,7 +15,7 @@
             "Host": "task_db",
             "Port": 5432,
             "MaintenanceDB": "task_db",
-            "Username": "user",
+            "Username": "user", 
             "SSLMode": "prefer"
         },
         "3": {
@@ -25,6 +25,17 @@
             "Port": 5432,
             "MaintenanceDB": "project_db",
             "Username": "user",
+            "SSLMode": "prefer"
+        },
+        "4": 
+        {
+            "Name": "Notification DB",
+            "Group": "Servers",
+            "Host": "notification_db",
+            "Port": 5432,
+            "MaintenanceDB": "notification_db",
+            "Username": "user",
+            "Password": "user",
             "SSLMode": "prefer"
         }
     }

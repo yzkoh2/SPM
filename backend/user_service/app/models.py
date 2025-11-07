@@ -40,15 +40,32 @@ class User(db.Model):
         return f'<User {self.name} ({self.email})>'
 
     # Methods
+    
     def to_json(self):
-        return {
-            # 'username': self.username,
+        user_data = {
             'id': self.id,
             'username': self.username,
             'name': self.name,
             'email': self.email,
-            'role': self.role.value
+            'role': self.role.value if self.role else None,
+            'team_id': self.team_id
         }
+
+        # Safely access related team and department information
+        if self.team:
+            user_data['team'] = self.team.name
+            if self.team.department:
+                user_data['department'] = self.team.department.name
+                user_data['department_id'] = self.team.department.id
+            else:
+                user_data['department'] = None # Handle case where team has no department
+                user_data['department_id'] = None
+        else:
+            user_data['team'] = None
+            user_data['department'] = None
+            user_data['department_id'] = None
+
+        return user_data
 
 class Team(db.Model):
     """Team in a company."""
@@ -64,6 +81,13 @@ class Team(db.Model):
 
     def __repr__(self):
         return f'<Team {self.name}>'
+    
+    def to_json(self):
+        return {
+            'id': self.id,
+            'name': self.name,
+            'department_id': self.department_id
+        }
 
 class Department(db.Model):
     """Department in a company."""
@@ -77,3 +101,9 @@ class Department(db.Model):
 
     def __repr__(self):
         return f'<Department {self.name}>'
+
+    def to_json(self):
+        return {
+            'id': self.id,
+            'name': self.name
+        }

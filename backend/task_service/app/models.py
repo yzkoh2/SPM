@@ -1,7 +1,23 @@
 from flask_sqlalchemy import SQLAlchemy
 import enum
+from datetime import datetime, timedelta
+from dateutil.relativedelta import relativedelta
 
 db = SQLAlchemy()
+
+def _calculate_next_due_date(current_deadline, interval, custom_days):
+    #Calculates the next due date based on the recurrence interval.
+    if not current_deadline:
+        return None # Cannot calculate next date without a starting point
+
+    if interval == 'daily':
+        return current_deadline + timedelta(days=1)
+    elif interval == 'weekly':
+        return current_deadline + timedelta(weeks=1)
+    elif interval == 'monthly':
+        return current_deadline + relativedelta(months=1)
+    elif interval == 'custom' and custom_days:
+        return current_deadline + timedelta(days=custom_days)
 
 # --- ENUMS ---
 
@@ -45,6 +61,7 @@ class Project(db.Model):
     deadline = db.Column(db.DateTime, nullable=True)
     owner_id = db.Column(db.Integer, nullable=False)
     created_at = db.Column(db.DateTime, server_default=db.func.now())
+    updated_at = db.Column(db.DateTime, server_default=db.func.now(), onupdate=db.func.now())
 
     # Relationship to tasks in this project
     tasks = db.relationship('Task', back_populates='project', cascade="all, delete-orphan")
@@ -56,6 +73,12 @@ class Project(db.Model):
         )
         return [row.user_id for row in result]
 
+    def get_task(self):
+        result = db.session.execute(
+            db.select(Task).where(Task.project_id == self.id)
+        )
+        return [row.Task for row in result]
+
     def to_json(self):
         return {
             'id': self.id,
@@ -64,9 +87,30 @@ class Project(db.Model):
             'deadline': self.deadline.isoformat() if self.deadline else None,
             'owner_id': self.owner_id,
             'collaborator_ids': self.collaborator_ids(),
-            'created_at': self.created_at.isoformat() if self.created_at else None
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None,
+            'tasks': [task.to_json() for task in self.tasks]
         }
 
+class TaskActivityLog(db.Model):
+    """
+    Records a log of all changes to task details (title, status, priority, etc.)
+    """
+    __tablename__ = 'task_activity_log'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    task_id = db.Column(db.Integer, db.ForeignKey('tasks.id'), nullable=False, index=True)
+    user_id = db.Column(db.Integer, nullable=False)
+    timestamp = db.Column(db.DateTime, nullable=False, default=db.func.now(), index=True)
+    field_changed = db.Column(db.String(50), nullable=False)
+    old_value = db.Column(db.Text, nullable=True)
+    new_value = db.Column(db.Text, nullable=True)
+
+    # Relationships
+    task = db.relationship('Task', back_populates='activity_logs')
+
+    def __repr__(self):
+        return f'<TaskActivityLog {self.id}: {self.field_changed} on Task {self.task_id}>'
 
 class Task(db.Model):
     """
@@ -91,7 +135,12 @@ class Task(db.Model):
     recurrence_days = db.Column(db.Integer, nullable=True) #
     recurrence_end_date = db.Column(db.DateTime, nullable=True)
 
+    # Timestamps
+    created_at = db.Column(db.DateTime, server_default=db.func.now())
+    updated_at = db.Column(db.DateTime, server_default=db.func.now(), onupdate=db.func.now())
+
     # Relationships
+    activity_logs = db.relationship('TaskActivityLog', back_populates='task', lazy='dynamic', cascade="all, delete-orphan")
     project = db.relationship('Project', back_populates='tasks')
     subtasks = db.relationship(
         'Task', backref=db.backref('parent_task', remote_side=[id]), cascade="all, delete-orphan"
@@ -107,6 +156,28 @@ class Task(db.Model):
         return [row.user_id for row in result]
 
     def to_json(self):
+        next_instance_date = None
+        if self.is_recurring:
+            # Check 1: Stop if the recurrence period has already ended
+            if self.recurrence_end_date and datetime.utcnow() >= self.recurrence_end_date:
+                pass # next_instance_date remains None
+            else:
+                # Calculate the next potential deadline
+                next_deadline = _calculate_next_due_date(
+                    self.deadline, 
+                    self.recurrence_interval, 
+                    self.recurrence_days
+                )
+                
+                if next_deadline:
+                    # Check 2: Stop if the *next* deadline is past or at the end date
+                    if self.recurrence_end_date and next_deadline >= self.recurrence_end_date:
+                        pass # next_instance_date remains None
+                    else:
+                        next_instance_date = next_deadline.isoformat()
+        # Filter comments to only include top-level (no parent_comment_id)
+        top_level_comments = [c for c in self.comments if c.parent_comment_id is None]
+
         return {
             'id': self.id,
             'title': self.title,
@@ -121,13 +192,16 @@ class Task(db.Model):
             'recurrence_interval': self.recurrence_interval,
             'recurrence_days': self.recurrence_days,
             'recurrence_end_date': self.recurrence_end_date.isoformat() if self.recurrence_end_date else None,
+            'next_recurring_instance': next_instance_date,
             'collaborator_ids': self.collaborator_ids(),
             'subtasks': [subtask.to_json() for subtask in self.subtasks],
             'subtask_count': len(self.subtasks),
-            'comments': [comment.to_json() for comment in self.comments],
-            'comment_count': len(self.comments),
+            'comments': [comment.to_json() for comment in top_level_comments],  # Only top-level
+            'comment_count': len(self.comments),  # Still count all comments
             'attachments': [attachment.to_json() for attachment in self.attachments],
-            'attachment_count': len(self.attachments)
+            'attachment_count': len(self.attachments),
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None,
         }
 
 class Attachment(db.Model):
@@ -188,4 +262,29 @@ class Comment(db.Model):
             'replies': [reply.to_json() for reply in self.replies],
             'reply_count': len(self.replies),
             'mentions': self.get_mentions()
+        }
+    
+class ReportHistory(db.Model):
+    """Represents a file attachment linked to a task."""
+    __tablename__ = 'report_history'
+
+    id = db.Column(db.Integer, primary_key=True)
+    filename = db.Column(db.String(255), nullable=False)
+    url = db.Column(db.String(500), nullable=False)
+    user_id = db.Column(db.Integer, nullable=False)
+    target_user_id = db.Column(db.Integer, nullable=True)
+    report_type = db.Column(db.String(100), nullable=False)
+    project_id = db.Column(db.Integer, nullable=True)
+    created_at = db.Column(db.DateTime, server_default=db.func.now())
+
+    def to_json(self):
+        return {
+            'id': self.id,
+            'filename': self.filename,
+            'url': self.url,
+            'user_id': self.user_id,
+            'target_user_id': self.target_user_id,
+            'project_id': self.project_id,
+            'report_type': self.report_type,
+            'created_at': self.created_at.isoformat(),
         }

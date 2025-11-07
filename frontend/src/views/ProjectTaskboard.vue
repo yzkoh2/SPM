@@ -1,499 +1,711 @@
 <template>
-    <div class="min-h-screen bg-gray-50">
-  
-      <!-- Page Content -->
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <!-- Page Header -->
-        <div class="mb-8">
-          <h1 class="text-3xl font-bold text-gray-900">Project Taskboard</h1>
-          <p class="text-sm text-gray-600 mt-1">Manage projects and collaborate with your team</p>
-        </div>
-  
-        <!-- Create Project Button -->
-        <div class="mb-6">
-          <button @click="showCreateForm = !showCreateForm" 
-                  class="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-lg font-medium transition-colors flex items-center">
-            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
-            </svg>
-            {{ showCreateForm ? 'Cancel' : 'Create New Project' }}
-          </button>
-        </div>
-  
-        <!-- Create Project Form -->
-        <div v-if="showCreateForm" class="bg-white rounded-lg shadow-md p-6 mb-6">
-          <h3 class="text-lg font-semibold text-gray-900 mb-4">Create New Project</h3>
-          <form @submit.prevent="createProject" class="space-y-4">
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label for="title" class="block text-sm font-medium text-gray-700">Project Title</label>
-                <input v-model="newProject.title" type="text" id="title" required 
-                       class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
-              </div>
-              <div>
-                <label for="deadline" class="block text-sm font-medium text-gray-700">Deadline</label>
-                <input v-model="newProject.deadline" type="datetime-local" id="deadline" 
-                       class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
-              </div>
+  <div class="min-h-screen bg-gray-50">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <!-- Header -->
+      <div class="mb-8">
+        <h1 class="text-3xl font-bold text-gray-900">My Projects</h1>
+        <p class="text-sm text-gray-600 mt-1">Manage your projects and collaborate with your team</p>
+      </div>
+
+      <!-- Create Button -->
+      <div class="mb-6">
+        <button
+          @click="showCreateForm = !showCreateForm"
+          class="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-lg font-medium transition-colors flex items-center"
+        >
+          <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M12 6v6m0 0v6m0-6h6m-6 0H6"
+            ></path>
+          </svg>
+          {{ showCreateForm ? 'Cancel' : 'Create New Project' }}
+        </button>
+      </div>
+
+      <!-- Create Project Form -->
+      <div v-if="showCreateForm" class="bg-white rounded-lg shadow-md p-6 mb-6">
+        <h3 class="text-lg font-semibold mb-4">Create New Project</h3>
+        <form @submit.prevent="createProject">
+          <div class="grid grid-cols-1 gap-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Project Title *</label>
+              <input
+                v-model="newProject.title"
+                type="text"
+                required
+                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                placeholder="Enter project title"
+              />
             </div>
             <div>
-              <label for="description" class="block text-sm font-medium text-gray-700">Description</label>
-              <textarea v-model="newProject.description" id="description" rows="3" 
-                        class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"></textarea>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Description *</label>
+              <textarea
+                v-model="newProject.description"
+                rows="3"
+                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                placeholder="Enter project description"
+                required
+              ></textarea>
             </div>
             <div>
-              <label for="status" class="block text-sm font-medium text-gray-700">Status</label>
-              <select v-model="newProject.status" id="status" required 
-                      class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
-                <option value="Planning">Planning</option>
-                <option value="Active">Active</option>
-                <option value="On Hold">On Hold</option>
-                <option value="Completed">Completed</option>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Deadline *</label>
+              <input
+                v-model="newProject.deadline"
+                type="datetime-local"
+                :min="minDeadline"
+                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                required
+              />
+            </div>
+
+            <!-- Collaborator Management Section -->
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2"
+                >Manage Collaborators</label
+              >
+
+              <!-- Added Collaborators List -->
+              <div
+                class="space-y-2 mb-4 max-h-40 overflow-y-auto p-2 border border-gray-200 rounded-md bg-gray-50"
+              >
+                <div
+                  v-if="localCollaborators.length === 0"
+                  class="text-sm text-gray-500 text-center py-2"
+                >
+                  No collaborators added yet.
+                </div>
+                <div
+                  v-for="collaborator in localCollaborators"
+                  :key="collaborator.user_id"
+                  class="flex items-center justify-between p-2 bg-white rounded-md shadow-sm border border-gray-100"
+                >
+                  <span class="text-sm font-medium text-gray-800"
+                    >{{ collaborator.name }} ({{ collaborator.role }})</span
+                  >
+                  <button
+                    @click="removeCollaborator(collaborator.user_id)"
+                    type="button"
+                    title="Remove Collaborator"
+                    class="text-red-500 hover:text-red-700 text-xs font-semibold p-1 rounded-full hover:bg-red-50 transition"
+                  >
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M6 18L18 6M6 6l12 12"
+                      ></path>
+                    </svg>
+                  </button>
+                </div>
+              </div>
+
+              <!-- Collaborator Filters -->
+              <div class="grid grid-cols-2 gap-4 mb-3">
+                <div>
+                  <label class="block text-xs text-gray-500">Filter by Department</label>
+                  <select
+                    v-model="collaboratorDepartmentFilter"
+                    class="w-full mt-1 border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm px-3 py-2 border"
+                  >
+                    <option value="">All Departments</option>
+                    <option v-for="dept in collaboratorDepartments" :key="dept" :value="dept">
+                      {{ dept }}
+                    </option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block text-xs text-gray-500">Filter by Role</label>
+                  <select
+                    v-model="collaboratorRoleFilter"
+                    class="w-full mt-1 border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm px-3 py-2 border"
+                  >
+                    <option value="">All Roles</option>
+                    <option v-for="role in collaboratorRoles" :key="role" :value="role">
+                      {{ role }}
+                    </option>
+                  </select>
+                </div>
+              </div>
+
+              <!-- Collaborator Add Input -->
+              <div class="flex items-center space-x-2">
+                <select
+                  v-model="selectedCollaboratorId"
+                  class="flex-grow border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm px-3 py-2 border"
+                >
+                  <option :value="null" disabled>
+                    Select a user to add ({{ availableCollaborators.length }} available)...
+                  </option>
+                  <option v-for="user in availableCollaborators" :key="user.id" :value="user.id">
+                    {{ user.name }} ({{ user.department }} - {{ user.role }})
+                  </option>
+                </select>
+                <button
+                  @click="addCollaborator"
+                  type="button"
+                  :disabled="!selectedCollaboratorId"
+                  class="flex-shrink-0 px-4 py-2 bg-indigo-500 hover:bg-indigo-600 text-white rounded-md text-sm font-medium disabled:opacity-50 transition duration-150"
+                >
+                  Add
+                </button>
+              </div>
+            </div>
+          </div>
+          <div class="mt-4 flex justify-end space-x-3">
+            <button
+              type="button"
+              @click="showCreateForm = false"
+              class="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              :disabled="isCreating"
+              class="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-400"
+            >
+              {{ isCreating ? 'Creating...' : 'Create Project' }}
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <!-- Filter and Sort Bar -->
+      <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+        <div
+          class="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0"
+        >
+          <div
+            class="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-4"
+          >
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Filter by Role</label>
+              <select
+                v-model="filters.role"
+                @change="applyFilters"
+                class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              >
+                <option value="">All Projects</option>
+                <option value="owner">My Projects</option>
+                <option value="collaborator">Collaborating</option>
               </select>
             </div>
-            <div class="flex justify-end space-x-3">
-              <button type="button" @click="showCreateForm = false" 
-                      class="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50">
-                Cancel
-              </button>
-              <button type="submit" :disabled="isCreating" 
-                      class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md text-sm font-medium disabled:opacity-50">
-                {{ isCreating ? 'Creating...' : 'Create Project' }}
-              </button>
-            </div>
-          </form>
-        </div>
-  
-        <!-- Project Statistics -->
-        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-          <div class="bg-white rounded-lg shadow-md p-6">
-            <div class="flex items-center">
-              <div class="p-2 bg-blue-100 rounded-lg">
-                <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
-                </svg>
-              </div>
-              <div class="ml-4">
-                <p class="text-sm font-medium text-gray-600">Total Projects</p>
-                <p class="text-2xl font-semibold text-gray-900">{{ projects.length }}</p>
-              </div>
+
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Sort by</label>
+              <select
+                v-model="sortBy"
+                @change="applyFilters"
+                class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              >
+                <option value="default">Default Order</option>
+                <option value="deadline-earliest">Deadline (Earliest First)</option>
+                <option value="deadline-latest">Deadline (Latest First)</option>
+                <option value="title-asc">Title (A-Z)</option>
+                <option value="title-desc">Title (Z-A)</option>
+              </select>
             </div>
           </div>
-          
-          <div class="bg-white rounded-lg shadow-md p-6">
-            <div class="flex items-center">
-              <div class="p-2 bg-green-100 rounded-lg">
-                <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                </svg>
-              </div>
-              <div class="ml-4">
-                <p class="text-sm font-medium text-gray-600">Active Projects</p>
-                <p class="text-2xl font-semibold text-gray-900">{{ getProjectCountByStatus('Active') }}</p>
-              </div>
-            </div>
-          </div>
-          
-          <div class="bg-white rounded-lg shadow-md p-6">
-            <div class="flex items-center">
-              <div class="p-2 bg-yellow-100 rounded-lg">
-                <svg class="w-6 h-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                </svg>
-              </div>
-              <div class="ml-4">
-                <p class="text-sm font-medium text-gray-600">Planning</p>
-                <p class="text-2xl font-semibold text-gray-900">{{ getProjectCountByStatus('Planning') }}</p>
-              </div>
-            </div>
-          </div>
-          
-          <div class="bg-white rounded-lg shadow-md p-6">
-            <div class="flex items-center">
-              <div class="p-2 bg-purple-100 rounded-lg">
-                <svg class="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
-                </svg>
-              </div>
-              <div class="ml-4">
-                <p class="text-sm font-medium text-gray-600">My Tasks</p>
-                <p class="text-2xl font-semibold text-gray-900">{{ myTasksCount }}</p>
-              </div>
-            </div>
-          </div>
-        </div>
-  
-        <!-- Error Display -->
-        <div v-if="error" class="bg-red-50 border border-red-200 rounded-md p-6 mb-6">
-          <div class="flex items-center mb-4">
-            <svg class="w-6 h-6 text-red-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-            </svg>
-            <h3 class="text-lg font-medium text-red-800">Error</h3>
-          </div>
-          <pre class="text-red-700 text-sm whitespace-pre-wrap">{{ error }}</pre>
-          <div class="mt-4 space-x-2">
-            <button @click="fetchProjects" class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-md">
-              Try Again
+
+          <div
+            class="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-4"
+          >
+            <button
+              @click="clearFilters"
+              class="px-4 py-2 text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors"
+            >
+              Clear Filters
+            </button>
+            <button
+              @click="fetchProjects"
+              class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors"
+            >
+              Refresh
             </button>
           </div>
         </div>
-  
-        <!-- Projects Grid -->
-        <div v-if="loading" class="flex justify-center items-center py-12">
-          <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+      </div>
+
+      <!-- Project Statistics -->
+      <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+        <div class="bg-white rounded-lg shadow-md p-6">
+          <div class="flex items-center">
+            <div class="p-2 bg-blue-100 rounded-lg">
+              <svg
+                class="w-6 h-6 text-blue-600"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
+                ></path>
+              </svg>
+            </div>
+            <div class="ml-4">
+              <p class="text-sm font-medium text-gray-600">Total Projects</p>
+              <p class="text-2xl font-semibold text-gray-900">{{ projects.length }}</p>
+            </div>
+          </div>
         </div>
-        
-        <div v-else-if="projects.length === 0 && !error" class="text-center py-12">
-          <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
-          </svg>
-          <h3 class="mt-2 text-sm font-medium text-gray-900">No projects found</h3>
-          <p class="mt-1 text-sm text-gray-500">Get started by creating your first project.</p>
+
+        <div class="bg-white rounded-lg shadow-md p-6">
+          <div class="flex items-center">
+            <div class="p-2 bg-green-100 rounded-lg">
+              <svg
+                class="w-6 h-6 text-green-600"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                ></path>
+              </svg>
+            </div>
+            <div class="ml-4">
+              <p class="text-sm font-medium text-gray-600">My Projects</p>
+              <p class="text-2xl font-semibold text-gray-900">{{ myProjectsCount }}</p>
+            </div>
+          </div>
         </div>
-        
-        <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          <div v-for="project in projects" :key="project.id" 
-               class="bg-white rounded-lg shadow-md hover:shadow-xl transition-all duration-200 border-l-4 cursor-pointer transform hover:-translate-y-1"
-               :class="getStatusBorderColor(project.status)"
-               @click="viewProjectDetails(project.id)">
-            
-            <div class="p-6">
-              <div class="flex items-start justify-between">
-                <div class="flex-1">
-                  <h3 class="text-lg font-semibold text-gray-900 mb-2 hover:text-indigo-600 transition-colors">
-                    {{ project.title }}
-                  </h3>
-                  <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
-                        :class="getStatusBadgeColor(project.status)">
-                    {{ project.status }}
-                  </span>
-                </div>
-                
-                <div class="flex items-center space-x-2 ml-4">
-                  <button @click.stop="editProject(project)" 
-                          class="text-gray-400 hover:text-indigo-600 transition-colors p-1 rounded hover:bg-gray-100"
-                          title="Edit Project">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
-                    </svg>
-                  </button>
-                  <button @click.stop="deleteProject(project.id)" 
-                          class="text-gray-400 hover:text-red-600 transition-colors p-1 rounded hover:bg-red-50"
-                          title="Delete Project">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
-                    </svg>
-                  </button>
-                </div>
-              </div>
-              
-              <p class="text-sm text-gray-600 mt-3 line-clamp-2">
-                {{ project.description || 'No description available' }}
-              </p>
-              
-              <div v-if="project.deadline" class="flex items-center mt-4 text-sm">
-                <svg class="w-4 h-4 text-gray-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
-                </svg>
-                <span :class="getDeadlineColor(project.deadline)">
-                  Due: {{ formatDeadline(project.deadline) }}
-                </span>
-              </div>
-              
-              <div class="mt-4 grid grid-cols-2 gap-2 text-xs text-gray-600">
-                <div class="flex items-center">
-                  <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
-                  </svg>
-                  {{ getProjectTaskCount(project.id) }} tasks
-                </div>
-                <div class="flex items-center">
-                  <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
-                  </svg>
-                  {{ getProjectMembersCount(project.id) }} members
-                </div>
-              </div>
-              
-              <div class="mt-4 pt-4 border-t border-gray-100 flex justify-between items-center">
-                <span class="text-xs text-gray-500">
-                  Created by {{ getProjectOwnerName(project.owner_id) }}
-                </span>
-                <div class="flex items-center space-x-1">
-                  <div v-if="getProjectProgress(project.id) >= 0" class="w-16 bg-gray-200 rounded-full h-2">
-                    <div class="bg-indigo-600 h-2 rounded-full transition-all duration-300" 
-                         :style="`width: ${getProjectProgress(project.id)}%`"></div>
-                  </div>
-                  <span class="text-xs text-gray-500">{{ getProjectProgress(project.id) }}%</span>
-                </div>
-              </div>
+
+        <div class="bg-white rounded-lg shadow-md p-6">
+          <div class="flex items-center">
+            <div class="p-2 bg-yellow-100 rounded-lg">
+              <svg
+                class="w-6 h-6 text-yellow-600"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                ></path>
+              </svg>
+            </div>
+            <div class="ml-4">
+              <p class="text-sm font-medium text-gray-600">Collaborating</p>
+              <p class="text-2xl font-semibold text-gray-900">{{ collaboratingCount }}</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="bg-white rounded-lg shadow-md p-6">
+          <div class="flex items-center">
+            <div class="p-2 bg-purple-100 rounded-lg">
+              <svg
+                class="w-6 h-6 text-purple-600"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
+                ></path>
+              </svg>
+            </div>
+            <div class="ml-4">
+              <p class="text-sm font-medium text-gray-600">Total Tasks</p>
+              <p class="text-2xl font-semibold text-gray-900">{{ totalTasksCount }}</p>
             </div>
           </div>
         </div>
       </div>
+
+      <!-- Error Display -->
+      <div v-if="error" class="bg-red-50 border border-red-200 rounded-md p-6 mb-6">
+        <div class="flex items-center mb-4">
+          <svg
+            class="w-6 h-6 text-red-600 mr-2"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+            ></path>
+          </svg>
+          <h3 class="text-lg font-medium text-red-800">Error</h3>
+        </div>
+        <pre class="text-red-700 text-sm whitespace-pre-wrap">{{ error }}</pre>
+        <div class="mt-4 space-x-2">
+          <button
+            @click="fetchProjects"
+            class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-md"
+          >
+            Try Again
+          </button>
+        </div>
+      </div>
+
+      <!-- Loading State -->
+      <div v-if="loading" class="flex justify-center items-center py-12">
+        <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+      </div>
+
+      <!-- Projects Grid -->
+      <div v-else-if="filteredProjects.length > 0">
+        <div class="flex justify-between items-center mb-4">
+          <h3 class="text-lg font-medium text-gray-900">
+            Projects ({{ filteredProjects.length
+            }}{{ filteredProjects.length !== projects.length ? ` of ${projects.length}` : '' }})
+          </h3>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <ProjectCard
+            v-for="project in filteredProjects"
+            :key="project.id"
+            :project="project"
+            @view="viewProjectDetails"
+            @edit="editProject"
+            @delete="deleteProject"
+          />
+        </div>
+      </div>
+
+      <!-- Empty/Filtered State -->
+      <div v-else-if="projects.length > 0" class="text-center py-8 bg-gray-50 rounded-lg">
+        <p class="text-sm text-gray-600">No projects match the current filters.</p>
+        <button
+          @click="clearFilters"
+          class="mt-2 text-sm text-indigo-600 hover:text-indigo-500"
+        >
+          Clear filters
+        </button>
+      </div>
+
+      <!-- Empty State -->
+      <div v-else class="text-center py-12">
+        <svg
+          class="mx-auto h-12 w-12 text-gray-400"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
+          ></path>
+        </svg>
+        <h3 class="mt-2 text-sm font-medium text-gray-900">No projects</h3>
+        <p class="mt-1 text-sm text-gray-500">Get started by creating a new project.</p>
+      </div>
     </div>
-  </template>
-  
-  <script setup>
-  import { ref, onMounted, computed } from 'vue'
-  import { useRouter } from 'vue-router'
-  import { useAuthStore } from '@/stores/auth'
-  
-  const router = useRouter()
-  const authStore = useAuthStore()
-  const KONG_API_URL = "http://localhost:8000"
-  
-  // Reactive data
-  const projects = ref([])
-  const tasks = ref([]) // To store all tasks for progress calculation
-  const loading = ref(false)
-  const error = ref(null)
-  const showCreateForm = ref(false)
-  const isCreating = ref(false)
-  const mobileMenuOpen = ref(false)
-  
-  const newProject = ref({
-    title: '',
-    description: '',
-    deadline: '',
-    status: 'Planning'
-  })
-  
-  // Computed properties
-  const myTasksCount = computed(() => {
-    return tasks.value.filter(task => 
-      task.owner_id === authStore.currentUserId || 
-      task.assigned_to === authStore.currentUserId
-    ).length
-  })
-  
-  // Navigation helper function
-  const isActiveRoute = (routePath) => {
-    return router.currentRoute.value.path === routePath || 
-           router.currentRoute.value.path.startsWith(routePath + '/')
+  </div>
+</template>
+
+<script setup>
+import { ref, onMounted, computed } from 'vue'
+import { useRouter } from 'vue-router'
+import { useAuthStore } from '@/stores/auth'
+import ProjectCard from '@/components/ProjectCard.vue'
+
+const router = useRouter()
+const authStore = useAuthStore()
+
+const KONG_API_URL = 'http://localhost:8000'
+
+// Reactive data
+const projects = ref([])
+const loading = ref(false)
+const error = ref(null)
+const showCreateForm = ref(false)
+const isCreating = ref(false)
+
+const newProject = ref({
+  title: '',
+  description: '',
+  deadline: '',
+})
+
+// --- Collaborator Management State (NEW) ---
+const selectedCollaboratorId = ref(null)
+const localCollaborators = ref([]) // Collaborators currently selected for the new project
+const collaboratorDepartmentFilter = ref('')
+const collaboratorRoleFilter = ref('')
+
+// Mock User Data (Replace with real API fetch if available)
+const allUsers = ref([])
+
+// Filters and sorting
+const filters = ref({
+  role: '',
+})
+const sortBy = ref('default')
+
+// --- Computed properties ---
+const myProjectsCount = computed(() => {
+  return projects.value.filter((p) => p.user_role === 'owner').length
+})
+
+const collaboratingCount = computed(() => {
+  return projects.value.filter((p) => p.user_role === 'collaborator').length
+})
+
+const totalTasksCount = computed(() => {
+  return projects.value.reduce((sum, p) => sum + (p.task_count || 0), 0)
+})
+
+const collaboratorDepartments = computed(() => [
+  ...new Set(allUsers.value.map((u) => u.department).filter(Boolean)),
+])
+
+const collaboratorRoles = computed(() => [
+  ...new Set(allUsers.value.map((u) => u.role).filter(Boolean)),
+])
+
+const availableCollaborators = computed(() => {
+  const currentCollaboratorIds = localCollaborators.value.map((c) => c.user_id)
+  const currentUserId = authStore.currentUserId
+
+  return allUsers.value
+    .filter((user) => user.id !== currentUserId) // Exclude owner
+    .filter((user) => !currentCollaboratorIds.includes(user.id)) // Exclude already added
+    .filter(
+      (user) =>
+        !collaboratorDepartmentFilter.value ||
+        user.department === collaboratorDepartmentFilter.value,
+    )
+    .filter((user) => !collaboratorRoleFilter.value || user.role === collaboratorRoleFilter.value)
+})
+
+// Filtered and sorted projects
+const filteredProjects = computed(() => {
+  let filtered = [...projects.value]
+
+  // Filter by role
+  if (filters.value.role) {
+    filtered = filtered.filter((project) => project.user_role === filters.value.role)
   }
-  
-  // Helper functions
-  const getProjectCountByStatus = (status) => {
-    return projects.value.filter(project => project.status === status).length
-  }
-  
-  const getStatusBorderColor = (status) => {
-    const colors = {
-      'Planning': 'border-blue-400',
-      'Active': 'border-green-400',
-      'On Hold': 'border-yellow-400',
-      'Completed': 'border-purple-400'
-    }
-    return colors[status] || 'border-gray-400'
-  }
-  
-  const getStatusBadgeColor = (status) => {
-    const colors = {
-      'Planning': 'bg-blue-100 text-blue-800',
-      'Active': 'bg-green-100 text-green-800',
-      'On Hold': 'bg-yellow-100 text-yellow-800',
-      'Completed': 'bg-purple-100 text-purple-800'
-    }
-    return colors[status] || 'bg-gray-100 text-gray-800'
-  }
-  
-  const getDeadlineColor = (deadline) => {
-    if (!deadline) return 'text-gray-600'
-    
-    const now = new Date()
-    const deadlineDate = new Date(deadline)
-    
-    if (deadlineDate < now) return 'text-red-600 font-medium'
-    if (deadlineDate.toDateString() === now.toDateString()) return 'text-orange-600 font-medium'
-    return 'text-gray-900'
-  }
-  
-  const formatDeadline = (deadline) => {
-    if (!deadline) return 'No deadline set'
-    const date = new Date(deadline)
-    return date.toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
+
+  // Apply sorting
+  if (sortBy.value === 'deadline-earliest') {
+    filtered.sort((a, b) => {
+      if (!a.deadline) return 1
+      if (!b.deadline) return -1
+      return new Date(a.deadline) - new Date(b.deadline)
     })
+  } else if (sortBy.value === 'deadline-latest') {
+    filtered.sort((a, b) => {
+      if (!a.deadline) return 1
+      if (!b.deadline) return -1
+      return new Date(b.deadline) - new Date(a.deadline)
+    })
+  } else if (sortBy.value === 'title-asc') {
+    filtered.sort((a, b) => a.title.localeCompare(b.title))
+  } else if (sortBy.value === 'title-desc') {
+    filtered.sort((a, b) => b.title.localeCompare(a.title))
   }
-  
-  const getProjectTaskCount = (projectId) => {
-    // For now, return a placeholder. In a real app, you'd filter tasks by project
-    return Math.floor(Math.random() * 10) + 1
+
+  return filtered
+})
+
+// Date and Time helpers
+const formatDateForInput = (dateString) => {
+  if (!dateString) return ''
+  const date = new Date(dateString)
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  const hours = String(date.getHours()).padStart(2, '0')
+  const minutes = String(date.getMinutes()).padStart(2, '0')
+  return `${year}-${month}-${day}T${hours}:${minutes}`
+}
+
+const minDeadline = computed(() => {
+  // Always set minimum deadline to the current time for new project creation
+  return formatDateForInput(new Date())
+})
+
+// --- Collaborator Methods (NEW) ---
+const addCollaborator = () => {
+  if (!selectedCollaboratorId.value) return
+
+  const userToAdd = allUsers.value.find((u) => u.id === selectedCollaboratorId.value)
+  if (userToAdd) {
+    // Add the collaborator object to the local list
+    localCollaborators.value.push({
+      user_id: userToAdd.id,
+      name: userToAdd.name,
+      role: userToAdd.role,
+    })
+    selectedCollaboratorId.value = null // Reset selection
   }
-  
-  const getProjectMembersCount = (projectId) => {
-    // For now, return a placeholder. In a real app, you'd count project members
-    return Math.floor(Math.random() * 5) + 1
-  }
-  
-  const getProjectOwnerName = (ownerId) => {
-    // For now, return a placeholder. In a real app, you'd fetch user data
-    return ownerId === authStore.currentUserId ? 'You' : 'Team Member'
-  }
-  
-  const getProjectProgress = (projectId) => {
-    // For now, return a placeholder. In a real app, you'd calculate based on completed tasks
-    return Math.floor(Math.random() * 100)
-  }
-  
-  // API functions
-  const fetchProjects = async () => {
-    try {
-      loading.value = true
-      error.value = null
-      
-      // For now, we'll create mock projects since there's no project API yet
-      // In a real implementation, you'd call: const response = await fetch(`${KONG_API_URL}/projects`)
-      
-      // Mock data structure similar to tasks
-      const mockProjects = [
-        {
-          id: 1,
-          title: 'Website Redesign Project',
-          description: 'Complete overhaul of the company website with modern design and improved UX',
-          deadline: '2025-12-31T23:59:59',
-          status: 'Active',
-          owner_id: authStore.currentUserId,
-          created_at: '2025-09-01T10:00:00'
-        },
-        {
-          id: 2,
-          title: 'Mobile App Development',
-          description: 'Develop a mobile application for iOS and Android platforms',
-          deadline: '2025-11-15T23:59:59',
-          status: 'Planning',
-          owner_id: 2,
-          created_at: '2025-09-15T14:30:00'
-        },
-        {
-          id: 3,
-          title: 'Database Migration',
-          description: 'Migrate legacy database to new cloud infrastructure',
-          deadline: '2025-10-30T23:59:59',
-          status: 'On Hold',
-          owner_id: authStore.currentUserId,
-          created_at: '2025-08-20T09:15:00'
-        }
-      ]
-      
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 500))
-      projects.value = mockProjects
-      
-    } catch (err) {
-      console.error('Error fetching projects:', err)
-      error.value = `Failed to fetch projects: ${err.message}`
-      projects.value = []
-    } finally {
-      loading.value = false
+}
+
+const removeCollaborator = (userId) => {
+  localCollaborators.value = localCollaborators.value.filter((c) => c.user_id !== userId)
+}
+// --- End Collaborator Methods ---
+
+// API functions
+const fetchProjects = async () => {
+  try {
+    loading.value = true
+    error.value = null
+
+    const userId = authStore.currentUserId
+    const response = await fetch(`${KONG_API_URL}/projects/user/${userId}`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    })
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch projects: ${response.statusText}`)
     }
+
+    const data = await response.json()
+    projects.value = data
+  } catch (err) {
+    console.error('Error fetching projects:', err)
+    error.value = `Failed to fetch projects: ${err.message}`
+    projects.value = []
+  } finally {
+    loading.value = false
   }
-  
-  const fetchTasks = async () => {
-    try {
-      const response = await fetch(`${KONG_API_URL}/tasks`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json'
-        }
-      })
-      
-      if (response.ok) {
-        const data = await response.json()
-        tasks.value = data
-      }
-    } catch (err) {
-      console.error('Error fetching tasks:', err)
+}
+
+const createProject = async () => {
+  try {
+    isCreating.value = true
+    error.value = null
+
+    // Get collaborator IDs for the payload
+    const collaboratorIds = localCollaborators.value.map((c) => c.user_id)
+    console.log(collaboratorIds)
+    const projectData = {
+      title: newProject.value.title,
+      description: newProject.value.description || null,
+      deadline: newProject.value.deadline || null,
+      owner_id: authStore.currentUserId,
+      collaborator_ids: collaboratorIds, // INCLUDED COLLABORATORS
     }
-  }
-  
-  const createProject = async () => {
-    try {
-      isCreating.value = true
-      error.value = null
-      
-      const projectData = {
-        title: newProject.value.title,
-        description: newProject.value.description || null,
-        deadline: newProject.value.deadline || null,
-        status: newProject.value.status,
-        owner_id: authStore.currentUserId
-      }
-      
-      // For now, simulate project creation since there's no project API yet
-      // In a real implementation: const response = await fetch(`${KONG_API_URL}/projects`, {...})
-      
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 1000))
-      
-      // Add the new project to the list with a mock ID
-      const newProjectData = {
-        ...projectData,
-        id: Date.now(), // Simple mock ID
-        created_at: new Date().toISOString()
-      }
-      
-      projects.value.unshift(newProjectData)
-      
-      // Reset form
-      newProject.value = {
-        title: '',
-        description: '',
-        deadline: '',
-        status: 'Planning'
-      }
-      showCreateForm.value = false
-      
-    } catch (err) {
-      console.error('Error creating project:', err)
-      alert('Failed to create project: ' + err.message)
-    } finally {
-      isCreating.value = false
+
+    const response = await fetch(`${KONG_API_URL}/projects`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(projectData),
+    })
+
+    if (!response.ok) {
+      const errorData = await response.json()
+      throw new Error(errorData.error || 'Failed to create project')
     }
-  }
-  
-  const viewProjectDetails = (projectId) => {
-    router.push(`/projects/${projectId}`)
-  }
-  
-  const editProject = (project) => {
-    console.log('Edit project:', project)
-    // TODO: Implement edit functionality
-  }
-  
-  const deleteProject = async (projectId) => {
-    if (!confirm('Are you sure you want to delete this project?')) return
-    
-    try {
-      // For now, simulate deletion since there's no project API yet
-      // In a real implementation: await fetch(`${KONG_API_URL}/projects/${projectId}`, { method: 'DELETE' })
-      
-      projects.value = projects.value.filter(p => p.id !== projectId)
-    } catch (err) {
-      console.error('Error deleting project:', err)
-      alert('Failed to delete project: ' + err.message)
+
+    const createdProject = await response.json()
+
+    // Add user_role for display
+    createdProject.user_role = 'owner'
+    createdProject.task_count = 0
+
+    // Add to projects list
+    projects.value.unshift(createdProject)
+
+    // Reset form
+    newProject.value = {
+      title: '',
+      description: '',
+      deadline: '',
     }
+    localCollaborators.value = [] // Reset collaborators
+    selectedCollaboratorId.value = null
+    showCreateForm.value = false
+  } catch (err) {
+    console.error('Error creating project:', err)
+    error.value = `Failed to create project: ${err.message}`
+  } finally {
+    isCreating.value = false
   }
-  
-  onMounted(() => {
-    if (authStore.isAuthenticated) {
-      fetchProjects()
-      fetchTasks() // Fetch tasks to calculate stats
+}
+
+const viewProjectDetails = (projectId) => {
+  router.push(`/projects/${projectId}`)
+}
+
+const fetchAllUsers = async () => {
+  try {
+    // Assume you have an endpoint that returns all users
+    const response = await fetch(`${KONG_API_URL}/user`)
+    if (response.ok) {
+      allUsers.value = await response.json()
     } else {
-      authStore.logout()
+      console.error('Failed to fetch all users.')
     }
-  })
-  </script>
-  
-  <style scoped>
-  .line-clamp-2 {
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
+  } catch (err) {
+    console.error('Error fetching all users:', err)
   }
-  </style>
+}
+
+// Filter and sort functions
+const applyFilters = () => {
+  // Filters are applied reactively via computed property
+}
+
+const clearFilters = () => {
+  filters.value.role = ''
+  sortBy.value = 'default'
+}
+
+// Edit project function
+const editProject = (project) => {
+  router.push(`/projects/${project.id}`)
+}
+
+// Delete project function
+const deleteProject = async (projectId) => {
+  if (!confirm('Are you sure you want to delete this project?')) return
+
+  try {
+    const response = await fetch(`${KONG_API_URL}/projects/${projectId}`, {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ user_id: authStore.currentUserId })
+    })
+
+    if (response.ok) {
+      alert('Project deleted successfully')
+      await fetchProjects()
+    } else {
+      const errorData = await response.json()
+      throw new Error(errorData.error || 'Failed to delete project')
+    }
+  } catch (err) {
+    console.error('Error deleting project:', err)
+    alert('Failed to delete project: ' + err.message)
+  }
+}
+
+// Lifecycle
+onMounted(() => {
+  fetchProjects()
+  fetchAllUsers()
+})
+</script>

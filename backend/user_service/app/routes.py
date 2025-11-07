@@ -43,9 +43,9 @@ def get_user(user_id):
 @user_bp.route('/user/create', methods=['POST'])
 def create_user():
     data = request.get_json()
-    if not all(key in data for key in ['username', 'name', 'email', 'password']):
-        return jsonify({'error': 'Missing username, name, email, or password'}), 400
-    
+    if not all(key in data for key in ['username', 'name', 'email', 'password', 'role', 'team_id']):
+        return jsonify({'error': 'Missing username, name, email, password, role, or team_id'}), 400
+
     # The service function now returns a user and an error message
     new_user, error_msg = service.create_user(data)
 
@@ -61,17 +61,66 @@ def login():
         data = request.get_json()
         if not data or not data.get('email') or not data.get('password'):
             return jsonify({'error': 'Missing email or password'}), 400
-        
-        token, id, name, role = service.login_user(data)
-        
+
+        token, id, name, role, username = service.login_user(data)
+
         if not token:
             return jsonify({'error': 'Invalid Login Credentials'}), 401
-            
-        return jsonify({'token': token, 'userID': id, 'name': name, 'role': role}), 200
+
+        return jsonify({'token': token, 'userID': id, 'name': name, 'role': role, 'username': username}), 200
     except Exception as e:
         print(f"An error has occured: {e}")
         return jsonify({'error': 'An unexpected error has occured. Please try again later.'}), 500
 
+@user_bp.route('/user', methods=['GET'])
+def get_all_users():
+    """Get all users"""
+    try:
+        users = service.get_all_users()
+        return jsonify([user.to_json() for user in users]), 200
+    except Exception as e:
+        print(f"Error getting all users: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@user_bp.route('/user/teams', methods=['GET'])
+def get_all_teams():
+    """Get all teams"""
+    try:
+        teams = service.get_all_teams()
+        return jsonify([team.to_json() for team in teams]), 200
+    except Exception as e:
+        print(f"Error getting all teams: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@user_bp.route('/user/team/<int:team_id>', methods=['GET'])
+def get_all_users_in_team(team_id):
+    """Get all users in a specific team"""
+    try:
+        users = service.get_all_users_in_team(team_id)
+        return jsonify([user.to_json() for user in users]), 200
+    except Exception as e:
+        print(f"Error getting users in team {team_id}: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@user_bp.route('/user/departments', methods=['GET'])
+def get_all_dept():
+    """Get all departments"""
+    try:
+        depts = service.get_all_dept()
+        return jsonify([dept.to_json() for dept in depts]), 200
+    except Exception as e:
+        print(f"Error getting all departments: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@user_bp.route('/user/department/<int:dept_id>', methods=['GET'])
+def get_all_users_in_dept(dept_id):
+    """Get all users in a specific department"""
+    try:
+        users = service.get_all_users_in_dept(dept_id)
+        return jsonify([user.to_json() for user in users]), 200
+    except Exception as e:
+        print(f"Error getting users in department {dept_id}: {e}")
+        return jsonify({'error': str(e)}), 500
 
 # --- Protected Routes ---
 @user_bp.route('/user/verifyJWT', methods=['GET'])
@@ -79,5 +128,3 @@ def login():
 def verify_user(current_user):
     # The current_user is passed from the token_required decorator
     return jsonify(current_user.to_json())
-
-

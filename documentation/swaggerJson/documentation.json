@@ -1,61 +1,112 @@
 {
   "openapi": "3.0.0",
   "info": {
-    "title": "User Service API",
-    "description": "API for managing users, tasks, and projects including authentication and data management.",
+    "title": "API Documentation",
+    "description": "API documentation for the user and task services.",
     "version": "1.0.0"
   },
   "servers": [
     {
       "url": "http://localhost:8000",
-      "description": "Local Development Server"
+      "description": "User Service"
+    },
+    {
+      "url": "http://localhost:8000",
+      "description": "Task Service"
     }
   ],
   "tags": [
     {
       "name": "User",
-      "description": "Endpoints for user management and authentication."
+      "description": "User management"
     },
     {
       "name": "Task",
-      "description": "Endpoints for tasks management"
+      "description": "Task management"
     },
     {
       "name": "Project",
-      "description": "Endpoints for project management"
+      "description": "Project management"
+    },
+    {
+      "name": "Report",
+      "description": "Report generation"
     }
   ],
   "paths": {
+    "/user/{user_id}": {
+      "get": {
+        "tags": ["User"],
+        "summary": "Get user by ID",
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "User found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/User"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "User not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/user/create": {
       "post": {
         "tags": ["User"],
         "summary": "Create a new user",
-        "description": "Registers a new user in the system with a username, email, and password.",
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
               "schema": {
                 "type": "object",
-                "required": ["username", "name", "email", "password"],
+                "required": ["username", "name", "email", "password", "role", "team_id"],
                 "properties": {
                   "username": {
                     "type": "string",
-                    "example": "johndoe"
+                    "example": "testuser"
                   },
                   "name": {
                     "type": "string",
-                    "example": "john"
+                    "example": "Test User"
                   },
                   "email": {
                     "type": "string",
-                    "format": "email",
-                    "example": "john.doe@example.com"
+                    "example": "testuser@example.com"
                   },
                   "password": {
                     "type": "string",
-                    "format": "password",
-                    "example": "strongpassword123"
+                    "example": "securepassword"
+                  },
+                  "role": {
+                    "type": "string",
+                    "enum": ["Staff", "Manager", "Director", "HR", "Senior Management"]
+                  },
+                  "team_id": {
+                    "type": "integer",
+                    "example": 1
                   }
                 }
               }
@@ -64,7 +115,7 @@
         },
         "responses": {
           "201": {
-            "description": "User created successfully.",
+            "description": "User created",
             "content": {
               "application/json": {
                 "schema": {
@@ -74,18 +125,22 @@
             }
           },
           "400": {
-            "description": "Bad Request - Missing required fields.",
+            "description": "Missing username, name, email, password, role, or team_id",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/Error" }
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
               }
             }
           },
           "409": {
-            "description": "Conflict - A user with the given username or email already exists.",
+            "description": "User already exists",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/Error" }
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
               }
             }
           }
@@ -95,8 +150,7 @@
     "/user/login": {
       "post": {
         "tags": ["User"],
-        "summary": "User Login",
-        "description": "Authenticates a user and returns a JWT token upon successful login.",
+        "summary": "User login",
         "requestBody": {
           "required": true,
           "content": {
@@ -107,13 +161,11 @@
                 "properties": {
                   "email": {
                     "type": "string",
-                    "format": "email",
-                    "example": "john.doe@example.com"
+                    "example": "spmg8t3+john@gmail.com"
                   },
                   "password": {
                     "type": "string",
-                    "format": "password",
-                    "example": "strongpassword123"
+                    "example": "a"
                   }
                 }
               }
@@ -122,67 +174,112 @@
         },
         "responses": {
           "200": {
-            "description": "Login successful.",
+            "description": "Login successful"
+          },
+          "400": {
+            "description": "Missing email or password",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "token": {
-                      "type": "string",
-                      "example": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-                    },
-                    "userID": {
-                      "type": "integer",
-                      "example": 1
-                    },
-                    "name": {
-                      "type": "string",
-                      "example": "john"
-                    }
-                  }
+                  "$ref": "#/components/schemas/Error"
                 }
               }
             }
           },
-          "400": {
-            "description": "Bad Request - Missing email or password.",
-            "content": {
-              "application/json": {
-                "schema": { "$ref": "#/components/schemas/Error" }
-              }
-            }
-          },
           "401": {
-            "description": "Unauthorized - Invalid login credentials.",
+            "description": "Invalid Login Credentials",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/Error" }
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
               }
             }
           },
           "500": {
-            "description": "Internal Server Error.",
+            "description": "An unexpected error has occured",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/Error" }
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
               }
             }
           }
         }
       }
     },
-    "/user/{user_id}": {
+    "/user": {
       "get": {
         "tags": ["User"],
-        "summary": "Get a user by ID",
-        "description": "Retrieves public information for a single user by their unique ID.",
+        "summary": "Get all users",
+        "responses": {
+          "200": {
+            "description": "A list of users",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/User"
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error getting all users",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/user/teams": {
+      "get": {
+        "tags": ["User"],
+        "summary": "Get all teams",
+        "responses": {
+          "200": {
+            "description": "A list of teams",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Team"
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error getting all teams",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/user/team/{team_id}": {
+      "get": {
+        "tags": ["User"],
+        "summary": "Get all users in a specific team",
         "parameters": [
           {
-            "name": "user_id",
+            "name": "team_id",
             "in": "path",
             "required": true,
-            "description": "The unique identifier of the user.",
             "schema": {
               "type": "integer"
             }
@@ -190,20 +287,97 @@
         ],
         "responses": {
           "200": {
-            "description": "User found successfully.",
+            "description": "A list of users in the team",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/User"
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/User"
+                  }
                 }
               }
             }
           },
-          "404": {
-            "description": "Not Found - The user with the specified ID was not found.",
+          "500": {
+            "description": "Error getting users in team",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/Error" }
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/user/departments": {
+      "get": {
+        "tags": ["User"],
+        "summary": "Get all departments",
+        "responses": {
+          "200": {
+            "description": "A list of departments",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Department"
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error getting all departments",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/user/department/{dept_id}": {
+      "get": {
+        "tags": ["User"],
+        "summary": "Get all users in a specific department",
+        "parameters": [
+          {
+            "name": "dept_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A list of users in the department",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/User"
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error getting users in department",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
               }
             }
           }
@@ -213,8 +387,7 @@
     "/user/verifyJWT": {
       "get": {
         "tags": ["User"],
-        "summary": "Verify JWT and get current user data",
-        "description": "Protected endpoint that requires a valid JWT. Decodes the token and returns the authenticated user's data.",
+        "summary": "Verify JWT token",
         "security": [
           {
             "bearerAuth": []
@@ -222,7 +395,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Token is valid. User data returned.",
+            "description": "Token is valid",
             "content": {
               "application/json": {
                 "schema": {
@@ -232,20 +405,35 @@
             }
           },
           "401": {
-            "description": "Unauthorized - Token is missing, invalid, or expired.",
+            "description": "Token is missing, expired, or invalid",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/Error" }
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
               }
             }
           },
           "404": {
-            "description": "Not Found - The user associated with the token was not found.",
+            "description": "User not found",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/Error" }
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
               }
             }
+          }
+        }
+      }
+    },
+    "/health": {
+      "get": {
+        "tags": ["Task"],
+        "summary": "Health check",
+        "responses": {
+          "200": {
+            "description": "Service is healthy"
           }
         }
       }
@@ -253,11 +441,19 @@
     "/tasks": {
       "get": {
         "tags": ["Task"],
-        "summary": "Get all tasks",
-        "description": "Get all tasks, optionally filtered by owner_id",
+        "summary": "Get all tasks for a specific owner",
+        "parameters": [
+          {
+            "name": "owner_id",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
         "responses": {
           "200": {
-            "description": "All tasks returned.",
+            "description": "A list of tasks",
             "content": {
               "application/json": {
                 "schema": {
@@ -269,18 +465,22 @@
               }
             }
           },
-          "404": {
-            "description": "Task not found.",
+          "400": {
+            "description": "Owner ID is required",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "error": {
-                      "type": "string",
-                      "example": "Task not found"
-                    }
-                  }
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error getting all tasks",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
                 }
               }
             }
@@ -290,44 +490,19 @@
       "post": {
         "tags": ["Task"],
         "summary": "Create a new task",
-        "description": "Create a new task by providing title and owner_id",
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
               "schema": {
-                "type": "object",
-                "properties": {
-                  "title": {
-                    "type": "string",
-                    "example": "Finish project report"
-                  },
-                  "description": {
-                    "type": "string",
-                    "example": "Prepare the final report for submission"
-                  },
-                  "deadline": {
-                    "type": "string",
-                    "format": "date-time",
-                    "example": "2025-10-01T23:59:59Z"
-                  },
-                  "status": {
-                    "type": "string",
-                    "example": "Unassigned"
-                  },
-                  "owner_id": {
-                    "type": "integer",
-                    "example": 1
-                  }
-                },
-                "required": ["title", "owner_id"]
+                "$ref": "#/components/schemas/Task"
               }
             }
           }
         },
         "responses": {
           "201": {
-            "description": "Task created successfully",
+            "description": "Task created",
             "content": {
               "application/json": {
                 "schema": {
@@ -337,33 +512,21 @@
             }
           },
           "400": {
-            "description": "Validation error",
+            "description": "Missing field: Title or Owner ID is required",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "error": {
-                      "type": "string",
-                      "example": "Title is required"
-                    }
-                  }
+                  "$ref": "#/components/schemas/Error"
                 }
               }
             }
           },
           "500": {
-            "description": "Server error",
+            "description": "Error creating task",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "error": {
-                      "type": "string",
-                      "example": "Internal server error"
-                    }
-                  }
+                  "$ref": "#/components/schemas/Error"
                 }
               }
             }
@@ -371,11 +534,41 @@
         }
       }
     },
-    "/tasks/{task_id}/subtasks": {
-      "post": {
+    "/tasks/with-deadlines": {
+      "get": {
         "tags": ["Task"],
-        "summary": "Create a new subtask for a task",
-        "description": "Create a new subtask under the specified task",
+        "summary": "Get tasks with upcoming deadlines",
+        "responses": {
+          "200": {
+            "description": "A list of tasks with upcoming deadlines",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Task"
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error getting tasks with upcoming deadlines",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/tasks/{task_id}": {
+      "get": {
+        "tags": ["Task"],
+        "summary": "Get a specific task",
         "parameters": [
           {
             "name": "task_id",
@@ -383,54 +576,16 @@
             "required": true,
             "schema": {
               "type": "integer"
-            },
-            "description": "The ID of the parent task"
+            }
           }
         ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "title": {
-                    "type": "string",
-                    "example": "Write introduction section"
-                  },
-                  "status": {
-                    "type": "string",
-                    "example": "Unassigned"
-                  }
-                },
-                "required": ["title"]
-              }
-            }
-          }
-        },
         "responses": {
-          "201": {
-            "description": "Subtask created successfully",
+          "200": {
+            "description": "Task details",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Subtask"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Validation error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "error": {
-                      "type": "string",
-                      "example": "Subtask title is required"
-                    }
-                  }
+                  "$ref": "#/components/schemas/Task"
                 }
               }
             }
@@ -440,29 +595,471 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "error": {
-                      "type": "string",
-                      "example": "Task not found"
-                    }
-                  }
+                  "$ref": "#/components/schemas/Error"
                 }
               }
             }
           },
           "500": {
-            "description": "Server error",
+            "description": "Error getting task",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "error": {
-                      "type": "string",
-                      "example": "Internal server error"
-                    }
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": ["Task"],
+        "summary": "Update a task",
+        "parameters": [
+          {
+            "name": "task_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Task"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Task updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Task"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Task not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error updating task",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": ["Task"],
+        "summary": "Delete a task",
+        "parameters": [
+          {
+            "name": "task_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["user_id"],
+                "properties": {
+                  "user_id": {
+                    "type": "integer"
                   }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Task deleted successfully"
+          },
+          "404": {
+            "description": "Task not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error deleting task",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/tasks/{task_id}/comments": {
+      "post": {
+        "tags": ["Task"],
+        "summary": "Add a comment to a task",
+        "parameters": [
+          {
+            "name": "task_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["body", "author_id"],
+                "properties": {
+                  "body": {
+                    "type": "string"
+                  },
+                  "author_id": {
+                    "type": "integer"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Comment added",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Comment"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Comment body and author_id are required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Task not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error adding comment",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/tasks/deletecomment/{comment_id}": {
+      "delete": {
+        "tags": ["Task"],
+        "summary": "Delete a comment",
+        "parameters": [
+          {
+            "name": "comment_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Comment deleted successfully"
+          },
+          "404": {
+            "description": "Comment not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error deleting comment",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/tasks/{task_id}/collaborators": {
+      "get": {
+        "tags": ["Task"],
+        "summary": "Get all collaborators for a task/subtask",
+        "parameters": [
+          {
+            "name": "task_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A list of collaborators"
+          },
+          "500": {
+            "description": "Error getting task collaborators",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/tasks/{task_id}/attachments": {
+      "post": {
+        "tags": ["Task"],
+        "summary": "Add an attachment to a task",
+        "parameters": [
+          {
+            "name": "task_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": ["file", "filename"],
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary"
+                  },
+                  "filename": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Attachment added",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Attachment"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "No file part or No selected file",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Task not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error adding attachment",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/tasks/{task_id}/attachments/{attachment_id}": {
+      "get": {
+        "tags": ["Task"],
+        "summary": "Get a specific attachment for a task",
+        "parameters": [
+          {
+            "name": "task_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "attachment_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Attachment URL"
+          },
+          "404": {
+            "description": "Attachment not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error getting attachment",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": ["Task"],
+        "summary": "Delete an attachment from a task",
+        "parameters": [
+          {
+            "name": "task_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "attachment_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Attachment deleted successfully"
+          },
+          "404": {
+            "description": "Attachment not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error deleting attachment",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
                 }
               }
             }
@@ -474,60 +1071,29 @@
       "post": {
         "tags": ["Project"],
         "summary": "Create a new project",
-        "description": "Create a new project. The user who creates the project becomes the owner.",
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
               "schema": {
-                "type": "object",
-                "required": ["name", "user_id"],
-                "properties": {
-                  "name": {
-                    "type": "string",
-                    "example": "Website Redesign Project"
-                  },
-                  "description": {
-                    "type": "string",
-                    "example": "Complete redesign of the company website with modern UI/UX"
-                  },
-                  "deadline": {
-                    "type": "string",
-                    "format": "date-time",
-                    "example": "2025-12-31T23:59:59"
-                  },
-                  "user_id": {
-                    "type": "integer",
-                    "example": 1,
-                    "description": "The user ID of the project creator/owner"
-                  }
-                }
+                "$ref": "#/components/schemas/Project"
               }
             }
           }
         },
         "responses": {
           "201": {
-            "description": "Project created successfully",
+            "description": "Project created",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "message": {
-                      "type": "string",
-                      "example": "Project created successfully"
-                    },
-                    "project": {
-                      "$ref": "#/components/schemas/Project"
-                    }
-                  }
+                  "$ref": "#/components/schemas/Project"
                 }
               }
             }
           },
           "400": {
-            "description": "Bad Request - Missing required fields or invalid data",
+            "description": "Title is required or Owner ID is required",
             "content": {
               "application/json": {
                 "schema": {
@@ -537,7 +1103,7 @@
             }
           },
           "500": {
-            "description": "Internal Server Error",
+            "description": "Error creating project",
             "content": {
               "application/json": {
                 "schema": {
@@ -552,14 +1118,20 @@
     "/projects/{project_id}": {
       "get": {
         "tags": ["Project"],
-        "summary": "Get a project by ID",
-        "description": "Retrieve detailed information about a specific project",
+        "summary": "Get a specific project",
         "parameters": [
           {
             "name": "project_id",
             "in": "path",
             "required": true,
-            "description": "The unique identifier of the project",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "user_id",
+            "in": "query",
+            "required": true,
             "schema": {
               "type": "integer"
             }
@@ -567,16 +1139,31 @@
         ],
         "responses": {
           "200": {
-            "description": "Project found successfully",
+            "description": "Project details",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "project": {
-                      "$ref": "#/components/schemas/Project"
-                    }
-                  }
+                  "$ref": "#/components/schemas/Project"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "User ID is required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
                 }
               }
             }
@@ -592,7 +1179,7 @@
             }
           },
           "500": {
-            "description": "Internal Server Error",
+            "description": "Error getting project",
             "content": {
               "application/json": {
                 "schema": {
@@ -605,14 +1192,12 @@
       },
       "put": {
         "tags": ["Project"],
-        "summary": "Update project details",
-        "description": "Update project information. Only the project owner can update the project.",
+        "summary": "Update a project",
         "parameters": [
           {
             "name": "project_id",
             "in": "path",
             "required": true,
-            "description": "The unique identifier of the project",
             "schema": {
               "type": "integer"
             }
@@ -623,54 +1208,24 @@
           "content": {
             "application/json": {
               "schema": {
-                "type": "object",
-                "required": ["user_id"],
-                "properties": {
-                  "name": {
-                    "type": "string",
-                    "example": "Updated Project Name"
-                  },
-                  "description": {
-                    "type": "string",
-                    "example": "Updated project description"
-                  },
-                  "deadline": {
-                    "type": "string",
-                    "format": "date-time",
-                    "example": "2026-06-30T18:00:00"
-                  },
-                  "user_id": {
-                    "type": "integer",
-                    "example": 1,
-                    "description": "The user ID performing the update (must be the owner)"
-                  }
-                }
+                "$ref": "#/components/schemas/Project"
               }
             }
           }
         },
         "responses": {
           "200": {
-            "description": "Project updated successfully",
+            "description": "Project updated",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "message": {
-                      "type": "string",
-                      "example": "Project updated successfully"
-                    },
-                    "project": {
-                      "$ref": "#/components/schemas/Project"
-                    }
-                  }
+                  "$ref": "#/components/schemas/Project"
                 }
               }
             }
           },
           "400": {
-            "description": "Bad Request - Invalid data",
+            "description": "Bad request",
             "content": {
               "application/json": {
                 "schema": {
@@ -680,7 +1235,7 @@
             }
           },
           "403": {
-            "description": "Forbidden - Only the project owner can update",
+            "description": "Forbidden",
             "content": {
               "application/json": {
                 "schema": {
@@ -700,7 +1255,7 @@
             }
           },
           "500": {
-            "description": "Internal Server Error",
+            "description": "Error updating project",
             "content": {
               "application/json": {
                 "schema": {
@@ -714,13 +1269,11 @@
       "delete": {
         "tags": ["Project"],
         "summary": "Delete a project",
-        "description": "Delete a project. Only the project owner can delete the project.",
         "parameters": [
           {
             "name": "project_id",
             "in": "path",
             "required": true,
-            "description": "The unique identifier of the project",
             "schema": {
               "type": "integer"
             }
@@ -735,9 +1288,7 @@
                 "required": ["user_id"],
                 "properties": {
                   "user_id": {
-                    "type": "integer",
-                    "example": 1,
-                    "description": "The user ID performing the deletion (must be the owner)"
+                    "type": "integer"
                   }
                 }
               }
@@ -746,23 +1297,10 @@
         },
         "responses": {
           "200": {
-            "description": "Project deleted successfully",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "message": {
-                      "type": "string",
-                      "example": "Project deleted successfully"
-                    }
-                  }
-                }
-              }
-            }
+            "description": "Project deleted successfully"
           },
           "400": {
-            "description": "Bad Request - Missing user_id",
+            "description": "User ID is required",
             "content": {
               "application/json": {
                 "schema": {
@@ -772,7 +1310,7 @@
             }
           },
           "403": {
-            "description": "Forbidden - Only the project owner can delete",
+            "description": "Forbidden",
             "content": {
               "application/json": {
                 "schema": {
@@ -792,7 +1330,104 @@
             }
           },
           "500": {
-            "description": "Internal Server Error",
+            "description": "Error deleting project",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/projects/{project_id}/dashboard": {
+      "get": {
+        "tags": ["Project"],
+        "summary": "Get project dashboard",
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "user_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "sort_by",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "collaborator",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "owner",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Project dashboard data"
+          },
+          "400": {
+            "description": "User ID is required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Project not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error getting project dashboard",
             "content": {
               "application/json": {
                 "schema": {
@@ -808,13 +1443,11 @@
       "get": {
         "tags": ["Project"],
         "summary": "Get all projects for a user",
-        "description": "Retrieve all projects that a user is involved in (as owner or collaborator)",
         "parameters": [
           {
             "name": "user_id",
             "in": "path",
             "required": true,
-            "description": "The unique identifier of the user",
             "schema": {
               "type": "integer"
             }
@@ -822,57 +1455,882 @@
           {
             "name": "role",
             "in": "query",
-            "required": false,
-            "description": "Filter projects by user role (owner or collaborator)",
             "schema": {
-              "type": "string",
-              "enum": ["owner", "collaborator"]
+              "type": "string"
             }
           }
         ],
         "responses": {
           "200": {
-            "description": "Projects retrieved successfully",
+            "description": "A list of projects",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "user_id": {
-                      "type": "integer",
-                      "example": 1
-                    },
-                    "total_projects": {
-                      "type": "integer",
-                      "example": 3
-                    },
-                    "projects": {
-                      "type": "array",
-                      "items": {
-                        "allOf": [
-                          {
-                            "$ref": "#/components/schemas/Project"
-                          },
-                          {
-                            "type": "object",
-                            "properties": {
-                              "user_role": {
-                                "type": "string",
-                                "example": "owner",
-                                "description": "The user's role in this project (owner or collaborator role)"
-                              }
-                            }
-                          }
-                        ]
-                      }
-                    }
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Project"
                   }
                 }
               }
             }
           },
           "500": {
-            "description": "Internal Server Error",
+            "description": "Error getting user projects",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/projects/{project_id}/collaborators": {
+      "post": {
+        "tags": ["Project"],
+        "summary": "Add a collaborator to a project",
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["user_id", "collaborator_user_id"],
+                "properties": {
+                  "user_id": {
+                    "type": "integer"
+                  },
+                  "collaborator_user_id": {
+                    "type": "integer"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Collaborator added"
+          },
+          "400": {
+            "description": "User ID is required or Collaborator user ID is required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Project not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Collaborator already exists",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error adding project collaborator",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/projects/{project_id}/collaborators/{collaborator_user_id}": {
+      "delete": {
+        "tags": ["Project"],
+        "summary": "Remove a collaborator from a project",
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "collaborator_user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["user_id"],
+                "properties": {
+                  "user_id": {
+                    "type": "integer"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Collaborator removed"
+          },
+          "400": {
+            "description": "User ID is required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Project not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error removing project collaborator",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/projects/{project_id}/tasks": {
+      "get": {
+        "tags": ["Project"],
+        "summary": "Get all tasks for a project",
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A list of tasks",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Task"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Project not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error getting project tasks",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["Project"],
+        "summary": "Create a new task in a project",
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Task"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Task created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Task"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "User ID is required or Task title is required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Project not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error creating task in project",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/tasks/{task_id}/add-to-project": {
+      "post": {
+        "tags": ["Task"],
+        "summary": "Add an existing task to a project",
+        "parameters": [
+          {
+            "name": "task_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["project_id", "user_id"],
+                "properties": {
+                  "project_id": {
+                    "type": "integer"
+                  },
+                  "user_id": {
+                    "type": "integer"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Task added to project",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Task"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "User ID is required or Project ID is required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Task or project not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Task already assigned to a project",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error adding existing task to project",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/tasks/{task_id}/remove-from-project": {
+      "post": {
+        "tags": ["Task"],
+        "summary": "Remove a task from a project",
+        "parameters": [
+          {
+            "name": "task_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["user_id"],
+                "properties": {
+                  "user_id": {
+                    "type": "integer"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Task removed from project",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Task"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "User ID is required or Task not assigned to a project",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Task not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error removing task from project",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/tasks/standalone": {
+      "get": {
+        "tags": ["Task"],
+        "summary": "Get all standalone tasks for a user",
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A list of standalone tasks",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Task"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "User ID is required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error getting standalone tasks",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/reports/project/{project_id}": {
+      "post": {
+        "tags": ["Report"],
+        "summary": "Generate a PDF report for a project",
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "user_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "start_date": {
+                    "type": "string",
+                    "format": "date"
+                  },
+                  "end_date": {
+                    "type": "string",
+                    "format": "date"
+                  },
+                  "end_datetime": {
+                    "type": "string",
+                    "format": "date-time"
+                  },
+                  "timezone": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "PDF report"
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "An internal server error occurred",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/reports/individual/{user_id}": {
+      "post": {
+        "tags": ["Report"],
+        "summary": "Generate a PDF report for an individual user",
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "requesting_user_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "start_date": {
+                    "type": "string",
+                    "format": "date"
+                  },
+                  "end_date": {
+                    "type": "string",
+                    "format": "date"
+                  },
+                  "end_datetime": {
+                    "type": "string",
+                    "format": "date-time"
+                  },
+                  "timezone": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "PDF report"
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "An internal server error occurred",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/reports/history/{user_id}": {
+      "get": {
+        "tags": ["Report"],
+        "summary": "Retrieve all reports for a user",
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A list of reports",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ReportHistory"
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "An internal server error occurred",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/reports/retrieve/{report_id}": {
+      "get": {
+        "tags": ["Report"],
+        "summary": "Retrieve a specific report",
+        "parameters": [
+          {
+            "name": "report_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "user_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Presigned URL for the report"
+          },
+          "400": {
+            "description": "Missing 'user_id' query parameter",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Report file is empty or could not be retrieved",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "An internal server error occurred",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/reports/delete/{report_id}": {
+      "delete": {
+        "tags": ["Report"],
+        "summary": "Delete a specific report",
+        "parameters": [
+          {
+            "name": "report_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "user_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Report deleted successfully"
+          },
+          "400": {
+            "description": "Missing 'user_id' query parameter",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Report could not be deleted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "An internal server error occurred",
             "content": {
               "application/json": {
                 "schema": {
@@ -886,129 +2344,307 @@
     }
   },
   "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    },
     "schemas": {
       "User": {
         "type": "object",
         "properties": {
           "id": {
-            "type": "integer",
-            "example": 1
+            "type": "integer"
           },
           "username": {
-            "type": "string",
-            "example": "johndoe"
+            "type": "string"
           },
           "name": {
-            "type": "string",
-            "example": "john"
+            "type": "string"
           },
           "email": {
-            "type": "string",
-            "format": "email",
-            "example": "john.doe@example.com"
+            "type": "string"
           },
           "role": {
             "type": "string",
-            "example": "staff"
+            "enum": ["Staff", "Manager", "Director", "HR", "SM"]
+          },
+          "team_id": {
+            "type": "integer"
+          },
+          "team": {
+            "type": "string"
+          },
+          "department": {
+            "type": "string"
+          },
+          "department_id": {
+            "type": "integer"
+          }
+        },
+        "example": {
+          "id": 1,
+          "username": "johndoe",
+          "name": "John Doe",
+          "email": "john.doe@example.com",
+          "role": "Manager",
+          "team_id": 1,
+          "team": "Team A",
+          "department": "Engineering",
+          "department_id": 1
+        }
+      },
+      "Team": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          },
+          "department_id": {
+            "type": "integer"
+          }
+        },
+        "example": {
+          "id": 1,
+          "name": "Team A",
+          "department_id": 1
+        }
+      },
+      "Department": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "example": {
+          "id": 1,
+          "name": "Engineering"
+        }
+      },
+      "Project": {
+        "type": "object",
+        "required": ["title", "owner_id"],
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "deadline": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "owner_id": {
+            "type": "integer"
+          },
+          "collaborator_ids": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            }
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "tasks": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Task"
+            }
           }
         }
       },
       "Task": {
         "type": "object",
+        "required": ["title", "owner_id"],
         "properties": {
-          "id": { "type": "integer", "example": 101 },
-          "title": { "type": "string", "example": "Finish project report" },
+          "id": {
+            "type": "integer"
+          },
+          "title": {
+            "type": "string"
+          },
           "description": {
+            "type": "string"
+          },
+          "status": {
             "type": "string",
-            "example": "Complete and submit the project report by deadline"
+            "enum": ["Unassigned", "Ongoing", "Under Review", "Completed"]
           },
           "deadline": {
             "type": "string",
-            "format": "date-time",
-            "example": "2025-09-30T23:59:59Z"
+            "format": "date-time"
           },
-          "status": { "type": "string", "example": "Unassigned" },
-          "owner_id": { "type": "integer", "example": 1 },
+          "owner_id": {
+            "type": "integer"
+          },
+          "project_id": {
+            "type": "integer"
+          },
+          "parent_task_id": {
+            "type": "integer"
+          },
+          "priority": {
+            "type": "integer"
+          },
+          "is_recurring": {
+            "type": "boolean"
+          },
+          "recurrence_interval": {
+            "type": "string"
+          },
+          "recurrence_days": {
+            "type": "integer"
+          },
+          "recurrence_end_date": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "next_recurring_instance": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "collaborator_ids": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            }
+          },
           "subtasks": {
             "type": "array",
-            "items": { "$ref": "#/components/schemas/Subtask" }
+            "items": {
+              "$ref": "#/components/schemas/Task"
+            }
+          },
+          "subtask_count": {
+            "type": "integer"
           },
           "comments": {
             "type": "array",
-            "items": { "$ref": "#/components/schemas/Comment" }
+            "items": {
+              "$ref": "#/components/schemas/Comment"
+            }
+          },
+          "comment_count": {
+            "type": "integer"
           },
           "attachments": {
             "type": "array",
-            "items": { "$ref": "#/components/schemas/Attachment" }
+            "items": {
+              "$ref": "#/components/schemas/Attachment"
+            }
+          },
+          "attachment_count": {
+            "type": "integer"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
           }
-        }
-      },
-      "Subtask": {
-        "type": "object",
-        "properties": {
-          "id": { "type": "integer", "example": 201 },
-          "title": {
-            "type": "string",
-            "example": "Draft introduction section"
-          },
-          "status": { "type": "string", "example": "In Progress" },
-          "task_id": { "type": "integer", "example": 101 }
-        }
-      },
-      "Comment": {
-        "type": "object",
-        "properties": {
-          "id": { "type": "integer", "example": 301 },
-          "body": {
-            "type": "string",
-            "example": "Please review the draft by tomorrow"
-          },
-          "author_id": { "type": "integer", "example": 1 },
-          "task_id": { "type": "integer", "example": 101 }
         }
       },
       "Attachment": {
         "type": "object",
         "properties": {
-          "id": { "type": "integer", "example": 401 },
-          "filename": { "type": "string", "example": "report_draft.pdf" },
-          "url": {
-            "type": "string",
-            "format": "uri",
-            "example": "https://example.com/files/report_draft.pdf"
+          "id": {
+            "type": "integer"
           },
-          "task_id": { "type": "integer", "example": 101 }
+          "filename": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          }
         }
       },
-      "Project": {
+      "Comment": {
         "type": "object",
         "properties": {
           "id": {
-            "type": "integer",
-            "example": 1
+            "type": "integer"
           },
-          "name": {
-            "type": "string",
-            "example": "Website Redesign Project"
+          "body": {
+            "type": "string"
           },
-          "description": {
-            "type": "string",
-            "example": "Complete redesign of the company website with modern UI/UX"
+          "author_id": {
+            "type": "integer"
           },
-          "deadline": {
-            "type": "string",
-            "format": "date-time",
-            "example": "2025-12-31T23:59:59"
-          },
-          "owner_id": {
-            "type": "integer",
-            "example": 1,
-            "description": "The user ID of the project owner"
+          "task_id": {
+            "type": "integer"
           },
           "created_at": {
             "type": "string",
-            "format": "date-time",
-            "example": "2025-10-01T10:30:45.123456"
+            "format": "date-time"
+          },
+          "parent_comment_id": {
+            "type": "integer"
+          },
+          "replies": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Comment"
+            }
+          },
+          "reply_count": {
+            "type": "integer"
+          },
+          "mentions": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            }
+          }
+        }
+      },
+      "ReportHistory": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "filename": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "integer"
+          },
+          "target_user_id": {
+            "type": "integer"
+          },
+          "project_id": {
+            "type": "integer"
+          },
+          "report_type": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
           }
         }
       },
@@ -1016,18 +2652,12 @@
         "type": "object",
         "properties": {
           "error": {
-            "type": "string",
-            "example": "Error message describing the issue."
+            "type": "string"
           }
+        },
+        "example": {
+          "error": "An error message"
         }
-      }
-    },
-    "securitySchemes": {
-      "bearerAuth": {
-        "type": "http",
-        "scheme": "bearer",
-        "bearerFormat": "JWT",
-        "description": "Enter the JWT token with the 'Bearer ' prefix (e.g., 'Bearer eyJhbGci...')."
       }
     }
   }
