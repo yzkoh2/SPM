@@ -44,7 +44,7 @@ jobs:
     - name: Test with pytest
       working-directory: backend/user_service
       run: |
-        pytest test/ -v || echo "Tests completed with some failures"
+        pytest test/ -v
 
   test-task-service:
     name: Test Task Service
@@ -75,7 +75,7 @@ jobs:
     - name: Test with pytest
       working-directory: backend/task_service
       run: |
-        pytest test/ -v || echo "Tests completed with some failures"
+        pytest test/ -v
 
   test-notification-service:
     name: Test Notification Service
@@ -106,7 +106,7 @@ jobs:
     - name: Test with pytest
       working-directory: backend/notification_service
       run: |
-        pytest test/ -v || echo "Tests completed with some failures"
+        pytest test/ -v
 
   test-frontend:
     name: Test Frontend
@@ -127,10 +127,9 @@ jobs:
       working-directory: frontend
       run: npm ci
     
-    - name: Lint (warnings only)
+    - name: Lint
       working-directory: frontend
-      run: npm run lint || echo "Linting issues found - please fix when possible"
-      continue-on-error: true
+      run: npm run lint
     
     - name: Build
       working-directory: frontend
