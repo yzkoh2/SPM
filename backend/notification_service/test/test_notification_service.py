@@ -2610,8 +2610,12 @@ class TestNotificationService(unittest.TestCase):
         with self.app.app_context():
             from app.service import format_time_ago
             
-            timestamp = datetime.now() - timedelta(minutes=5)
-            
+            from zoneinfo import ZoneInfo
+            singapore_tz = ZoneInfo("Asia/Singapore")
+            timestamp = datetime.now(singapore_tz) - timedelta(minutes=5)
+            from zoneinfo import ZoneInfo
+            singapore_tz = ZoneInfo("Asia/Singapore")
+            timestamp = datetime.now(singapore_tz) - timedelta(minutes=5)
             result = format_time_ago(timestamp)
             self.assertIn('minute', result)
 

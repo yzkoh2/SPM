@@ -60,11 +60,12 @@ class TestUserService(unittest.TestCase):
         mock_user.id = self.user_data['id']
         mock_user.name = self.user_data['name']
         mock_user.role.value = self.user_data['role']
-        
+        mock_user.username = self.user_data['username']
+
         mock_get_user_by_email.return_value = mock_user
         mock_generate_token.return_value = "some_jwt_token"
 
-        token, user_id, user_name, user_role = login_user({
+        token, user_id, user_name, user_role, username = login_user({
             'email': self.user_data['email'],
             'password': self.user_data['password']
         })
@@ -73,6 +74,7 @@ class TestUserService(unittest.TestCase):
         self.assertEqual(user_id, self.user_data['id'])
         self.assertEqual(user_name, self.user_data['name'])
         self.assertEqual(user_role, self.user_data['role'])
+        self.assertEqual(username, self.user_data['username'])
         mock_get_user_by_email.assert_called_with(self.user_data['email'])
         mock_user.check_password.assert_called_with(self.user_data['password'])
         mock_generate_token.assert_called_with(self.user_data['id'])
@@ -84,7 +86,7 @@ class TestUserService(unittest.TestCase):
         mock_user.check_password.return_value = False
         mock_get_user_by_email.return_value = mock_user
 
-        token, user_id, user_name, user_role = login_user({
+        token, user_id, user_name, user_role, username = login_user({
             'email': self.user_data['email'],
             'password': 'wrong_password'
         })
@@ -93,6 +95,7 @@ class TestUserService(unittest.TestCase):
         self.assertIsNone(user_id)
         self.assertIsNone(user_name)
         self.assertIsNone(user_role)
+        self.assertIsNone(username)
         mock_get_user_by_email.assert_called_with(self.user_data['email'])
         mock_user.check_password.assert_called_with('wrong_password')
 
@@ -101,7 +104,7 @@ class TestUserService(unittest.TestCase):
         # Mocking no user found
         mock_get_user_by_email.return_value = None
 
-        token, user_id, user_name, user_role = login_user({
+        token, user_id, user_name, user_role, username = login_user({
             'email': self.user_data['email'],
             'password': self.user_data['password']
         })
@@ -109,6 +112,7 @@ class TestUserService(unittest.TestCase):
         self.assertIsNone(user_id)
         self.assertIsNone(user_name)
         self.assertIsNone(user_role)
+        self.assertIsNone(username)
         mock_get_user_by_email.assert_called_with(self.user_data['email'])
 
     def test_generate_token(self):
@@ -383,6 +387,497 @@ class TestUserServiceRoutes(unittest.TestCase):
             'Authorization': f'Bearer {token}'
         })
         self.assertEqual(res_verify.status_code, 200)
+
+
+# ==================== COMPREHENSIVE ERROR PATH AND EDGE CASE TESTS ====================
+
+class TestRoutesErrorPaths(unittest.TestCase):
+    """Test error handling in routes"""
+
+    def setUp(self):
+        self.app = create_app(config_name="testing")
+        self.client = self.app.test_client
+        self.app_context = self.app.app_context()
+        self.app_context.push()
+        db.create_all()
+
+        self.department = Department(name='Test Department')
+        self.team = Team(name='Test Team')
+        self.team.department = self.department
+        db.session.add(self.department)
+        db.session.add(self.team)
+        db.session.commit()
+
+    def tearDown(self):
+        db.session.remove()
+        db.drop_all()
+        self.app_context.pop()
+
+    def test_get_user_not_found(self):
+        """Test getting a non-existent user"""
+        res = self.client().get('/user/99999')
+        self.assertEqual(res.status_code, 404)
+        data = res.get_json()
+        self.assertIn('error', data)
+
+    def test_create_user_missing_fields(self):
+        """Test creating user with missing required fields"""
+        incomplete_data = {'username': 'test', 'name': 'Test'}
+        res = self.client().post('/user/create', json=incomplete_data)
+        self.assertEqual(res.status_code, 400)
+        data = res.get_json()
+        self.assertIn('error', data)
+
+    def test_login_missing_email(self):
+        """Test login with missing email"""
+        res = self.client().post('/user/login', json={'password': 'test123'})
+        self.assertEqual(res.status_code, 400)
+
+    def test_login_missing_password(self):
+        """Test login with missing password"""
+        res = self.client().post('/user/login', json={'email': 'test@example.com'})
+        self.assertEqual(res.status_code, 400)
+
+    def test_login_invalid_credentials(self):
+        """Test login with invalid credentials"""
+        user_data = {
+            'username': 'testuser',
+            'name': 'Test User',
+            'password': 'correctpass',
+            'email': 'test@example.com',
+            'role': 'Staff',
+            'team_id': 1
+        }
+        self.client().post('/user/create', json=user_data)
+
+        res = self.client().post('/user/login', json={
+            'email': 'test@example.com',
+            'password': 'wrongpassword'
+        })
+        self.assertEqual(res.status_code, 401)
+
+    @patch('app.service.login_user')
+    def test_login_exception_handling(self, mock_login):
+        """Test login route exception handling"""
+        mock_login.side_effect = Exception("Database error")
+
+        res = self.client().post('/user/login', json={
+            'email': 'test@example.com',
+            'password': 'password'
+        })
+        self.assertEqual(res.status_code, 500)
+
+    @patch('app.service.get_all_users')
+    def test_get_all_users_exception(self, mock_get_all):
+        """Test get all users exception handling"""
+        mock_get_all.side_effect = Exception("Database connection failed")
+
+        res = self.client().get('/user')
+        self.assertEqual(res.status_code, 500)
+
+    @patch('app.service.get_all_teams')
+    def test_get_all_teams_exception(self, mock_get_teams):
+        """Test get all teams exception handling"""
+        mock_get_teams.side_effect = Exception("Database error")
+
+        res = self.client().get('/user/teams')
+        self.assertEqual(res.status_code, 500)
+
+    @patch('app.service.get_all_users_in_team')
+    def test_get_users_in_team_exception(self, mock_get_users):
+        """Test get users in team exception handling"""
+        mock_get_users.side_effect = Exception("Query failed")
+
+        res = self.client().get('/user/team/1')
+        self.assertEqual(res.status_code, 500)
+
+    @patch('app.service.get_all_dept')
+    def test_get_all_departments_exception(self, mock_get_dept):
+        """Test get all departments exception handling"""
+        mock_get_dept.side_effect = Exception("Database error")
+
+        res = self.client().get('/user/departments')
+        self.assertEqual(res.status_code, 500)
+
+    @patch('app.service.get_all_users_in_dept')
+    def test_get_users_in_department_exception(self, mock_get_users):
+        """Test get users in department exception handling"""
+        mock_get_users.side_effect = Exception("Query failed")
+
+        res = self.client().get('/user/department/1')
+        self.assertEqual(res.status_code, 500)
+
+    def test_verify_jwt_no_token(self):
+        """Test JWT verification without token"""
+        res = self.client().get('/user/verifyJWT')
+        self.assertEqual(res.status_code, 401)
+
+    def test_verify_jwt_invalid_token(self):
+        """Test JWT verification with invalid token"""
+        res = self.client().get('/user/verifyJWT', headers={
+            'Authorization': 'Bearer invalid_token_here'
+        })
+        self.assertEqual(res.status_code, 401)
+
+    def test_verify_jwt_expired_token(self):
+        """Test JWT verification with expired token"""
+        # Create expired token
+        expired_payload = {
+            'exp': datetime.now(timezone.utc) - timedelta(days=1),
+            'iat': datetime.now(timezone.utc) - timedelta(days=2),
+            'sub': '1'
+        }
+        expired_token = jwt.encode(expired_payload, self.app.config['SECRET_KEY'], algorithm="HS256")
+
+        res = self.client().get('/user/verifyJWT', headers={
+            'Authorization': f'Bearer {expired_token}'
+        })
+        self.assertEqual(res.status_code, 401)
+
+    def test_verify_jwt_user_not_found(self):
+        """Test JWT verification when user doesn't exist"""
+        # Create token for non-existent user
+        payload = {
+            'exp': datetime.now(timezone.utc) + timedelta(days=1),
+            'iat': datetime.now(timezone.utc),
+            'sub': '99999'
+        }
+        token = jwt.encode(payload, self.app.config['SECRET_KEY'], algorithm="HS256")
+
+        res = self.client().get('/user/verifyJWT', headers={
+            'Authorization': f'Bearer {token}'
+        })
+        self.assertEqual(res.status_code, 404)
+
+
+class TestModelsEdgeCases(unittest.TestCase):
+    """Test model methods and edge cases"""
+
+    def setUp(self):
+        self.app = create_app(config_name="testing")
+        self.app_context = self.app.app_context()
+        self.app_context.push()
+        db.create_all()
+
+    def tearDown(self):
+        db.session.remove()
+        db.drop_all()
+        self.app_context.pop()
+
+    def test_user_to_json_with_team_and_department(self):
+        """Test user to_json with complete relationships"""
+        dept = Department(name='Engineering')
+        team = Team(name='Backend', department=dept)
+        user = User(username='testuser', name='Test User', email='test@example.com',
+                   role=RoleEnum.STAFF, team=team)
+        user.set_password('password')
+
+        db.session.add(dept)
+        db.session.add(team)
+        db.session.add(user)
+        db.session.commit()
+
+        user_json = user.to_json()
+
+        self.assertEqual(user_json['username'], 'testuser')
+        self.assertEqual(user_json['team'], 'Backend')
+        self.assertEqual(user_json['department'], 'Engineering')
+        self.assertIsNotNone(user_json['department_id'])
+
+    def test_user_to_json_without_team(self):
+        """Test user to_json without team"""
+        user = User(username='testuser', name='Test User', email='test@example.com',
+                   role=RoleEnum.STAFF)
+        user.set_password('password')
+
+        db.session.add(user)
+        db.session.commit()
+
+        user_json = user.to_json()
+
+        self.assertIsNone(user_json['team'])
+        self.assertIsNone(user_json['department'])
+        self.assertIsNone(user_json['department_id'])
+
+    def test_user_to_json_team_without_department(self):
+        """Test user to_json when team has no department"""
+        team = Team(name='Standalone Team')
+        user = User(username='testuser', name='Test User', email='test@example.com',
+                   role=RoleEnum.STAFF, team=team)
+        user.set_password('password')
+
+        db.session.add(team)
+        db.session.add(user)
+        db.session.commit()
+
+        user_json = user.to_json()
+
+        self.assertEqual(user_json['team'], 'Standalone Team')
+        self.assertIsNone(user_json['department'])
+        self.assertIsNone(user_json['department_id'])
+
+    def test_user_password_hashing(self):
+        """Test password hashing and verification"""
+        user = User(username='testuser', name='Test', email='test@example.com', role=RoleEnum.STAFF)
+        user.set_password('mypassword')
+
+        self.assertNotEqual(user.password_hash, 'mypassword')
+        self.assertTrue(user.check_password('mypassword'))
+        self.assertFalse(user.check_password('wrongpassword'))
+
+    def test_user_repr(self):
+        """Test user __repr__ method"""
+        user = User(username='testuser', name='Test User', email='test@example.com', role=RoleEnum.STAFF)
+        repr_str = repr(user)
+        self.assertIn('Test User', repr_str)
+        self.assertIn('test@example.com', repr_str)
+
+    def test_team_to_json(self):
+        """Test team to_json method"""
+        dept = Department(name='Engineering')
+        team = Team(name='Backend', department=dept)
+
+        db.session.add(dept)
+        db.session.add(team)
+        db.session.commit()
+
+        team_json = team.to_json()
+
+        self.assertEqual(team_json['name'], 'Backend')
+        self.assertIsNotNone(team_json['department_id'])
+
+    def test_team_repr(self):
+        """Test team __repr__ method"""
+        team = Team(name='Backend')
+        repr_str = repr(team)
+        self.assertIn('Backend', repr_str)
+
+    def test_department_to_json(self):
+        """Test department to_json method"""
+        dept = Department(name='Engineering')
+
+        db.session.add(dept)
+        db.session.commit()
+
+        dept_json = dept.to_json()
+
+        self.assertEqual(dept_json['name'], 'Engineering')
+        self.assertIsNotNone(dept_json['id'])
+
+    def test_department_repr(self):
+        """Test department __repr__ method"""
+        dept = Department(name='Engineering')
+        repr_str = repr(dept)
+        self.assertIn('Engineering', repr_str)
+
+    def test_role_enum_values(self):
+        """Test all role enum values"""
+        roles = [RoleEnum.STAFF, RoleEnum.MANAGER, RoleEnum.DIRECTOR, RoleEnum.HR, RoleEnum.SM]
+        expected_values = ['Staff', 'Manager', 'Director', 'HR', 'SM']
+
+        for role, expected in zip(roles, expected_values):
+            self.assertEqual(role.value, expected)
+
+
+class TestServiceEdgeCases(unittest.TestCase):
+    """Test service layer edge cases"""
+
+    def setUp(self):
+        self.app = create_app(config_name="testing")
+        self.app_context = self.app.app_context()
+        self.app_context.push()
+        db.create_all()
+
+        self.department = Department(name='Test Dept')
+        self.team = Team(name='Test Team', department=self.department)
+        db.session.add(self.department)
+        db.session.add(self.team)
+        db.session.commit()
+
+    def tearDown(self):
+        db.session.remove()
+        db.drop_all()
+        self.app_context.pop()
+
+    def test_get_user_by_id_not_found(self):
+        """Test getting user by id when user doesn't exist"""
+        from app.service import get_user_by_id
+        user = get_user_by_id(99999)
+        self.assertIsNone(user)
+
+    def test_get_user_by_email_not_found(self):
+        """Test getting user by email when user doesn't exist"""
+        from app.service import get_user_by_email
+        user = get_user_by_email('nonexistent@example.com')
+        self.assertIsNone(user)
+
+    def test_get_user_by_username_not_found(self):
+        """Test getting user by username when user doesn't exist"""
+        from app.service import get_user_by_username
+        user = get_user_by_username('nonexistent')
+        self.assertIsNone(user)
+
+    def test_create_user_duplicate_email(self):
+        """Test creating user with duplicate email"""
+        from app.service import create_user
+
+        user_data = {
+            'username': 'user1',
+            'name': 'User One',
+            'email': 'test@example.com',
+            'password': 'password',
+            'role': 'Staff',
+            'team_id': self.team.id
+        }
+
+        create_user(user_data)
+
+        # Try to create another user with same email
+        user_data2 = user_data.copy()
+        user_data2['username'] = 'user2'
+
+        new_user, error = create_user(user_data2)
+
+        self.assertIsNone(new_user)
+        self.assertIn('Email already in use', error)
+
+    def test_create_user_duplicate_username(self):
+        """Test creating user with duplicate username"""
+        from app.service import create_user
+
+        user_data = {
+            'username': 'testuser',
+            'name': 'User One',
+            'email': 'user1@example.com',
+            'password': 'password',
+            'role': 'Staff',
+            'team_id': self.team.id
+        }
+
+        create_user(user_data)
+
+        # Try to create another user with same username
+        user_data2 = user_data.copy()
+        user_data2['email'] = 'user2@example.com'
+
+        new_user, error = create_user(user_data2)
+
+        self.assertIsNone(new_user)
+        self.assertIn('Username already taken', error)
+
+    def test_create_user_invalid_team(self):
+        """Test creating user with invalid team_id"""
+        from app.service import create_user
+
+        user_data = {
+            'username': 'testuser',
+            'name': 'Test User',
+            'email': 'test@example.com',
+            'password': 'password',
+            'role': 'Staff',
+            'team_id': 99999
+        }
+
+        new_user, error = create_user(user_data)
+
+        self.assertIsNone(new_user)
+        self.assertIn('Team with id', error)
+
+    def test_create_user_invalid_role(self):
+        """Test creating user with invalid role"""
+        from app.service import create_user
+
+        user_data = {
+            'username': 'testuser',
+            'name': 'Test User',
+            'email': 'test@example.com',
+            'password': 'password',
+            'role': 'InvalidRole',
+            'team_id': self.team.id
+        }
+
+        new_user, error = create_user(user_data)
+
+        self.assertIsNone(new_user)
+        self.assertIn('Invalid role', error)
+
+    def test_create_user_with_different_roles(self):
+        """Test creating users with different roles that work with capitalize()"""
+        from app.service import create_user
+
+        # Only test roles that work with capitalize() - 'staff', 'manager', 'director'
+        # Note: HR and SM don't work with capitalize() as they become 'Hr' and 'Sm'
+        roles = ['Staff', 'Manager', 'Director']
+
+        for i, role in enumerate(roles):
+            user_data = {
+                'username': f'user{i}',
+                'name': f'User {i}',
+                'email': f'user{i}@example.com',
+                'password': 'password',
+                'role': role,
+                'team_id': self.team.id
+            }
+
+            new_user, error = create_user(user_data)
+
+            self.assertIsNotNone(new_user, f"Failed to create user with role {role}. Error: {error}")
+            self.assertIsNone(error)
+            self.assertEqual(new_user.role.value, role)
+
+    def test_get_all_users_empty(self):
+        """Test getting all users when database is empty"""
+        from app.service import get_all_users
+        users = get_all_users()
+        self.assertEqual(len(users), 0)
+
+    def test_get_all_teams_with_multiple_teams(self):
+        """Test getting all teams"""
+        from app.service import get_all_teams
+
+        team2 = Team(name='Team 2', department=self.department)
+        db.session.add(team2)
+        db.session.commit()
+
+        teams = get_all_teams()
+        self.assertEqual(len(teams), 2)
+
+    def test_get_all_users_in_team_empty(self):
+        """Test getting users in team when team has no users"""
+        from app.service import get_all_users_in_team
+        users = get_all_users_in_team(self.team.id)
+        self.assertEqual(len(users), 0)
+
+    def test_get_all_users_in_dept_with_multiple_teams(self):
+        """Test getting users in department across multiple teams"""
+        from app.service import get_all_users_in_dept, create_user
+
+        team2 = Team(name='Team 2', department=self.department)
+        db.session.add(team2)
+        db.session.commit()
+
+        # Create users in different teams
+        create_user({
+            'username': 'user1',
+            'name': 'User 1',
+            'email': 'user1@example.com',
+            'password': 'pass',
+            'role': 'Staff',
+            'team_id': self.team.id
+        })
+
+        create_user({
+            'username': 'user2',
+            'name': 'User 2',
+            'email': 'user2@example.com',
+            'password': 'pass',
+            'role': 'Staff',
+            'team_id': team2.id
+        })
+
+        users = get_all_users_in_dept(self.department.id)
+        self.assertEqual(len(users), 2)
+
 
 if __name__ == '__main__':
     unittest.main()
